@@ -1,0 +1,484 @@
+# GPRO — Gestor de Proyectos · Proconty
+> Archivo de contexto para Claude Code. Leer completo antes de generar cualquier código.
+
+---
+
+## 1. VISIÓN GENERAL
+
+GPRO es un sistema de gestión de proyectos de consultoría para Proconty.
+Administra el ciclo de vida completo: desde la prefactibilidad hasta el cierre,
+incluyendo facturación y registro de pagos.
+
+**URL producción:** https://gpro.vercel.app  
+**Repo:** https://github.com/dsProconty/GPRO  
+**Deploy:** Vercel (auto-deploy en push a `main`)
+
+---
+
+## 2. STACK TECNOLÓGICO
+
+| Capa | Tecnología | Notas |
+|------|-----------|-------|
+| Framework | Next.js 14 (App Router) | Frontend + Backend en uno |
+| UI | PrimeReact 10 + PrimeFlex + PrimeIcons | Componentes listos |
+| Auth | NextAuth.js v4 | Sesión JWT, 8h |
+| ORM | Prisma 5 | Client en `src/lib/prisma.js` |
+| Base de datos | PostgreSQL (Neon serverless) | Variables en Vercel |
+| Deploy | Vercel | Región iad1 (US East) |
+| Estilos | PrimeFlex utility classes | Sin CSS custom salvo excepciones |
+
+### Variables de entorno (ya configuradas en Vercel)
+```
+DATABASE_URL=postgresql://neondb_owner:...@ep-rough-feather...neon.tech/neondb?sslmode=require
+NEXTAUTH_SECRET=pbhO5JLv...
+NEXTAUTH_URL=https://gpro.vercel.app
+```
+
+---
+
+## 3. ESTRUCTURA DE ARCHIVOS
+
+```
+GPRO/
+├── CLAUDE.md                          ← este archivo
+├── package.json
+├── next.config.js                     ← alias @ → src/
+├── jsconfig.json                      ← paths @/*
+├── vercel.json
+├── middleware.js                      ← protege rutas /dashboard, /proyectos, etc.
+├── prisma/
+│   ├── schema.prisma                  ← modelos de todas las tablas
+│   └── seed.js
+└── src/
+    ├── app/
+    │   ├── layout.jsx                 ← Root layout con PrimeReact + Providers
+    │   ├── page.jsx                   ← Redirect a /dashboard o /login
+    │   ├── (auth)/
+    │   │   └── login/page.jsx         ← Pantalla de login
+    │   ├── (dashboard)/
+    │   │   ├── layout.jsx             ← Sidebar + Topbar (Sakai style)
+    │   │   ├── dashboard/page.jsx     ← Home con KPIs (Sprint 2)
+    │   │   ├── empresas/              ← Sprint 1
+    │   │   │   ├── page.jsx
+    │   │   │   └── [id]/page.jsx
+    │   │   ├── clientes/              ← Sprint 1
+    │   │   │   └── page.jsx
+    │   │   ├── proyectos/             ← Sprint 2
+    │   │   │   ├── page.jsx
+    │   │   │   └── [id]/page.jsx
+    │   │   └── (facturas y pagos dentro de proyectos/[id]) ← Sprint 3
+    │   └── api/
+    │       ├── auth/[...nextauth]/route.js
+    │       └── v1/
+    │           ├── empresas/          ← Sprint 1
+    │           ├── clientes/          ← Sprint 1
+    │           ├── proyectos/         ← Sprint 2
+    │           ├── facturas/          ← Sprint 3
+    │           ├── pagos/             ← Sprint 3
+    │           └── observaciones/     ← Sprint 4
+    ├── lib/
+    │   ├── prisma.js                  ← Singleton Prisma client
+    │   └── auth.js                    ← NextAuth config (authOptions)
+    ├── components/
+    │   ├── providers.jsx              ← SessionProvider wrapper
+    │   └── shared/                    ← Componentes reutilizables (Sprint 2+)
+    ├── services/                      ← axios helpers por entidad (Sprint 1+)
+    └── utils/
+        └── format.js                  ← formatCurrency, formatDate (Sprint 1+)
+```
+
+---
+
+## 4. MODELO DE DATOS (Tablas ya creadas en Neon)
+
+### 4.1 users
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id | SERIAL PK | |
+| name | VARCHAR(150) | |
+| email | VARCHAR(200) UNIQUE | |
+| password | TEXT | bcrypt hash |
+| role | VARCHAR(50) | default 'user' |
+| created_at / updated_at | TIMESTAMP | |
+
+### 4.2 empresas
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id_empresa | SERIAL PK | |
+| nombre | VARCHAR(150) NOT NULL | |
+| ciudad | VARCHAR(100) | opcional |
+| created_at / updated_at | TIMESTAMP | |
+
+### 4.3 clientes
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id_cliente | SERIAL PK | |
+| nombre | VARCHAR(100) NOT NULL | |
+| apellido | VARCHAR(100) NOT NULL | |
+| telefono | VARCHAR(20) | opcional |
+| mail | VARCHAR(200) | opcional |
+| id_empresa | FK → empresas | requerido |
+
+### 4.4 estados (catálogo — ya seedeado)
+| id_estado | nombre | color PrimeReact |
+|-----------|--------|-----------------|
+| 1 | Prefactibilidad | warning |
+| 2 | Elaboracion_Propuesta | info |
+| 3 | Adjudicado | success |
+| 4 | Rechazado | danger |
+| 5 | Cerrado | secondary |
+
+### 4.5 proyectos
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id_negocio | SERIAL PK | |
+| detalle | VARCHAR(255) NOT NULL | nombre del proyecto |
+| id_empresa | FK → empresas | 1 sola empresa |
+| valor | DECIMAL(12,2) | valor total del contrato |
+| fecha_creacion | DATE NOT NULL | |
+| fecha_cierre | DATE | opcional |
+| id_estado | FK → estados | |
+| project_online | VARCHAR(500) | URL externa, opcional |
+| created_at / updated_at | TIMESTAMP | |
+| **facturado** | ⚠️ CALCULADO | SUM(facturas.valor) — NUNCA guardar en BD |
+| **pagado** | ⚠️ CALCULADO | SUM(pagos.valor) — NUNCA guardar en BD |
+| **tiempo_vida** | ⚠️ CALCULADO | fecha_cierre - fecha_creacion (o hoy si no hay cierre) |
+
+### 4.6 proyecto_cliente (pivot)
+| Campo | Tipo |
+|-------|------|
+| id_negocio | FK → proyectos |
+| id_cliente | FK → clientes |
+| PK compuesta | (id_negocio, id_cliente) |
+
+### 4.7 proyecto_responsable (pivot)
+| Campo | Tipo |
+|-------|------|
+| id_negocio | FK → proyectos |
+| id_user | FK → users |
+| PK compuesta | (id_negocio, id_user) |
+
+### 4.8 facturas
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id_factura | SERIAL PK | |
+| num_factura | VARCHAR(50) UNIQUE | formato SRI: 001-001-XXXXXXX |
+| id_negocio | FK → proyectos | |
+| orden_compra | VARCHAR(50) | opcional |
+| valor | DECIMAL(12,2) NOT NULL | |
+| fecha_factura | DATE NOT NULL | |
+| observacion | TEXT | opcional |
+| created_at / updated_at | TIMESTAMP | |
+| **total_pagos** | ⚠️ CALCULADO | SUM(pagos.valor) — NUNCA guardar en BD |
+| **saldo** | ⚠️ CALCULADO | valor - total_pagos — NUNCA guardar en BD |
+
+### 4.9 pagos
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id_pago | SERIAL PK | |
+| valor | DECIMAL(12,2) NOT NULL | > 0, no puede superar saldo de factura |
+| fecha | DATE NOT NULL | |
+| id_factura | FK → facturas | |
+| observacion | TEXT | opcional |
+| created_at / updated_at | TIMESTAMP | |
+
+### 4.10 observaciones (INMUTABLES)
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| id_observacion | SERIAL PK | |
+| id_negocio | FK → proyectos | |
+| descripcion | TEXT NOT NULL | |
+| id_user | FK → users | se toma del token, NUNCA del body |
+| created_at | TIMESTAMP | solo insert, no updated_at |
+
+---
+
+## 5. REGLAS DE NEGOCIO CRÍTICAS
+
+> ⚠️ Estas reglas NUNCA se pueden violar. Verificar en cada sprint.
+
+### RN-01: Campos calculados
+- `facturado` y `pagado` del proyecto son `SUM` en tiempo real. **NUNCA se guardan en BD.**
+- `total_pagos` y `saldo` de factura son `SUM` en tiempo real. **NUNCA se guardan en BD.**
+- Calcularlos siempre con queries SQL agregadas o Prisma `_sum`.
+
+### RN-02: Validación de pagos
+- Un pago **NO puede superar el saldo disponible** de su factura.
+- Validar en **backend Y frontend**.
+- Retornar error 422 con mensaje claro si se intenta superar el saldo.
+- Un pago no puede ser negativo ni cero.
+
+### RN-03: Observaciones inmutables
+- Solo existen endpoints `POST` y `GET` para observaciones.
+- **NO hay PUT ni DELETE** en ninguna circunstancia.
+- El `id_user` se toma **del token JWT**, nunca del request body.
+- Se muestran ordenadas por `created_at DESC`.
+
+### RN-04: Proyectos y pivots
+- Un proyecto tiene **exactamente 1 empresa**.
+- Un proyecto puede tener **N clientes** y **N responsables** (tablas pivot).
+- Al crear/editar proyecto, sincronizar pivots con `deleteMany` + `createMany`.
+- `MultiSelect` de clientes debe filtrar por empresa seleccionada.
+
+### RN-05: Estado del proyecto
+- El estado se puede cambiar en cualquier momento.
+- Flujo normal: Prefactibilidad → Elaboracion_Propuesta → Adjudicado → Cerrado.
+- `Rechazado` puede aplicarse desde cualquier estado previo a Adjudicado.
+- Mostrar **warning (no bloqueante)** si se intenta cerrar un proyecto con saldo pendiente.
+
+### RN-06: Tiempo de vida
+- `tiempo_vida = fecha_cierre - fecha_creacion`
+- Si no hay `fecha_cierre`, usar la fecha actual.
+- Mostrar en días: "X días".
+
+---
+
+## 6. CONVENCIONES DE CÓDIGO
+
+### API Routes (Next.js)
+```javascript
+// Ruta: src/app/api/v1/empresas/route.js
+// Formato de respuesta SIEMPRE:
+// Éxito:
+{ "success": true, "data": {}, "message": "Operación completada" }
+// Error validación:
+{ "success": false, "message": "Error de validación", "errors": { "campo": ["msg"] } }
+
+// Usar getServerSession(authOptions) para proteger endpoints
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+```
+
+### Componentes React
+- Nombres en **PascalCase**: `EmpresaList.jsx`, `ProyectoForm.jsx`
+- Siempre `'use client'` en componentes con estado o eventos
+- Manejo de errores SIEMPRE con `Toast` de PrimeReact
+- Loading states con `<ProgressSpinner />` o skeleton de PrimeReact
+- Formularios: `useState` local + validación antes del submit
+
+### Servicios (axios)
+```javascript
+// src/services/empresaService.js
+// Funciones: getAll(), getById(id), create(data), update(id, data), remove(id)
+// Usar axios con base /api/v1/
+```
+
+### Componentes PrimeReact a usar
+- Listas/tablas: `DataTable`, `Column`
+- Formularios: `InputText`, `InputNumber`, `Dropdown`, `MultiSelect`, `Calendar`, `InputTextarea`
+- Feedback: `Toast`, `ConfirmDialog`
+- Layout: `Panel`, `Card`, `TabView`, `TabPanel`
+- Indicadores: `Tag`, `ProgressBar`, `ProgressSpinner`
+- Acciones: `Button` con iconos PrimeIcons
+
+### Colores de estado (para `<Tag severity="">`)
+```javascript
+const ESTADO_CONFIG = {
+  'Prefactibilidad':       { severity: 'warning',   label: 'Prefactibilidad'       },
+  'Elaboracion_Propuesta': { severity: 'info',       label: 'Elab. Propuesta'       },
+  'Adjudicado':            { severity: 'success',   label: 'Adjudicado'            },
+  'Rechazado':             { severity: 'danger',    label: 'Rechazado'             },
+  'Cerrado':               { severity: 'secondary', label: 'Cerrado'               },
+}
+```
+
+### Formato de moneda y fechas
+```javascript
+// src/utils/format.js
+export const formatCurrency = (value) =>
+  new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(value ?? 0)
+
+export const formatDate = (date) =>
+  date ? new Date(date).toLocaleDateString('es-EC') : '—'
+
+export const calcTiempoVida = (fechaCreacion, fechaCierre) => {
+  const fin = fechaCierre ? new Date(fechaCierre) : new Date()
+  const inicio = new Date(fechaCreacion)
+  const dias = Math.floor((fin - inicio) / (1000 * 60 * 60 * 24))
+  return `${dias} días`
+}
+```
+
+---
+
+## 7. SPRINTS Y ESTADO
+
+| Sprint | Nombre | Estado | Semanas |
+|--------|--------|--------|---------|
+| **Sprint 0** | Setup y Fundamentos | ✅ COMPLETADO | 1-2 |
+| **Sprint 1** | Empresas y Clientes | ⏳ PENDIENTE | 3-4 |
+| **Sprint 2** | Proyectos - Core | ⏳ PENDIENTE | 5-7 |
+| **Sprint 3** | Facturas y Pagos | ⏳ PENDIENTE | 8-10 |
+| **Sprint 4** | Detalle + Observaciones | ⏳ PENDIENTE | 11-12 |
+| **Sprint 5** | QA, Polish y Release | ⏳ PENDIENTE | 13-14 |
+
+### Sprint 0 — Lo que ya existe ✅
+- Next.js 14 configurado con App Router
+- NextAuth.js con login/logout funcional
+- Prisma schema con todas las tablas
+- Base de datos Neon con tablas creadas y seedeadas
+- Layout dashboard con sidebar y topbar (estilo Sakai)
+- Deploy en Vercel funcionando: https://gpro.vercel.app
+- Usuario admin: `admin@proconty.com` / `password123`
+
+---
+
+## 8. HISTORIAS DE USUARIO POR SPRINT
+
+### SPRINT 1 — Empresas y Clientes (26 pts)
+
+**Objetivo:** CRUD completo de Empresas y Clientes. Al final el PM puede registrar empresas cliente y sus contactos.
+
+| ID | Título | Story Points | Prioridad |
+|----|--------|-------------|-----------|
+| SP1-01 | API CRUD Empresas | 5 | Alta |
+| SP1-02 | Pantalla Lista de Empresas | 5 | Alta |
+| SP1-03 | Formulario Empresa (Create/Edit) | 3 | Alta |
+| SP1-04 | API CRUD Clientes | 5 | Alta |
+| SP1-05 | Pantalla Lista de Clientes | 5 | Alta |
+| SP1-06 | Validaciones y Tests SP1 | 3 | Media |
+
+**SP1-01 Criterios:** GET lista paginada · POST con nombre requerido · PUT y DELETE · respuesta `{success, data, message}`
+
+**SP1-02 Criterios:** DataTable con id/nombre/ciudad/acciones · buscador en tiempo real · botones Nuevo/Editar/Eliminar · Toast · Spinner
+
+**SP1-03 Criterios:** Dialog reutilizable crear/editar · campos nombre (req) y ciudad (opt) · validación antes de submit · cierra y refresca al guardar
+
+**SP1-04 Criterios:** GET con `?empresa_id=` · POST con `id_empresa` requerido · ClienteResource incluye empresa relacionada
+
+**SP1-05 Criterios:** DataTable nombre completo/empresa/teléfono/mail · Dropdown filtro por empresa · CRUD con Dialog · validar email
+
+**SP1-06 Criterios:** Test empresa sin nombre → 422 · test cliente con empresa inexistente → 422 · buscador funcional
+
+---
+
+### SPRINT 2 — Proyectos Core (34 pts)
+
+**Objetivo:** CRUD de Proyectos con relaciones. Grid principal con campos calculados.
+
+| ID | Título | Story Points | Prioridad |
+|----|--------|-------------|-----------|
+| SP2-01 | Modelo y queries Proyecto | 3 | Alta |
+| SP2-02 | API CRUD Proyectos | 8 | Alta |
+| SP2-03 | Grid Principal de Proyectos | 8 | Alta |
+| SP2-04 | Formulario Crear/Editar Proyecto | 8 | Alta |
+| SP2-05 | Badge de Estado con Colores | 3 | Alta |
+| SP2-06 | Validaciones y Tests SP2 | 4 | Media |
+
+**SP2-02 Criterios:** GET incluye `facturado`, `pagado`, `saldo` calculados · POST con arrays `clienteIds[]` y `responsableIds[]` · sync de pivots con deleteMany+createMany · DELETE valida si tiene facturas
+
+**SP2-03 Criterios:** Columnas: ID/Detalle(link), Empresa, Valor, Facturado, Pagado, Saldo(rojo/verde), Tiempo de Vida, Estado(badge), Acciones · formato `$#,###.##` · filtro por estado · buscador
+
+**SP2-04 Criterios:** InputText detalle (req) · Dropdown empresa (req) · MultiSelect clientes (filtra por empresa) · MultiSelect responsables (usuarios) · InputNumber valor USD · Dropdown estado · Calendar fechas · InputText URL
+
+---
+
+### SPRINT 3 — Facturas y Pagos (34 pts)
+
+**Objetivo:** Módulo financiero completo. Ciclo de cobro funcional.
+
+| ID | Título | Story Points | Prioridad |
+|----|--------|-------------|-----------|
+| SP3-01 | API CRUD Facturas | 8 | Alta |
+| SP3-02 | Grid de Facturas en Proyecto | 5 | Alta |
+| SP3-03 | Formulario de Factura (Dialog) | 5 | Alta |
+| SP3-04 | API CRUD Pagos | 8 | Alta |
+| SP3-05 | Sub-grid de Pagos en Factura | 5 | Alta |
+| SP3-06 | Resumen Financiero del Proyecto | 3 | Alta |
+
+**SP3-01 Criterios:** `total_pagos` y `saldo` calculados en respuesta · num_factura único · formato SRI validado
+
+**SP3-04 Criterios:** ⚠️ Validación CRÍTICA: `valor_pago <= saldo_disponible` → 422 si supera · re-validar en PUT
+
+**SP3-06 Criterios:** Panel con Valor/Facturado/Pagado/Saldo · `<ProgressBar>` % facturado y % pagado · actualización reactiva
+
+---
+
+### SPRINT 4 — Detalle de Proyecto y Observaciones (26 pts)
+
+**Objetivo:** Vista completa del proyecto. Bitácora inmutable.
+
+| ID | Título | Story Points | Prioridad |
+|----|--------|-------------|-----------|
+| SP4-01 | Vista Detalle de Proyecto - Layout | 5 | Alta |
+| SP4-02 | API Observaciones (solo insert) | 5 | Alta |
+| SP4-03 | Grid de Observaciones | 5 | Alta |
+| SP4-04 | Cambio de Estado del Proyecto | 5 | Alta |
+| SP4-05 | Navegación y UX General | 3 | Media |
+| SP4-06 | Validaciones y Tests SP4 | 3 | Media |
+
+**SP4-02 Criterios:** ⚠️ Solo POST y GET · DELETE retorna 405 · `id_user` del token, NUNCA del body · ordenado DESC
+
+**SP4-03 Criterios:** Sin botones editar/eliminar · Dialog para agregar · aparece inmediatamente al guardar
+
+---
+
+### SPRINT 5 — QA, Polish y Release (21 pts)
+
+| ID | Título | Story Points | Prioridad |
+|----|--------|-------------|-----------|
+| SP5-01 | Testing E2E Flujos Críticos | 8 | Alta |
+| SP5-02 | Corrección de Bugs y Deuda Técnica | 5 | Alta |
+| SP5-03 | Documentación API | 3 | Media |
+| SP5-04 | Seguridad y Autorización | 3 | Alta |
+| SP5-05 | Deploy y Config Producción | 2 | Alta |
+
+---
+
+## 9. DEFINITION OF DONE
+
+Una historia está DONE cuando:
+- [ ] Código revisado (no broken imports, no console.error en producción)
+- [ ] API Route protegida con `getServerSession`
+- [ ] Validaciones en backend Y frontend alineadas
+- [ ] Toast de éxito y error funcionando
+- [ ] Loading state implementado
+- [ ] Probado en Chrome
+- [ ] Push a `main` y deploy verde en Vercel
+
+---
+
+## 10. PROMPT BASE PARA CLAUDE CODE
+
+Usar este template al inicio de cada sesión de Claude Code:
+
+```
+Soy el PM del sistema GPRO (Gestor de Proyectos - Proconty).
+Lee el archivo CLAUDE.md completo antes de generar cualquier código.
+
+Estoy implementando [Sprint X - Historia SP-X-XX: Título].
+
+Stack real del proyecto:
+- Next.js 14 con App Router (NO Laravel, NO Vite)
+- PrimeReact 10 + PrimeFlex (NO Tailwind)
+- NextAuth.js v4 para auth (NO Sanctum)
+- Prisma 5 + PostgreSQL Neon (NO MySQL/Eloquent)
+- Deploy en Vercel
+
+Lo que ya existe (Sprint 0 completado):
+- Auth funcionando: src/lib/auth.js + src/app/api/auth/[...nextauth]/route.js
+- Prisma client: src/lib/prisma.js
+- Dashboard layout con sidebar: src/app/(dashboard)/layout.jsx
+- Todas las tablas en la BD ya creadas
+
+Genera código completo y funcional archivo por archivo.
+Señala qué regla de negocio del CLAUDE.md implementa cada sección.
+```
+
+---
+
+## 11. CREDENCIALES Y ACCESOS
+
+| Servicio | URL / Credencial |
+|---------|-----------------|
+| App producción | https://gpro.vercel.app |
+| Login admin | admin@proconty.com / password123 |
+| GitHub repo | https://github.com/dsProconty/GPRO |
+| Vercel dashboard | https://vercel.com/dsprocontys-projects/gpro |
+| Neon DB | https://console.neon.tech → proyecto Gpro |
+| DB name | neondb |
+
+---
+
+*GPRO v1.0 · Proconty · Abril 2026*
