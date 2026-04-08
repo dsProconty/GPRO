@@ -1,0 +1,179 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// GPRO - Gestor de Proyectos Proconty
+// Schema Prisma - Equivalente al modelo de datos del documento técnico
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon requiere directUrl para migraciones en serverless
+  directUrl = env("DATABASE_URL")
+}
+
+// ─── USUARIOS (tabla de Laravel = users, aquí = User) ────────────────────────
+model User {
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(150)
+  email         String   @unique @db.VarChar(200)
+  password      String
+  role          String   @default("user") @db.VarChar(50)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relaciones
+  proyectosResponsable ProyectoResponsable[]
+  observaciones        Observacion[]
+
+  @@map("users")
+}
+
+// ─── EMPRESA ─────────────────────────────────────────────────────────────────
+model Empresa {
+  id        Int      @id @default(autoincrement()) @map("id_empresa")
+  nombre    String   @db.VarChar(150)
+  ciudad    String?  @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relaciones
+  clientes  Cliente[]
+  proyectos Proyecto[]
+
+  @@map("empresas")
+}
+
+// ─── CLIENTE ─────────────────────────────────────────────────────────────────
+model Cliente {
+  id        Int     @id @default(autoincrement()) @map("id_cliente")
+  nombre    String  @db.VarChar(100)
+  apellido  String  @db.VarChar(100)
+  telefono  String? @db.VarChar(20)
+  mail      String? @db.VarChar(200)
+  empresaId Int     @map("id_empresa")
+
+  // Relaciones
+  empresa   Empresa           @relation(fields: [empresaId], references: [id])
+  proyectos ProyectoCliente[]
+
+  @@map("clientes")
+}
+
+// ─── ESTADO (catálogo) ───────────────────────────────────────────────────────
+model Estado {
+  id          Int        @id @default(autoincrement()) @map("id_estado")
+  nombre      String     @db.VarChar(50)
+  descripcion String?    @db.VarChar(200)
+  color       String     @default("secondary") @db.VarChar(30) // Para PrimeReact Tag severity
+
+  // Relaciones
+  proyectos   Proyecto[]
+
+  @@map("estados")
+}
+
+// ─── PROYECTO ─────────────────────────────────────────────────────────────────
+// REGLA DE NEGOCIO: facturado y pagado NO se almacenan, se calculan en tiempo real
+model Proyecto {
+  id             Int       @id @default(autoincrement()) @map("id_negocio")
+  detalle        String    @db.VarChar(255)
+  empresaId      Int       @map("id_empresa")
+  valor          Decimal   @db.Decimal(12, 2)
+  fechaCreacion  DateTime  @map("fecha_creacion") @db.Date
+  fechaCierre    DateTime? @map("fecha_cierre") @db.Date
+  estadoId       Int       @map("id_estado")
+  projectOnline  String?   @map("project_online") @db.VarChar(500)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relaciones
+  empresa        Empresa               @relation(fields: [empresaId], references: [id])
+  estado         Estado                @relation(fields: [estadoId], references: [id])
+  clientes       ProyectoCliente[]
+  responsables   ProyectoResponsable[]
+  facturas       Factura[]
+  observaciones  Observacion[]
+
+  @@map("proyectos")
+}
+
+// ─── PIVOT: PROYECTO ↔ CLIENTE ───────────────────────────────────────────────
+model ProyectoCliente {
+  proyectoId Int @map("id_negocio")
+  clienteId  Int @map("id_cliente")
+
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  cliente    Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@id([proyectoId, clienteId])
+  @@map("proyecto_cliente")
+}
+
+// ─── PIVOT: PROYECTO ↔ RESPONSABLE (Usuario Proconty) ────────────────────────
+model ProyectoResponsable {
+  proyectoId Int @map("id_negocio")
+  userId     Int @map("id_user")
+
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([proyectoId, userId])
+  @@map("proyecto_responsable")
+}
+
+// ─── FACTURA ─────────────────────────────────────────────────────────────────
+// REGLA DE NEGOCIO: total_pagos y saldo NO se almacenan, se calculan en tiempo real
+model Factura {
+  id           Int       @id @default(autoincrement()) @map("id_factura")
+  numFactura   String    @unique @map("num_factura") @db.VarChar(50)
+  proyectoId   Int       @map("id_negocio")
+  ordenCompra  String?   @map("orden_compra") @db.VarChar(50)
+  valor        Decimal   @db.Decimal(12, 2)
+  fechaFactura DateTime  @map("fecha_factura") @db.Date
+  observacion  String?   @db.Text
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relaciones
+  proyecto     Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  pagos        Pago[]
+
+  @@map("facturas")
+}
+
+// ─── PAGO ─────────────────────────────────────────────────────────────────────
+// REGLA DE NEGOCIO: valor no puede superar saldo disponible de la factura
+model Pago {
+  id          Int      @id @default(autoincrement()) @map("id_pago")
+  valor       Decimal  @db.Decimal(12, 2)
+  fecha       DateTime @db.Date
+  facturaId   Int      @map("id_factura")
+  observacion String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relaciones
+  factura     Factura  @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+
+  @@map("pagos")
+}
+
+// ─── OBSERVACION (INMUTABLE) ──────────────────────────────────────────────────
+// REGLA DE NEGOCIO: Solo INSERT. Nunca UPDATE ni DELETE.
+// El id_user se toma del token de sesión, NUNCA del body del request.
+model Observacion {
+  id          Int      @id @default(autoincrement()) @map("id_observacion")
+  proyectoId  Int      @map("id_negocio")
+  descripcion String   @db.Text
+  userId      Int      @map("id_user")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  proyecto    Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@map("observaciones")
+}
