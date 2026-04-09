@@ -104,6 +104,46 @@ export async function PUT(request, { params }) {
   }
 }
 
+export async function PATCH(request, { params }) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+
+  const id = parseInt(params.id)
+  if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
+
+  const { estadoId } = await request.json()
+  if (!estadoId) return NextResponse.json({ success: false, message: 'estadoId requerido' }, { status: 422 })
+
+  // RN-05: warning (no bloqueante) si se cierra con saldo pendiente
+  const proyecto = await prisma.proyecto.findUnique({
+    where: { id },
+    include: { facturas: { select: { valor: true, pagos: { select: { valor: true } } } } },
+  })
+  if (!proyecto) return NextResponse.json({ success: false, message: 'Proyecto no encontrado' }, { status: 404 })
+
+  const estado = await prisma.estado.findUnique({ where: { id: parseInt(estadoId) } })
+  let warning = null
+  if (estado?.nombre === 'Cerrado') {
+    const facturado = proyecto.facturas.reduce((s, f) => s + Number(f.valor), 0)
+    const pagado = proyecto.facturas.reduce((s, f) => s + f.pagos.reduce((sp, p) => sp + Number(p.valor), 0), 0)
+    if (facturado - pagado > 0.001) {
+      warning = 'El proyecto tiene saldo pendiente de cobro.'
+    }
+  }
+
+  try {
+    const updated = await prisma.proyecto.update({
+      where: { id },
+      data: { estadoId: parseInt(estadoId) },
+      include: PROYECTO_INCLUDE,
+    })
+    return NextResponse.json({ success: true, data: calcularCampos(updated), message: 'Estado actualizado', warning })
+  } catch (e) {
+    if (e.code === 'P2025') return NextResponse.json({ success: false, message: 'Proyecto no encontrado' }, { status: 404 })
+    throw e
+  }
+}
+
 export async function DELETE(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) {
