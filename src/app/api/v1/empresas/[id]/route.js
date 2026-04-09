@@ -3,6 +3,29 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+export async function GET(request, { params }) {
+  const session = await getServerSession(authOptions)
+  if (!session) {
+    return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  }
+
+  const id = parseInt(params.id)
+  if (isNaN(id)) {
+    return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
+  }
+
+  const empresa = await prisma.empresa.findUnique({
+    where: { id },
+    include: { _count: { select: { clientes: true } } },
+  })
+
+  if (!empresa) {
+    return NextResponse.json({ success: false, message: 'Empresa no encontrada' }, { status: 404 })
+  }
+
+  return NextResponse.json({ success: true, data: empresa, message: '' })
+}
+
 export async function PUT(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) {
