@@ -1,64 +1,41 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
 import { Button } from 'primereact/button'
 import { InputText } from 'primereact/inputtext'
-import { Dropdown } from 'primereact/dropdown'
 import { Toast } from 'primereact/toast'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { ProgressSpinner } from 'primereact/progressspinner'
-import ClienteFormDialog from '@/components/shared/ClienteFormDialog'
-import { clienteService } from '@/services/clienteService'
+import { Badge } from 'primereact/badge'
+import EmpresaFormDialog from '@/components/shared/EmpresaFormDialog'
 import { empresaService } from '@/services/empresaService'
 
 export default function ClientesPage() {
   const toast = useRef(null)
+  const router = useRouter()
   const [clientes, setClientes] = useState([])
-  const [empresas, setEmpresas] = useState([])
   const [loading, setLoading] = useState(true)
   const [globalFilter, setGlobalFilter] = useState('')
-  const [empresaFiltro, setEmpresaFiltro] = useState(null)
   const [dialogVisible, setDialogVisible] = useState(false)
   const [selectedCliente, setSelectedCliente] = useState(null)
 
   useEffect(() => {
-    loadAll()
+    loadClientes()
   }, [])
 
-  const loadAll = async () => {
+  const loadClientes = async () => {
     setLoading(true)
     try {
-      const [clientesRes, empresasRes] = await Promise.all([
-        clienteService.getAll(),
-        empresaService.getAll(),
-      ])
-      setClientes(clientesRes.data)
-      setEmpresas(empresasRes.data)
-    } catch {
-      toast.current.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los datos', life: 4000 })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadClientes = async (empresaId) => {
-    setLoading(true)
-    try {
-      const params = empresaId ? { empresa_id: empresaId } : {}
-      const res = await clienteService.getAll(params)
+      const res = await empresaService.getAll()
       setClientes(res.data)
     } catch {
       toast.current.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los clientes', life: 4000 })
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleEmpresaFiltroChange = (value) => {
-    setEmpresaFiltro(value)
-    loadClientes(value)
   }
 
   const openCreate = () => {
@@ -74,12 +51,12 @@ export default function ClientesPage() {
   const handleSave = () => {
     setDialogVisible(false)
     toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Cliente guardado exitosamente', life: 3000 })
-    loadClientes(empresaFiltro)
+    loadClientes()
   }
 
   const confirmDelete = (cliente) => {
     confirmDialog({
-      message: `¿Eliminar a "${cliente.nombre} ${cliente.apellido}"?`,
+      message: `¿Eliminar el cliente "${cliente.nombre}"?${cliente._count?.clientes > 0 ? ` Tiene ${cliente._count.clientes} contacto(s) asociado(s).` : ''}`,
       header: 'Confirmar eliminación',
       icon: 'pi pi-exclamation-triangle',
       acceptLabel: 'Eliminar',
@@ -91,22 +68,36 @@ export default function ClientesPage() {
 
   const handleDelete = async (id) => {
     try {
-      await clienteService.remove(id)
+      await empresaService.remove(id)
       toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Cliente eliminado exitosamente', life: 3000 })
-      loadClientes(empresaFiltro)
+      loadClientes()
     } catch (error) {
       const msg = error.response?.data?.message || 'Error al eliminar el cliente'
       toast.current.show({ severity: 'error', summary: 'Error', detail: msg, life: 4000 })
     }
   }
 
-  const nombreCompletoTemplate = (row) => `${row.nombre} ${row.apellido}`
-  const empresaTemplate = (row) => row.empresa?.nombre || '—'
-  const telefonoTemplate = (row) => row.telefono || '—'
-  const mailTemplate = (row) => row.mail || '—'
+  const contactosTemplate = (row) => {
+    const count = row._count?.clientes ?? 0
+    return (
+      <Badge
+        value={count}
+        severity={count > 0 ? 'info' : 'secondary'}
+      />
+    )
+  }
 
   const accionesTemplate = (rowData) => (
     <div className="flex gap-1">
+      <Button
+        icon="pi pi-users"
+        rounded
+        text
+        severity="success"
+        tooltip="Ver contactos"
+        tooltipOptions={{ position: 'top' }}
+        onClick={() => router.push(`/clientes/${rowData.id}`)}
+      />
       <Button
         icon="pi pi-pencil"
         rounded
@@ -128,8 +119,6 @@ export default function ClientesPage() {
     </div>
   )
 
-  const empresaFilterOptions = [{ id: null, nombre: 'Todas las empresas' }, ...empresas]
-
   if (loading && clientes.length === 0) {
     return (
       <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}>
@@ -144,12 +133,15 @@ export default function ClientesPage() {
       <ConfirmDialog />
 
       <div className="flex justify-content-between align-items-center mb-4">
-        <h1 className="text-2xl font-bold m-0">Clientes</h1>
+        <div>
+          <h1 className="text-2xl font-bold m-0">Clientes</h1>
+          <p className="text-color-secondary text-sm mt-1 mb-0">Empresas clientes y sus contactos/PMs</p>
+        </div>
         <Button label="Nuevo Cliente" icon="pi pi-plus" onClick={openCreate} />
       </div>
 
-      <div className="flex flex-wrap gap-3 mb-3">
-        <span className="p-input-icon-left flex-1" style={{ minWidth: '200px' }}>
+      <div className="mb-3">
+        <span className="p-input-icon-left w-full md:w-4">
           <i className="pi pi-search" />
           <InputText
             value={globalFilter}
@@ -158,16 +150,6 @@ export default function ClientesPage() {
             className="w-full"
           />
         </span>
-        <Dropdown
-          value={empresaFiltro}
-          options={empresaFilterOptions}
-          optionLabel="nombre"
-          optionValue="id"
-          onChange={(e) => handleEmpresaFiltroChange(e.value)}
-          placeholder="Filtrar por empresa"
-          showClear
-          style={{ minWidth: '220px' }}
-        />
       </div>
 
       <DataTable
@@ -179,20 +161,22 @@ export default function ClientesPage() {
         rowsPerPageOptions={[10, 25, 50]}
         emptyMessage="No hay clientes registrados"
         stripedRows
+        onRowClick={(e) => router.push(`/clientes/${e.data.id}`)}
+        rowClassName={() => 'cursor-pointer'}
       >
-        <Column header="Nombre Completo" body={nombreCompletoTemplate} sortable sortField="apellido" filter filterField="nombre" filterPlaceholder="Filtrar..." />
-        <Column header="Empresa" body={empresaTemplate} sortable sortField="empresa.nombre" />
-        <Column header="Teléfono" body={telefonoTemplate} />
-        <Column header="Email" body={mailTemplate} />
-        <Column header="Acciones" body={accionesTemplate} style={{ width: '100px' }} />
+        <Column field="id" header="ID" sortable style={{ width: '70px' }} />
+        <Column field="nombre" header="Cliente" sortable filter filterPlaceholder="Filtrar..." />
+        <Column field="ciudad" header="Ciudad" sortable body={(row) => row.ciudad || '—'} />
+        <Column header="Contactos" body={contactosTemplate} style={{ width: '100px', textAlign: 'center' }} />
+        <Column header="Acciones" body={accionesTemplate} style={{ width: '120px' }} />
       </DataTable>
 
-      <ClienteFormDialog
+      <EmpresaFormDialog
         visible={dialogVisible}
         onHide={() => setDialogVisible(false)}
         onSave={handleSave}
-        cliente={selectedCliente}
-        empresas={empresas}
+        empresa={selectedCliente}
+        labelOverride="Cliente"
       />
     </div>
   )

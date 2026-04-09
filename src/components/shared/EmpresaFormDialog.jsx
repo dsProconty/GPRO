@@ -7,7 +7,8 @@ import { InputText } from 'primereact/inputtext'
 import { Toast } from 'primereact/toast'
 import { empresaService } from '@/services/empresaService'
 
-export default function EmpresaFormDialog({ visible, onHide, onSave, empresa }) {
+export default function EmpresaFormDialog({ visible, onHide, onSave, empresa, labelOverride }) {
+  const label = labelOverride || 'Empresa'
   const toast = useRef(null)
   const [form, setForm] = useState({ nombre: '', ciudad: '' })
   const [errors, setErrors] = useState({})
@@ -60,7 +61,7 @@ export default function EmpresaFormDialog({ visible, onHide, onSave, empresa }) 
     <>
       <Toast ref={toast} />
       <Dialog
-        header={empresa ? 'Editar Empresa' : 'Nueva Empresa'}
+        header={empresa ? `Editar ${label}` : `Nuevo ${label}`}
         visible={visible}
         onHide={onHide}
         footer={footer}
@@ -78,7 +79,7 @@ export default function EmpresaFormDialog({ visible, onHide, onSave, empresa }) 
               value={form.nombre}
               onChange={(e) => setForm({ ...form, nombre: e.target.value })}
               className={`w-full ${errors.nombre ? 'p-invalid' : ''}`}
-              placeholder="Nombre de la empresa"
+              placeholder={`Nombre del ${label.toLowerCase()}`}
             />
             {errors.nombre && <small className="p-error">{errors.nombre}</small>}
           </div>

@@ -10,7 +10,7 @@ import { clienteService } from '@/services/clienteService'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-export default function ClienteFormDialog({ visible, onHide, onSave, cliente, empresas }) {
+export default function ClienteFormDialog({ visible, onHide, onSave, cliente, empresas, empresaFija }) {
   const toast = useRef(null)
   const [form, setForm] = useState({ nombre: '', apellido: '', telefono: '', mail: '', empresaId: null })
   const [errors, setErrors] = useState({})
@@ -24,10 +24,10 @@ export default function ClienteFormDialog({ visible, onHide, onSave, cliente, em
           apellido: cliente.apellido || '',
           telefono: cliente.telefono || '',
           mail: cliente.mail || '',
-          empresaId: cliente.empresaId || null,
+          empresaId: cliente.empresaId || empresaFija || null,
         })
       } else {
-        setForm({ nombre: '', apellido: '', telefono: '', mail: '', empresaId: null })
+        setForm({ nombre: '', apellido: '', telefono: '', mail: '', empresaId: empresaFija || null })
       }
       setErrors({})
     }
@@ -109,24 +109,26 @@ export default function ClienteFormDialog({ visible, onHide, onSave, cliente, em
             {errors.apellido && <small className="p-error">{errors.apellido}</small>}
           </div>
 
-          <div className="field mb-0">
-            <label htmlFor="empresa" className="font-semibold block mb-1">
-              Empresa <span className="text-red-500">*</span>
-            </label>
-            <Dropdown
-              id="empresa"
-              value={form.empresaId}
-              options={empresas}
-              optionLabel="nombre"
-              optionValue="id"
-              onChange={(e) => setForm({ ...form, empresaId: e.value })}
-              className={`w-full ${errors.empresaId ? 'p-invalid' : ''}`}
-              placeholder="Seleccionar empresa"
-              filter
-              filterPlaceholder="Buscar empresa..."
-            />
-            {errors.empresaId && <small className="p-error">{errors.empresaId}</small>}
-          </div>
+          {!empresaFija && (
+            <div className="field mb-0">
+              <label htmlFor="empresa" className="font-semibold block mb-1">
+                Cliente <span className="text-red-500">*</span>
+              </label>
+              <Dropdown
+                id="empresa"
+                value={form.empresaId}
+                options={empresas}
+                optionLabel="nombre"
+                optionValue="id"
+                onChange={(e) => setForm({ ...form, empresaId: e.value })}
+                className={`w-full ${errors.empresaId ? 'p-invalid' : ''}`}
+                placeholder="Seleccionar cliente"
+                filter
+                filterPlaceholder="Buscar cliente..."
+              />
+              {errors.empresaId && <small className="p-error">{errors.empresaId}</small>}
+            </div>
+          )}
 
           <div className="field mb-0">
             <label htmlFor="telefono" className="font-semibold block mb-1">Teléfono</label>

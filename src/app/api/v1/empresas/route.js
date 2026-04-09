@@ -9,7 +9,10 @@ export async function GET() {
     return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   }
 
-  const empresas = await prisma.empresa.findMany({ orderBy: { nombre: 'asc' } })
+  const empresas = await prisma.empresa.findMany({
+    orderBy: { nombre: 'asc' },
+    include: { _count: { select: { clientes: true } } },
+  })
   return NextResponse.json({ success: true, data: empresas, message: '' })
 }
 

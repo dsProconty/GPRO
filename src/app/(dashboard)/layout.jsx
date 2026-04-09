@@ -19,8 +19,7 @@ const menuItems = [
   {
     label: 'Configuración',
     items: [
-      { label: 'Empresas', icon: 'pi pi-building', path: '/empresas' },
-      { label: 'Clientes', icon: 'pi pi-users',    path: '/clientes'  },
+      { label: 'Clientes', icon: 'pi pi-building', path: '/clientes' },
     ],
   },
 ]
