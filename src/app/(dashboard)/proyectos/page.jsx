@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
 import { Button } from 'primereact/button'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
+import { Calendar } from 'primereact/calendar'
 import { Tag } from 'primereact/tag'
 import { Toast } from 'primereact/toast'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
@@ -38,6 +39,8 @@ export default function ProyectosPage() {
   const [loading, setLoading] = useState(true)
   const [globalFilter, setGlobalFilter] = useState('')
   const [estadoFiltro, setEstadoFiltro] = useState(null)
+  const [responsableFiltro, setResponsableFiltro] = useState(null)
+  const [fechaRango, setFechaRango] = useState(null)
   const [dialogVisible, setDialogVisible] = useState(false)
   const [selectedProyecto, setSelectedProyecto] = useState(null)
 
@@ -152,8 +155,25 @@ export default function ProyectosPage() {
     </div>
   )
 
+  // Filtrado avanzado en frontend (SP7-05)
+  const proyectosFiltrados = useMemo(() => {
+    let lista = proyectos
+    if (responsableFiltro) {
+      lista = lista.filter((p) => p.responsables?.some((r) => r.userId === responsableFiltro))
+    }
+    if (fechaRango && fechaRango[0]) {
+      const desde = new Date(fechaRango[0]); desde.setHours(0, 0, 0, 0)
+      lista = lista.filter((p) => new Date(p.fechaCreacion) >= desde)
+    }
+    if (fechaRango && fechaRango[1]) {
+      const hasta = new Date(fechaRango[1]); hasta.setHours(23, 59, 59, 999)
+      lista = lista.filter((p) => new Date(p.fechaCreacion) <= hasta)
+    }
+    return lista
+  }, [proyectos, responsableFiltro, fechaRango])
+
   const exportarExcel = () => {
-    const filas = proyectos.map((p) => ({
+    const filas = proyectosFiltrados.map((p) => ({
       'ID': p.id,
       'Proyecto': p.detalle,
       'Cliente': p.empresa?.nombre || '',
@@ -199,10 +219,10 @@ export default function ProyectosPage() {
       <div className="flex justify-content-between align-items-center mb-4">
         <div>
           <h1 className="text-2xl font-bold m-0">Proyectos</h1>
-          <p className="text-color-secondary text-sm mt-1 mb-0">{proyectos.length} proyecto(s) encontrado(s)</p>
+          <p className="text-color-secondary text-sm mt-1 mb-0">{proyectosFiltrados.length} proyecto(s) encontrado(s)</p>
         </div>
         <div className="flex gap-2">
-          <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined onClick={exportarExcel} disabled={proyectos.length === 0} />
+          <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined onClick={exportarExcel} disabled={proyectosFiltrados.length === 0} />
           <Button label="Nuevo Proyecto" icon="pi pi-plus" onClick={openCreate} />
         </div>
       </div>
@@ -220,12 +240,32 @@ export default function ProyectosPage() {
           onChange={(e) => handleEstadoFiltro(e.value)}
           placeholder="Filtrar por estado"
           showClear
+          style={{ minWidth: '180px' }}
+        />
+        <Dropdown
+          value={responsableFiltro}
+          options={[{ id: null, name: 'Todos los responsables' }, ...usuarios]}
+          optionLabel="name"
+          optionValue="id"
+          onChange={(e) => setResponsableFiltro(e.value)}
+          placeholder="Filtrar por responsable"
+          showClear
+          style={{ minWidth: '200px' }}
+        />
+        <Calendar
+          value={fechaRango}
+          onChange={(e) => setFechaRango(e.value)}
+          selectionMode="range"
+          readOnlyInput
+          placeholder="Rango de fechas"
+          dateFormat="dd/mm/yy"
+          showButtonBar
           style={{ minWidth: '200px' }}
         />
       </div>
 
       <DataTable
-        value={proyectos}
+        value={proyectosFiltrados}
         globalFilter={globalFilter}
         loading={loading}
         paginator

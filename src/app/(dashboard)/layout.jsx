@@ -10,7 +10,7 @@ import { Badge } from 'primereact/badge'
 import { Ripple } from 'primereact/ripple'
 import { classNames } from 'primereact/utils'
 
-const menuItems = [
+const menuItemsBase = [
   {
     label: 'Principal',
     items: [
@@ -21,7 +21,8 @@ const menuItems = [
   {
     label: 'Configuración',
     items: [
-      { label: 'Clientes', icon: 'pi pi-building', path: '/clientes' },
+      { label: 'Clientes',  icon: 'pi pi-building',  path: '/clientes' },
+      { label: 'Usuarios',  icon: 'pi pi-users',     path: '/usuarios', adminOnly: true },
     ],
   },
 ]
@@ -32,6 +33,11 @@ export default function DashboardLayout({ children }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [recordatoriosHoy, setRecordatoriosHoy] = useState(0)
+  const isAdmin = session?.user?.role === 'admin'
+  const menuItems = menuItemsBase.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => !item.adminOnly || isAdmin),
+  }))
 
   useEffect(() => {
     // Carga recordatoriosHoy para mostrar badge en sidebar
@@ -112,7 +118,8 @@ export default function DashboardLayout({ children }) {
               <div className="text-900 text-sm font-semibold">{session.user?.name}</div>
               <div className="text-400 text-xs">{session.user?.email}</div>
             </div>
-            <Button icon="pi pi-sign-out" rounded text severity="secondary" size="small" onClick={() => signOut({ callbackUrl: '/login' })} />
+            <Button icon="pi pi-user-edit" rounded text severity="secondary" size="small" tooltip="Mi perfil" tooltipOptions={{ position: 'top' }} onClick={() => router.push('/perfil')} />
+            <Button icon="pi pi-sign-out" rounded text severity="secondary" size="small" tooltip="Cerrar sesión" tooltipOptions={{ position: 'top' }} onClick={() => signOut({ callbackUrl: '/login' })} />
           </div>
         </div>
       </aside>

@@ -27,6 +27,7 @@ model User {
   // Relaciones
   proyectosResponsable ProyectoResponsable[]
   observaciones        Observacion[]
+  estadoLogs           ProyectoEstadoLog[]
 
   @@map("users")
 }
@@ -70,7 +71,9 @@ model Estado {
   color       String     @default("secondary") @db.VarChar(30) // Para PrimeReact Tag severity
 
   // Relaciones
-  proyectos   Proyecto[]
+  proyectos    Proyecto[]
+  logsAnterior ProyectoEstadoLog[] @relation("EstadoAnterior")
+  logsNuevo    ProyectoEstadoLog[] @relation("EstadoNuevo")
 
   @@map("estados")
 }
@@ -97,6 +100,7 @@ model Proyecto {
   facturas       Factura[]
   observaciones  Observacion[]
   recordatorios  RecordatorioFactura[]
+  estadoLogs     ProyectoEstadoLog[]
 
   @@map("proyectos")
 }
@@ -208,4 +212,22 @@ model Observacion {
   user        User     @relation(fields: [userId], references: [id])
 
   @@map("observaciones")
+}
+
+// ─── HISTORIAL DE CAMBIOS DE ESTADO (INMUTABLE) ───────────────────────────────
+// Se crea automáticamente al hacer PATCH /api/v1/proyectos/:id (cambio de estado)
+model ProyectoEstadoLog {
+  id               Int      @id @default(autoincrement())
+  proyectoId       Int      @map("id_negocio")
+  estadoAnteriorId Int?     @map("id_estado_anterior")
+  estadoNuevoId    Int      @map("id_estado_nuevo")
+  userId           Int      @map("id_user")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  proyecto       Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  estadoAnterior Estado?  @relation("EstadoAnterior", fields: [estadoAnteriorId], references: [id])
+  estadoNuevo    Estado   @relation("EstadoNuevo", fields: [estadoNuevoId], references: [id])
+  user           User     @relation(fields: [userId], references: [id])
+
+  @@map("proyecto_estado_logs")
 }

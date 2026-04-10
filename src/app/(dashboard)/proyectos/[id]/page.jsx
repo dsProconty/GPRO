@@ -61,6 +61,9 @@ export default function ProyectoDetallePage({ params }) {
   const [obsDialogVisible, setObsDialogVisible] = useState(false)
   const [editDialogVisible, setEditDialogVisible] = useState(false)
 
+  // Historial de estado
+  const [estadoLogs, setEstadoLogs] = useState([])
+
   // Recordatorios
   const [recordatorios, setRecordatorios] = useState([])
   const [loadingRec, setLoadingRec] = useState(false)
@@ -90,6 +93,10 @@ export default function ProyectoDetallePage({ params }) {
       setEmpresas(empRes.data.data)
       setUsuarios(usrRes.data.data)
       setRecordatorios(recRes.data)
+      // Historial de estado (no bloquea si falla)
+      axios.get(`/api/v1/proyectos/${id}/estado-logs`)
+        .then((r) => setEstadoLogs(r.data.data || []))
+        .catch(() => {})
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar el proyecto', life: 4000 })
     } finally {
@@ -137,6 +144,10 @@ export default function ProyectoDetallePage({ params }) {
     try {
       const res = await axios.patch(`/api/v1/proyectos/${id}`, { estadoId: nuevoEstadoId })
       setProyecto(res.data.data)
+      // Refresh estado logs
+      axios.get(`/api/v1/proyectos/${id}/estado-logs`)
+        .then((r) => setEstadoLogs(r.data.data || []))
+        .catch(() => {})
       if (res.data.warning) {
         toast.current.show({ severity: 'warn', summary: 'Atención', detail: res.data.warning, life: 6000 })
       } else {
@@ -331,7 +342,10 @@ export default function ProyectoDetallePage({ params }) {
           <i className="pi pi-angle-right text-color-secondary" />
           <span className="text-900 font-semibold">{proyecto.detalle}</span>
         </div>
-        <Button label="Editar" icon="pi pi-pencil" severity="info" outlined onClick={() => setEditDialogVisible(true)} />
+        <div className="flex gap-2">
+          <Button label="PDF" icon="pi pi-file-pdf" severity="danger" outlined onClick={() => window.open(`/api/v1/proyectos/${id}/pdf`, '_blank')} />
+          <Button label="Editar" icon="pi pi-pencil" severity="info" outlined onClick={() => setEditDialogVisible(true)} />
+        </div>
       </div>
 
       <div className="grid">
@@ -382,6 +396,29 @@ export default function ProyectoDetallePage({ params }) {
                 </div>
               )}
             </div>
+            {/* Historial de estado */}
+            {estadoLogs.length > 0 && (
+              <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--surface-border)' }}>
+                <p className="text-sm font-semibold mb-2"><i className="pi pi-history mr-1" />Historial de estado</p>
+                <div className="flex flex-column gap-1">
+                  {estadoLogs.slice(0, 5).map((log) => {
+                    const anterior = log.estadoAnterior?.nombre?.replace('_', ' ') || 'Inicio'
+                    const nuevo = log.estadoNuevo?.nombre?.replace('_', ' ') || '—'
+                    return (
+                      <div key={log.id} className="flex align-items-center gap-2 text-xs text-color-secondary">
+                        <i className="pi pi-circle-fill" style={{ fontSize: '6px', color: 'var(--primary-color)' }} />
+                        <span>{new Date(log.createdAt).toLocaleString('es-EC')}</span>
+                        <span className="font-medium text-color-primary">{log.user?.name}</span>
+                        <span>cambió</span>
+                        <span className="font-semibold">{anterior}</span>
+                        <i className="pi pi-arrow-right" style={{ fontSize: '8px' }} />
+                        <span className="font-semibold">{nuevo}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Contactos y Responsables */}
