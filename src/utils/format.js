@@ -1,5 +1,5 @@
-export const formatCurrency = (value) =>
-  new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(value ?? 0)
+export const formatCurrency = (value, currency = 'USD') =>
+  new Intl.NumberFormat('es-EC', { style: 'currency', currency }).format(value ?? 0)
 
 export const formatDate = (date) =>
   date ? new Date(date).toLocaleDateString('es-EC') : '—'

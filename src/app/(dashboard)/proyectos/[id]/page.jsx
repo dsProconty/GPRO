@@ -24,6 +24,7 @@ import ObservacionFormDialog from '@/components/shared/ObservacionFormDialog'
 import ProyectoFormDialog from '@/components/shared/ProyectoFormDialog'
 import RecordatorioFormDialog from '@/components/shared/RecordatorioFormDialog'
 import { recordatorioService } from '@/services/recordatorioService'
+import { configuracionService } from '@/services/configuracionService'
 import axios from 'axios'
 
 const ESTADO_CONFIG = {
@@ -69,6 +70,7 @@ export default function ProyectoDetallePage({ params }) {
   const [loadingRec, setLoadingRec] = useState(false)
   const [recDialogVisible, setRecDialogVisible] = useState(false)
   const [selectedRecordatorio, setSelectedRecordatorio] = useState(null)
+  const [moneda, setMoneda] = useState('USD')
 
   useEffect(() => {
     loadAll()
@@ -77,7 +79,7 @@ export default function ProyectoDetallePage({ params }) {
   const loadAll = async () => {
     setLoadingProyecto(true)
     try {
-      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes] = await Promise.all([
+      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes, cfgRes] = await Promise.all([
         proyectoService.getById(id),
         facturaService.getAll({ proyecto_id: id }),
         observacionService.getAll({ proyecto_id: id }),
@@ -85,6 +87,7 @@ export default function ProyectoDetallePage({ params }) {
         axios.get('/api/v1/empresas'),
         axios.get('/api/v1/usuarios'),
         recordatorioService.getAll({ proyecto_id: id }),
+        configuracionService.getAll(),
       ])
       setProyecto(proyRes.data)
       setFacturas(factRes.data)
@@ -93,6 +96,7 @@ export default function ProyectoDetallePage({ params }) {
       setEmpresas(empRes.data.data)
       setUsuarios(usrRes.data.data)
       setRecordatorios(recRes.data)
+      if (cfgRes.data.data?.empresa?.moneda) setMoneda(cfgRes.data.data.empresa.moneda)
       // Historial de estado (no bloquea si falla)
       axios.get(`/api/v1/proyectos/${id}/estado-logs`)
         .then((r) => setEstadoLogs(r.data.data || []))
@@ -203,7 +207,7 @@ export default function ProyectoDetallePage({ params }) {
 
   const confirmDeletePago = (pago) => {
     confirmDialog({
-      message: `¿Eliminar el pago de ${formatCurrency(pago.valor)}?`,
+      message: `¿Eliminar el pago de ${formatCurrency(pago.valor, moneda)}?`,
       header: 'Confirmar eliminación',
       icon: 'pi pi-exclamation-triangle',
       acceptLabel: 'Eliminar',
@@ -302,7 +306,7 @@ export default function ProyectoDetallePage({ params }) {
         <DataTable value={factura.pagos} size="small" stripedRows>
           <Column field="id" header="ID" style={{ width: '60px' }} />
           <Column header="Fecha" body={(p) => formatDate(p.fecha)} />
-          <Column header="Valor" body={(p) => formatCurrency(Number(p.valor))} style={{ textAlign: 'right' }} />
+          <Column header="Valor" body={(p) => formatCurrency(Number(p.valor), moneda)} style={{ textAlign: 'right' }} />
           <Column field="observacion" header="Observación" body={(p) => p.observacion || '—'} />
           <Column header="Acciones" style={{ width: '100px' }} body={(p) => (
             <div className="flex gap-1">
@@ -485,11 +489,11 @@ export default function ProyectoDetallePage({ params }) {
             <div className="flex flex-column gap-3">
               <div className="flex justify-content-between">
                 <span className="text-color-secondary">Valor contrato</span>
-                <strong>{formatCurrency(proyecto.valor)}</strong>
+                <strong>{formatCurrency(proyecto.valor, moneda)}</strong>
               </div>
               <div className="flex justify-content-between">
                 <span className="text-color-secondary">Facturado</span>
-                <strong>{formatCurrency(resumen.facturado)}</strong>
+                <strong>{formatCurrency(resumen.facturado, moneda)}</strong>
               </div>
               <div>
                 <div className="flex justify-content-between mb-1">
@@ -500,7 +504,7 @@ export default function ProyectoDetallePage({ params }) {
               </div>
               <div className="flex justify-content-between">
                 <span className="text-color-secondary">Pagado</span>
-                <strong>{formatCurrency(resumen.pagado)}</strong>
+                <strong>{formatCurrency(resumen.pagado, moneda)}</strong>
               </div>
               <div>
                 <div className="flex justify-content-between mb-1">
@@ -513,7 +517,7 @@ export default function ProyectoDetallePage({ params }) {
               <div className="flex justify-content-between">
                 <span className="font-semibold">Saldo pendiente</span>
                 <strong style={{ color: resumen.saldo > 0.001 ? 'var(--red-500)' : 'var(--green-500)' }}>
-                  {formatCurrency(resumen.saldo)}
+                  {formatCurrency(resumen.saldo, moneda)}
                 </strong>
               </div>
             </div>
@@ -602,11 +606,11 @@ export default function ProyectoDetallePage({ params }) {
           <Column field="numFactura" header="Nº Factura" sortable />
           <Column field="ordenCompra" header="OC" body={(row) => row.ordenCompra || '—'} />
           <Column header="Fecha" body={(row) => formatDate(row.fechaFactura)} sortable sortField="fechaFactura" />
-          <Column header="Valor" body={(row) => formatCurrency(row.valor)} sortable sortField="valor" style={{ textAlign: 'right' }} />
-          <Column header="Pagado" body={(row) => formatCurrency(row.totalPagos)} style={{ textAlign: 'right' }} />
+          <Column header="Valor" body={(row) => formatCurrency(row.valor, moneda)} sortable sortField="valor" style={{ textAlign: 'right' }} />
+          <Column header="Pagado" body={(row) => formatCurrency(row.totalPagos, moneda)} style={{ textAlign: 'right' }} />
           <Column header="Saldo" style={{ textAlign: 'right' }} body={(row) => (
             <span style={{ color: row.saldo > 0.001 ? 'var(--red-500)' : 'var(--green-500)', fontWeight: 600 }}>
-              {formatCurrency(row.saldo)}
+              {formatCurrency(row.saldo, moneda)}
             </span>
           )} />
           <Column header="Acciones" style={{ width: '130px' }} body={(row) => (

@@ -23,14 +23,21 @@ export async function GET(request) {
     await prisma.propuestaEstadoLabel.createMany({ data: PROPUESTA_LABEL_DEFAULTS })
   }
 
-  const [estadosProyecto, estadosPropuesta] = await Promise.all([
+  // Auto-seed ConfiguracionEmpresa si no existe
+  const empCount = await prisma.configuracionEmpresa.count()
+  if (empCount === 0) {
+    await prisma.configuracionEmpresa.create({ data: { id: 1, nombre: 'Mi Empresa', moneda: 'USD' } })
+  }
+
+  const [estadosProyecto, estadosPropuesta, empresa] = await Promise.all([
     prisma.estado.findMany({ orderBy: { id: 'asc' } }),
     prisma.propuestaEstadoLabel.findMany({ orderBy: { orden: 'asc' } }),
+    prisma.configuracionEmpresa.findUnique({ where: { id: 1 } }),
   ])
 
   return NextResponse.json({
     success: true,
-    data: { estadosProyecto, estadosPropuesta },
+    data: { estadosProyecto, estadosPropuesta, empresa },
     message: '',
   })
 }

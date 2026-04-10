@@ -14,7 +14,20 @@ import { Dialog } from 'primereact/dialog'
 import { Toast } from 'primereact/toast'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { ProgressSpinner } from 'primereact/progressspinner'
+import { InputTextarea } from 'primereact/inputtextarea'
 import { configuracionService, SEVERITY_COLORS } from '@/services/configuracionService'
+
+const MONEDA_OPTIONS = [
+  { label: 'USD — Dólar estadounidense',  value: 'USD' },
+  { label: 'EUR — Euro',                  value: 'EUR' },
+  { label: 'COP — Peso colombiano',       value: 'COP' },
+  { label: 'MXN — Peso mexicano',         value: 'MXN' },
+  { label: 'PEN — Sol peruano',           value: 'PEN' },
+  { label: 'CLP — Peso chileno',          value: 'CLP' },
+  { label: 'ARS — Peso argentino',        value: 'ARS' },
+  { label: 'BRL — Real brasileño',        value: 'BRL' },
+  { label: 'GBP — Libra esterlina',       value: 'GBP' },
+]
 
 const SEVERITY_OPTIONS = [
   { label: 'Azul (info)',      value: 'info'      },
@@ -179,6 +192,8 @@ export default function ConfiguracionPage() {
   const [loading, setLoading] = useState(true)
   const [estadosProyecto, setEstadosProyecto] = useState([])
   const [estadosPropuesta, setEstadosPropuesta] = useState([])
+  const [empresaForm, setEmpresaForm] = useState({ nombre: '', moneda: 'USD', logoUrl: '', direccion: '', telefono: '', email: '' })
+  const [empresaSaving, setEmpresaSaving] = useState(false)
 
   // Dialogs
   const [epDialog, setEpDialog] = useState({ visible: false, estado: null })       // estado proyecto
@@ -200,6 +215,15 @@ export default function ConfiguracionPage() {
       const res = await configuracionService.getAll()
       setEstadosProyecto(res.data.data.estadosProyecto)
       setEstadosPropuesta(res.data.data.estadosPropuesta)
+      const emp = res.data.data.empresa || {}
+      setEmpresaForm({
+        nombre:    emp.nombre    || '',
+        moneda:    emp.moneda    || 'USD',
+        logoUrl:   emp.logoUrl   || '',
+        direccion: emp.direccion || '',
+        telefono:  emp.telefono  || '',
+        email:     emp.email     || '',
+      })
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar la configuración', life: 4000 })
     } finally {
@@ -217,6 +241,22 @@ export default function ConfiguracionPage() {
     setElDialog({ visible: false, estadoLabel: null })
     toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Nombre de estado actualizado', life: 3000 })
     loadAll()
+  }
+
+  const handleSaveEmpresa = async () => {
+    if (!empresaForm.nombre.trim()) {
+      toast.current.show({ severity: 'warn', summary: 'Requerido', detail: 'El nombre de la empresa es obligatorio', life: 3000 })
+      return
+    }
+    setEmpresaSaving(true)
+    try {
+      await configuracionService.updateEmpresa(empresaForm)
+      toast.current.show({ severity: 'success', summary: 'Guardado', detail: 'Datos de empresa actualizados', life: 3000 })
+    } catch (err) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'Error al guardar', life: 4000 })
+    } finally {
+      setEmpresaSaving(false)
+    }
   }
 
   const confirmDeleteEstado = (estado) => {
@@ -252,7 +292,7 @@ export default function ConfiguracionPage() {
 
       <div className="mb-4">
         <h1 className="text-2xl font-bold m-0">Personalización</h1>
-        <p className="text-color-secondary text-sm mt-1 mb-0">Configura los nombres de estados de proyectos y propuestas</p>
+        <p className="text-color-secondary text-sm mt-1 mb-0">Configura los estados, datos de empresa y moneda del sistema</p>
       </div>
 
       <div className="grid">
@@ -344,24 +384,85 @@ export default function ConfiguracionPage() {
         </div>
       </div>
 
-      {/* Recomendaciones futuras */}
+      {/* ── Datos de la Empresa ── */}
       <Card className="mt-4">
-        <h3 className="m-0 mb-3 font-semibold"><i className="pi pi-lightbulb mr-2 text-yellow-500" />Otras personalizaciones sugeridas</h3>
-        <div className="grid text-sm">
-          {[
-            { icon: 'pi-building', label: 'Nombre de la empresa', desc: 'Reemplazar "Proconty" en el encabezado y PDFs por el nombre real de tu empresa.' },
-            { icon: 'pi-dollar',   label: 'Moneda',               desc: 'Cambiar USD a otra moneda para reportes y facturas.' },
-            { icon: 'pi-star',     label: 'Estado inicial al aprobar propuesta', desc: 'Elegir qué estado de proyecto se asigna cuando una propuesta es aprobada (actualmente: Adjudicado).' },
-            { icon: 'pi-bell',     label: 'Umbral de alertas de cobranza', desc: 'Días de mora para activar las alertas del dashboard (actualmente: 30 días).' },
-            { icon: 'pi-file-pdf', label: 'Encabezado del PDF',   desc: 'Logo y datos de contacto en los reportes PDF de proyectos.' },
-          ].map((item) => (
-            <div key={item.label} className="col-12 md:col-6 lg:col-4 mb-2">
-              <div className="p-3 surface-50 border-round h-full">
-                <div className="font-semibold mb-1"><i className={`pi ${item.icon} mr-2 text-primary`} />{item.label}</div>
-                <div className="text-color-secondary text-xs">{item.desc}</div>
-              </div>
+        <div className="flex align-items-center justify-content-between mb-3">
+          <div>
+            <h3 className="m-0 font-semibold"><i className="pi pi-building mr-2" />Datos de la Empresa</h3>
+            <p className="text-color-secondary text-xs mt-1 mb-0">Nombre, moneda y datos para el encabezado de los PDFs</p>
+          </div>
+        </div>
+        <div className="grid">
+          <div className="col-12 md:col-6">
+            <div className="flex flex-column gap-1 mb-3">
+              <label className="text-sm font-medium">Nombre de la empresa <span className="text-red-500">*</span></label>
+              <InputText
+                value={empresaForm.nombre}
+                onChange={(e) => setEmpresaForm((p) => ({ ...p, nombre: e.target.value }))}
+                placeholder="Ej: Proconty S.A."
+              />
             </div>
-          ))}
+          </div>
+          <div className="col-12 md:col-6">
+            <div className="flex flex-column gap-1 mb-3">
+              <label className="text-sm font-medium">Moneda</label>
+              <Dropdown
+                value={empresaForm.moneda}
+                options={MONEDA_OPTIONS}
+                optionLabel="label"
+                optionValue="value"
+                onChange={(e) => setEmpresaForm((p) => ({ ...p, moneda: e.value }))}
+              />
+            </div>
+          </div>
+          <div className="col-12">
+            <div className="flex flex-column gap-1 mb-3">
+              <label className="text-sm font-medium">URL del logo <span className="text-color-secondary text-xs">(aparece en PDFs)</span></label>
+              <InputText
+                value={empresaForm.logoUrl}
+                onChange={(e) => setEmpresaForm((p) => ({ ...p, logoUrl: e.target.value }))}
+                placeholder="https://tuempresa.com/logo.png"
+              />
+            </div>
+          </div>
+          <div className="col-12 md:col-4">
+            <div className="flex flex-column gap-1 mb-3">
+              <label className="text-sm font-medium">Dirección</label>
+              <InputText
+                value={empresaForm.direccion}
+                onChange={(e) => setEmpresaForm((p) => ({ ...p, direccion: e.target.value }))}
+                placeholder="Av. Principal 123, Ciudad"
+              />
+            </div>
+          </div>
+          <div className="col-12 md:col-4">
+            <div className="flex flex-column gap-1 mb-3">
+              <label className="text-sm font-medium">Teléfono</label>
+              <InputText
+                value={empresaForm.telefono}
+                onChange={(e) => setEmpresaForm((p) => ({ ...p, telefono: e.target.value }))}
+                placeholder="+593 99 999 9999"
+              />
+            </div>
+          </div>
+          <div className="col-12 md:col-4">
+            <div className="flex flex-column gap-1 mb-3">
+              <label className="text-sm font-medium">Email</label>
+              <InputText
+                value={empresaForm.email}
+                onChange={(e) => setEmpresaForm((p) => ({ ...p, email: e.target.value }))}
+                placeholder="contacto@tuempresa.com"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-content-end">
+          <Button
+            label="Guardar datos de empresa"
+            icon="pi pi-save"
+            onClick={handleSaveEmpresa}
+            loading={empresaSaving}
+          />
         </div>
       </Card>
 

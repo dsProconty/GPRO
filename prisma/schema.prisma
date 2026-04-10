@@ -236,6 +236,21 @@ model ProyectoEstadoLog {
   @@map("proyecto_estado_logs")
 }
 
+// ─── CONFIGURACIÓN: DATOS DE LA EMPRESA (singleton id=1) ─────────────────────
+// Nombre, moneda, logo y datos de contacto usados en PDF, layout y emails.
+model ConfiguracionEmpresa {
+  id        Int      @id @default(1)
+  nombre    String   @default("Mi Empresa") @db.VarChar(150)
+  moneda    String   @default("USD")         @db.VarChar(10)
+  logoUrl   String?  @map("logo_url")        @db.VarChar(500)
+  direccion String?  @db.VarChar(300)
+  telefono  String?  @db.VarChar(50)
+  email     String?  @db.VarChar(200)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("configuracion_empresa")
+}
+
 // ─── CONFIGURACIÓN: LABELS DE ESTADOS DE PROPUESTA ───────────────────────────
 // Permite renombrar los estados de propuesta sin cambiar la lógica interna.
 // key: identificador interno inmutable (Factibilidad, Haciendo, Enviada, Aprobada, Rechazada)

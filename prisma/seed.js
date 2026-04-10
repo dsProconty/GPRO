@@ -66,7 +66,23 @@ async function main() {
   })
   console.log('✅ Usuario admin: admin@proconty.com / password123')
 
-  // ── 4. DATOS DE DEMO ─────────────────────────────────────────────────────
+  // ── 4. CONFIGURACIÓN DE EMPRESA (singleton) ──────────────────────────────
+  await prisma.configuracionEmpresa.upsert({
+    where:  { id: 1 },
+    update: {},   // No sobreescribir si el admin ya personalizó
+    create: {
+      id:       1,
+      nombre:   'Proconty',
+      moneda:   'USD',
+      logoUrl:  null,
+      direccion: null,
+      telefono:  null,
+      email:     null,
+    },
+  })
+  console.log('✅ Configuración de empresa cargada')
+
+  // ── 5. DATOS DE DEMO ─────────────────────────────────────────────────────
   const empresaDemo = await prisma.empresa.upsert({
     where:  { id: 1 },
     update: {},

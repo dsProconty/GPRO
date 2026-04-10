@@ -25,6 +25,11 @@ export const configuracionService = {
   updateEstadoPropuesta(key, data) {
     return axios.put(`/api/v1/configuracion/estados-propuesta/${key}`, data)
   },
+
+  // Actualizar datos de la empresa (singleton)
+  updateEmpresa(data) {
+    return axios.put('/api/v1/configuracion/empresa', data)
+  },
 }
 
 // Helpers para construir el mapa de config indexado por key/id
