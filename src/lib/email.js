@@ -1,8 +1,7 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function enviarRecordatorio({ proyecto, recordatorio }) {
+  const resend = new Resend(process.env.RESEND_API_KEY)
   const destinatarios = recordatorio.destinatarios
     .split(',')
     .map((e) => e.trim())

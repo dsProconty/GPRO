@@ -132,11 +132,21 @@ export async function PATCH(request, { params }) {
   }
 
   try {
-    const updated = await prisma.proyecto.update({
-      where: { id },
-      data: { estadoId: parseInt(estadoId) },
-      include: PROYECTO_INCLUDE,
-    })
+    const [updated] = await prisma.$transaction([
+      prisma.proyecto.update({
+        where: { id },
+        data: { estadoId: parseInt(estadoId) },
+        include: PROYECTO_INCLUDE,
+      }),
+      prisma.proyectoEstadoLog.create({
+        data: {
+          proyectoId: id,
+          estadoAnteriorId: proyecto.estadoId,
+          estadoNuevoId: parseInt(estadoId),
+          userId: parseInt(session.user.id),
+        },
+      }),
+    ])
     return NextResponse.json({ success: true, data: calcularCampos(updated), message: 'Estado actualizado', warning })
   } catch (e) {
     if (e.code === 'P2025') return NextResponse.json({ success: false, message: 'Proyecto no encontrado' }, { status: 404 })

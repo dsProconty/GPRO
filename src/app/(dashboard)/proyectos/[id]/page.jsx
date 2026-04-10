@@ -17,6 +17,7 @@ import { facturaService } from '@/services/facturaService'
 import { pagoService } from '@/services/pagoService'
 import { observacionService } from '@/services/observacionService'
 import { formatCurrency, formatDate, calcTiempoVida } from '@/utils/format'
+import * as XLSX from 'xlsx'
 import FacturaFormDialog from '@/components/shared/FacturaFormDialog'
 import PagoFormDialog from '@/components/shared/PagoFormDialog'
 import ObservacionFormDialog from '@/components/shared/ObservacionFormDialog'
@@ -60,6 +61,9 @@ export default function ProyectoDetallePage({ params }) {
   const [obsDialogVisible, setObsDialogVisible] = useState(false)
   const [editDialogVisible, setEditDialogVisible] = useState(false)
 
+  // Historial de estado
+  const [estadoLogs, setEstadoLogs] = useState([])
+
   // Recordatorios
   const [recordatorios, setRecordatorios] = useState([])
   const [loadingRec, setLoadingRec] = useState(false)
@@ -89,6 +93,10 @@ export default function ProyectoDetallePage({ params }) {
       setEmpresas(empRes.data.data)
       setUsuarios(usrRes.data.data)
       setRecordatorios(recRes.data)
+      // Historial de estado (no bloquea si falla)
+      axios.get(`/api/v1/proyectos/${id}/estado-logs`)
+        .then((r) => setEstadoLogs(r.data.data || []))
+        .catch(() => {})
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar el proyecto', life: 4000 })
     } finally {
@@ -136,6 +144,10 @@ export default function ProyectoDetallePage({ params }) {
     try {
       const res = await axios.patch(`/api/v1/proyectos/${id}`, { estadoId: nuevoEstadoId })
       setProyecto(res.data.data)
+      // Refresh estado logs
+      axios.get(`/api/v1/proyectos/${id}/estado-logs`)
+        .then((r) => setEstadoLogs(r.data.data || []))
+        .catch(() => {})
       if (res.data.warning) {
         toast.current.show({ severity: 'warn', summary: 'Atención', detail: res.data.warning, life: 6000 })
       } else {
@@ -253,6 +265,23 @@ export default function ProyectoDetallePage({ params }) {
     })
   }
 
+  // === Exportar Excel facturas ===
+  const exportarFacturas = () => {
+    const filas = facturas.map((f) => ({
+      'Nº Factura': f.numFactura,
+      'OC': f.ordenCompra || '',
+      'Fecha': formatDate(f.fechaFactura),
+      'Valor': Number(f.valor) || 0,
+      'Pagado': Number(f.totalPagos) || 0,
+      'Saldo': Number(f.saldo) || 0,
+    }))
+    const ws = XLSX.utils.json_to_sheet(filas)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Facturas')
+    const fecha = new Date().toISOString().slice(0, 10)
+    XLSX.writeFile(wb, `facturas_proyecto_${id}_${fecha}.xlsx`)
+  }
+
   // === Editar proyecto ===
   const handleSaveProyecto = () => {
     setEditDialogVisible(false)
@@ -313,7 +342,10 @@ export default function ProyectoDetallePage({ params }) {
           <i className="pi pi-angle-right text-color-secondary" />
           <span className="text-900 font-semibold">{proyecto.detalle}</span>
         </div>
-        <Button label="Editar" icon="pi pi-pencil" severity="info" outlined onClick={() => setEditDialogVisible(true)} />
+        <div className="flex gap-2">
+          <Button label="PDF" icon="pi pi-file-pdf" severity="danger" outlined onClick={() => window.open(`/api/v1/proyectos/${id}/pdf`, '_blank')} />
+          <Button label="Editar" icon="pi pi-pencil" severity="info" outlined onClick={() => setEditDialogVisible(true)} />
+        </div>
       </div>
 
       <div className="grid">
@@ -364,6 +396,29 @@ export default function ProyectoDetallePage({ params }) {
                 </div>
               )}
             </div>
+            {/* Historial de estado */}
+            {estadoLogs.length > 0 && (
+              <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--surface-border)' }}>
+                <p className="text-sm font-semibold mb-2"><i className="pi pi-history mr-1" />Historial de estado</p>
+                <div className="flex flex-column gap-1">
+                  {estadoLogs.slice(0, 5).map((log) => {
+                    const anterior = log.estadoAnterior?.nombre?.replace('_', ' ') || 'Inicio'
+                    const nuevo = log.estadoNuevo?.nombre?.replace('_', ' ') || '—'
+                    return (
+                      <div key={log.id} className="flex align-items-center gap-2 text-xs text-color-secondary">
+                        <i className="pi pi-circle-fill" style={{ fontSize: '6px', color: 'var(--primary-color)' }} />
+                        <span>{new Date(log.createdAt).toLocaleString('es-EC')}</span>
+                        <span className="font-medium text-color-primary">{log.user?.name}</span>
+                        <span>cambió</span>
+                        <span className="font-semibold">{anterior}</span>
+                        <i className="pi pi-arrow-right" style={{ fontSize: '8px' }} />
+                        <span className="font-semibold">{nuevo}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Contactos y Responsables */}
@@ -527,7 +582,10 @@ export default function ProyectoDetallePage({ params }) {
             <h3 className="m-0 font-semibold"><i className="pi pi-file mr-2" />Facturas</h3>
             <p className="text-color-secondary text-sm mt-1 mb-0">{facturas.length} factura(s)</p>
           </div>
-          <Button label="Nueva Factura" icon="pi pi-plus" onClick={openNewFactura} />
+          <div className="flex gap-2">
+            <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined size="small" onClick={exportarFacturas} disabled={facturas.length === 0} />
+            <Button label="Nueva Factura" icon="pi pi-plus" onClick={openNewFactura} />
+          </div>
         </div>
         <DataTable
           value={facturas}

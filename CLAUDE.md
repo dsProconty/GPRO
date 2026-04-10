@@ -66,6 +66,9 @@ GPRO/
     │   │   ├── proyectos/             ← Sprint 2
     │   │   │   ├── page.jsx
     │   │   │   └── [id]/page.jsx
+    │   │   ├── propuestas/            ← Sprint 8
+    │   │   │   ├── page.jsx
+    │   │   │   └── [id]/page.jsx
     │   │   └── (facturas y pagos dentro de proyectos/[id]) ← Sprint 3
     │   └── api/
     │       ├── auth/[...nextauth]/route.js
@@ -75,7 +78,8 @@ GPRO/
     │           ├── proyectos/         ← Sprint 2
     │           ├── facturas/          ← Sprint 3
     │           ├── pagos/             ← Sprint 3
-    │           └── observaciones/     ← Sprint 4
+    │           ├── observaciones/     ← Sprint 4
+    │           └── propuestas/        ← Sprint 8
     ├── lib/
     │   ├── prisma.js                  ← Singleton Prisma client
     │   └── auth.js                    ← NextAuth config (authOptions)
@@ -312,7 +316,9 @@ export const calcTiempoVida = (fechaCreacion, fechaCierre) => {
 | **Sprint 3** | Facturas y Pagos | ✅ COMPLETADO | 8-10 |
 | **Sprint 4** | Detalle + Observaciones | ✅ COMPLETADO | 11-12 |
 | **Sprint 5** | QA, Polish y Release | ✅ COMPLETADO | 13-14 |
-| **Sprint 6** | Visibilidad Gerencial | ⏳ PENDIENTE | 15-16 |
+| **Sprint 6** | Visibilidad Gerencial | ✅ COMPLETADO | 15-16 |
+| **Sprint 7** | Administración, Reportes y Productividad | ✅ COMPLETADO | 17-18 |
+| **Sprint 8** | Módulo de Propuestas | ✅ COMPLETADO | 19-20 |
 
 ### Sprint 0 — Lo que ya existe ✅
 - Next.js 14 configurado con App Router
@@ -508,6 +514,123 @@ exportación para contabilidad, alertas de cobranza y recordatorios automáticos
 - `GET /api/v1/dashboard` retorna campo `recordatoriosHoy` (count de recordatorios activos para hoy)
 - `layout.jsx`: carga el dato al montar · muestra `<Badge value={n} severity="danger" />` junto al ítem Dashboard si `n > 0`
 - Badge desaparece cuando `recordatoriosHoy = 0`
+
+---
+
+### SPRINT 7 — Administración, Reportes y Productividad (34 pts) ✅ COMPLETADO
+
+**Objetivo:** Cerrar brechas de administración y productividad: gestión de usuarios, reporte PDF, historial de cambios de estado, perfil del usuario y filtros avanzados.
+
+| ID | Título | Story Points | Prioridad |
+|----|--------|-------------|-----------|
+| SP7-01 | Gestión de Usuarios (Admin Panel) | 8 | Alta |
+| SP7-02 | Reporte PDF del Proyecto | 8 | Alta |
+| SP7-03 | Historial de Cambios de Estado | 5 | Media |
+| SP7-04 | Perfil de Usuario / Cambio de Contraseña | 5 | Media |
+| SP7-05 | Filtros Avanzados en Proyectos | 5 | Media |
+| SP7-06 | Tests + Ajustes Sprint 7 | 3 | Media |
+
+**SP7-01 Criterios:**
+- `POST /api/v1/usuarios` — solo admin, valida nombre/email/password, hashea con bcryptjs
+- `PUT /api/v1/usuarios/:id` — solo admin, password vacío = no cambiar
+- `DELETE /api/v1/usuarios/:id` — solo admin, no puede eliminarse a sí mismo
+- Página `/usuarios` con DataTable + UsuarioFormDialog (visible solo a admins)
+- Ítem "Usuarios" en sidebar (solo si `session.user.role === 'admin'`)
+
+**SP7-02 Criterios:**
+- `src/lib/pdf/ProyectoPDF.jsx` — layout A4 con header, info general, resumen financiero, facturas y observaciones
+- `GET /api/v1/proyectos/:id/pdf` — renderToBuffer + Content-Type: application/pdf
+- Botón "PDF" en el detalle del proyecto (junto a "Editar")
+- Dependencia: `@react-pdf/renderer`
+
+**SP7-03 Criterios:**
+- Tabla `proyecto_estado_logs` (via `prisma db push` en deploy)
+- `PATCH /api/v1/proyectos/:id` crea log en transacción con el cambio de estado
+- `GET /api/v1/proyectos/:id/estado-logs` retorna historial con usuario y estados
+- Timeline en el detalle del proyecto (últimos 5 cambios)
+
+**SP7-04 Criterios:**
+- Página `/perfil` — sección datos personales (cambiar nombre) + sección contraseña
+- `PUT /api/v1/usuarios/perfil` — actualiza nombre del usuario autenticado
+- `PATCH /api/v1/usuarios/perfil` — valida password actual con bcrypt.compare, hashea la nueva
+- Botón "Mi perfil" (icono) en el footer del sidebar
+
+**SP7-05 Criterios:**
+- Dropdown "Filtrar por responsable" en `/proyectos` — filtra `proyectosFiltrados` con `useMemo`
+- Calendar con `selectionMode="range"` — filtra por `fechaCreacion` entre las fechas
+- Filtros combinados (estado + responsable + rango) funcionan simultáneamente
+- Excel export respeta los filtros aplicados
+
+**SP7-06 Criterios:**
+- `__tests__/sp7-usuarios.test.js` — 28 tests: validación usuario (crear/editar), eliminación propia, cambio contraseña, filtros por responsable y fecha
+- Total: 75 tests en 4 suites, todos green
+
+---
+
+### SPRINT 8 — Módulo de Propuestas (34 pts)
+
+**Objetivo:** Pipeline comercial previo a la adjudicación. Una propuesta pasa por estados propios y al ser aprobada crea automáticamente un Proyecto Adjudicado. Trazabilidad inmutable de todos los cambios de estado.
+
+**Flujo de estados:**
+```
+Factibilidad ──→ Haciendo ──→ Enviada ──┬──→ Aprobada  ──→ [crea Proyecto Adjudicado]
+                    ↑___________|        └──→ Rechazada
+```
+
+| ID | Título | Story Points | Prioridad |
+|----|--------|-------------|-----------|
+| SP8-01 | Schema BD (3 tablas nuevas) | 5 | Alta |
+| SP8-02 | API CRUD Propuestas | 8 | Alta |
+| SP8-03 | API Cambio de Estado + Aprobación automática | 8 | Alta |
+| SP8-04 | Lista de Propuestas | 5 | Alta |
+| SP8-05 | Detalle de Propuesta con Trazabilidad | 5 | Alta |
+| SP8-06 | Componentes Dialog (Form + CambiarEstado) | 3 | Alta |
+
+**SP8-01 Criterios:**
+- Tabla `propuestas`: titulo, descripcion, empresaId, valorEstimado, fechaCreacion, fechaEnvio, estado, proyectoId
+- Tabla `propuesta_responsable`: pivot propuestaId + userId
+- Tabla `propuesta_estado_logs`: inmutable, estadoAnterior, estadoNuevo, userId, nota, createdAt
+- Back-relations en Empresa, Proyecto, User
+
+**SP8-02 Criterios:**
+- `GET /api/v1/propuestas?estado=&empresa_id=` — lista filtrada con empresa, responsables, count de logs
+- `POST /api/v1/propuestas` — crea en estado `Factibilidad`, registra log inicial automáticamente
+- `GET /api/v1/propuestas/:id` — detalle completo con empresa, responsables, logs con usuarios, proyecto vinculado
+- `PUT /api/v1/propuestas/:id` — edita metadata (no edita estado), sync de responsables
+- `DELETE /api/v1/propuestas/:id` — solo si estado es `Factibilidad` o `Haciendo`
+
+**SP8-03 Criterios:**
+- `PATCH /api/v1/propuestas/:id` — valida transición según tabla de reglas
+- Transiciones válidas: Factibilidad→Haciendo, Haciendo→{Enviada, Factibilidad}, Enviada→{Aprobada, Rechazada}
+- Cuando estadoNuevo=`Enviada`: auto-set `fechaEnvio = hoy`
+- Cuando estadoNuevo=`Aprobada`: transacción atómica crea Proyecto (estadoId=3 Adjudicado), actualiza propuesta.proyectoId, registra 2 logs
+- Retorna `{ data, proyectoCreado, message }` — frontend muestra toast especial si proyectoCreado
+- `GET /api/v1/propuestas/:id/logs` — historial completo DESC
+
+**SP8-04 Criterios:**
+- DataTable: ID · Título(link) · Empresa · Valor est. · Estado(Tag) · Responsables · Fecha creación · Acciones
+- Filtro por estado con Dropdown + buscador global
+- Botón editar deshabilitado si estado `Aprobada` o `Rechazada`
+- Botón eliminar deshabilitado si estado no es `Factibilidad` o `Haciendo`
+
+**SP8-05 Criterios:**
+- Breadcrumb + botón Editar (oculto si estado terminal)
+- Botones de transición contextuales según el estado actual
+- Card "Proyecto generado" con link si `propuesta.proyectoId` existe
+- Timeline de trazabilidad: círculo coloreado + línea vertical + estado anterior→nuevo + usuario + fecha + nota
+
+**SP8-06 Criterios:**
+- `PropuestaFormDialog`: titulo, empresa (req), valorEstimado, fechaCreacion, responsables, descripcion
+- `CambiarEstadoPropuestaDialog`: flecha estado actual→destino, aviso si es Aprobada (creará proyecto), nota opcional
+- Ítem "Propuestas" en sidebar entre Dashboard y Proyectos
+
+**Reglas de negocio (RN-P):**
+- **RN-P01**: Estado inicial siempre `Factibilidad`. No se puede crear en otro estado.
+- **RN-P02**: Solo se puede eliminar si estado es `Factibilidad` o `Haciendo`.
+- **RN-P03**: Metadata editable mientras estado NO sea `Aprobada` ni `Rechazada`.
+- **RN-P04**: Al pasar a `Enviada`, `fechaEnvio` se registra automáticamente.
+- **RN-P05**: Al aprobar, proyecto creado con estadoId=3 (Adjudicado). Propuesta queda vinculada via `proyectoId`.
+- **RN-P06**: Logs de estado son inmutables (solo INSERT, nunca UPDATE/DELETE).
 
 ---
 
