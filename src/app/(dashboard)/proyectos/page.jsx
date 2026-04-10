@@ -17,6 +17,7 @@ import { empresaService } from '@/services/empresaService'
 import { usuarioService } from '@/services/usuarioService'
 import axios from 'axios'
 import { formatCurrency, formatDate, calcTiempoVida } from '@/utils/format'
+import * as XLSX from 'xlsx'
 
 const ESTADO_CONFIG = {
   Prefactibilidad:       { severity: 'warning',   label: 'Prefactibilidad' },
@@ -151,6 +152,28 @@ export default function ProyectosPage() {
     </div>
   )
 
+  const exportarExcel = () => {
+    const filas = proyectos.map((p) => ({
+      'ID': p.id,
+      'Proyecto': p.detalle,
+      'Cliente': p.empresa?.nombre || '',
+      'Responsable(s)': p.responsables?.map((r) => r.user?.name).join(', ') || '',
+      'Estado': p.estado?.nombre?.replace('_', ' ') || '',
+      'Valor': Number(p.valor) || 0,
+      'Facturado': Number(p.facturado) || 0,
+      'Pagado': Number(p.pagado) || 0,
+      'Saldo': Number(p.saldo) || 0,
+      'Tiempo de vida': calcTiempoVida(p.fechaCreacion, p.fechaCierre),
+      'Fecha inicio': formatDate(p.fechaCreacion),
+      'Fecha cierre': formatDate(p.fechaCierre),
+    }))
+    const ws = XLSX.utils.json_to_sheet(filas)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Proyectos')
+    const fecha = new Date().toISOString().slice(0, 10)
+    XLSX.writeFile(wb, `proyectos_${fecha}.xlsx`)
+  }
+
   const estadosFiltroOptions = [
     { id: null, nombre: 'Todos los estados' },
     { id: 1, nombre: 'Prefactibilidad' },
@@ -178,7 +201,10 @@ export default function ProyectosPage() {
           <h1 className="text-2xl font-bold m-0">Proyectos</h1>
           <p className="text-color-secondary text-sm mt-1 mb-0">{proyectos.length} proyecto(s) encontrado(s)</p>
         </div>
-        <Button label="Nuevo Proyecto" icon="pi pi-plus" onClick={openCreate} />
+        <div className="flex gap-2">
+          <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined onClick={exportarExcel} disabled={proyectos.length === 0} />
+          <Button label="Nuevo Proyecto" icon="pi pi-plus" onClick={openCreate} />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-3">

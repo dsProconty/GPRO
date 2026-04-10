@@ -17,6 +17,7 @@ import { facturaService } from '@/services/facturaService'
 import { pagoService } from '@/services/pagoService'
 import { observacionService } from '@/services/observacionService'
 import { formatCurrency, formatDate, calcTiempoVida } from '@/utils/format'
+import * as XLSX from 'xlsx'
 import FacturaFormDialog from '@/components/shared/FacturaFormDialog'
 import PagoFormDialog from '@/components/shared/PagoFormDialog'
 import ObservacionFormDialog from '@/components/shared/ObservacionFormDialog'
@@ -251,6 +252,23 @@ export default function ProyectoDetallePage({ params }) {
         }
       },
     })
+  }
+
+  // === Exportar Excel facturas ===
+  const exportarFacturas = () => {
+    const filas = facturas.map((f) => ({
+      'Nº Factura': f.numFactura,
+      'OC': f.ordenCompra || '',
+      'Fecha': formatDate(f.fechaFactura),
+      'Valor': Number(f.valor) || 0,
+      'Pagado': Number(f.totalPagos) || 0,
+      'Saldo': Number(f.saldo) || 0,
+    }))
+    const ws = XLSX.utils.json_to_sheet(filas)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Facturas')
+    const fecha = new Date().toISOString().slice(0, 10)
+    XLSX.writeFile(wb, `facturas_proyecto_${id}_${fecha}.xlsx`)
   }
 
   // === Editar proyecto ===
@@ -527,7 +545,10 @@ export default function ProyectoDetallePage({ params }) {
             <h3 className="m-0 font-semibold"><i className="pi pi-file mr-2" />Facturas</h3>
             <p className="text-color-secondary text-sm mt-1 mb-0">{facturas.length} factura(s)</p>
           </div>
-          <Button label="Nueva Factura" icon="pi pi-plus" onClick={openNewFactura} />
+          <div className="flex gap-2">
+            <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined size="small" onClick={exportarFacturas} disabled={facturas.length === 0} />
+            <Button label="Nueva Factura" icon="pi pi-plus" onClick={openNewFactura} />
+          </div>
         </div>
         <DataTable
           value={facturas}
