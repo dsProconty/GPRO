@@ -307,11 +307,12 @@ export const calcTiempoVida = (fechaCreacion, fechaCierre) => {
 | Sprint | Nombre | Estado | Semanas |
 |--------|--------|--------|---------|
 | **Sprint 0** | Setup y Fundamentos | ✅ COMPLETADO | 1-2 |
-| **Sprint 1** | Empresas y Clientes | ⏳ PENDIENTE | 3-4 |
-| **Sprint 2** | Proyectos - Core | ⏳ PENDIENTE | 5-7 |
-| **Sprint 3** | Facturas y Pagos | ⏳ PENDIENTE | 8-10 |
-| **Sprint 4** | Detalle + Observaciones | ⏳ PENDIENTE | 11-12 |
-| **Sprint 5** | QA, Polish y Release | ⏳ PENDIENTE | 13-14 |
+| **Sprint 1** | Empresas y Clientes | ✅ COMPLETADO | 3-4 |
+| **Sprint 2** | Proyectos - Core | ✅ COMPLETADO | 5-7 |
+| **Sprint 3** | Facturas y Pagos | ✅ COMPLETADO | 8-10 |
+| **Sprint 4** | Detalle + Observaciones | ✅ COMPLETADO | 11-12 |
+| **Sprint 5** | QA, Polish y Release | ✅ COMPLETADO | 13-14 |
+| **Sprint 6** | Visibilidad Gerencial | ⏳ PENDIENTE | 15-16 |
 
 ### Sprint 0 — Lo que ya existe ✅
 - Next.js 14 configurado con App Router
@@ -414,7 +415,7 @@ export const calcTiempoVida = (fechaCreacion, fechaCierre) => {
 
 ---
 
-### SPRINT 5 — QA, Polish y Release (21 pts)
+### SPRINT 5 — QA, Polish y Release (21 pts) ✅ COMPLETADO
 
 | ID | Título | Story Points | Prioridad |
 |----|--------|-------------|-----------|
@@ -423,6 +424,59 @@ export const calcTiempoVida = (fechaCreacion, fechaCierre) => {
 | SP5-03 | Documentación API | 3 | Media |
 | SP5-04 | Seguridad y Autorización | 3 | Alta |
 | SP5-05 | Deploy y Config Producción | 2 | Alta |
+
+---
+
+### SPRINT 6 — Visibilidad Gerencial (27 pts)
+
+**Objetivo:** Dar al gerente herramientas de análisis y control. Dashboard con gráficas reales,
+exportación para contabilidad, y alertas de cobranza. Ninguna historia requiere cambios en el schema de BD.
+
+| ID | Título | Story Points | Prioridad |
+|----|--------|-------------|-----------|
+| SP6-01 | API datos para gráficas (dashboard ampliado) | 5 | Alta |
+| SP6-02 | Gráficas en Dashboard | 8 | Alta |
+| SP6-03 | Exportación a Excel/CSV | 5 | Alta |
+| SP6-04 | Alertas de facturas vencidas | 5 | Alta |
+| SP6-05 | Tests y ajustes Sprint 6 | 4 | Media |
+
+**SP6-01 Criterios:**
+- Ampliar `GET /api/v1/dashboard` con campo `porMes`: array de últimos 12 meses con `{ mes, facturado, cobrado }`
+- Agregar `GET /api/v1/dashboard/alertas?dias=30` → facturas con saldo > 0 y antigüedad ≥ N días
+- Agregar campo `porEstado`: conteo de proyectos agrupado por nombre de estado
+- Agregar campo `topClientes`: top 5 empresas por `SUM(factura.valor)`, con nombre y total
+- Protegido con `getServerSession` · respuesta `{success, data, message}`
+
+**SP6-02 Criterios:**
+- Usar `<Chart>` de PrimeReact (ya incluido, sin dependencias nuevas) + `chart.js`
+- **Gráfico de líneas**: "Facturación vs Cobro" — ejes: meses (últimos 12), líneas: facturado (azul) y cobrado (verde)
+- **Gráfico de donut**: "Proyectos por Estado" — segmento por cada estado con color del `ESTADO_CONFIG`
+- **Gráfico de barras**: "Top 5 Clientes" — barras horizontales por valor total facturado
+- Los 3 gráficos se renderizan en la misma página `/dashboard` debajo de los KPI cards
+- Loading state con `<ProgressSpinner />` mientras carga
+
+**SP6-03 Criterios:**
+- Instalar `xlsx` (SheetJS) como dependencia
+- Botón "Exportar Excel" en la página `/proyectos` (esquina superior derecha, junto a "Nuevo Proyecto")
+- Exporta todos los proyectos visibles (respetando filtro de estado activo) a un `.xlsx`
+- Columnas: ID · Proyecto · Cliente · Responsable(s) · Estado · Valor · Facturado · Pagado · Saldo · Tiempo de vida · Fecha inicio · Fecha cierre
+- Nombre del archivo: `proyectos_YYYY-MM-DD.xlsx`
+- Botón "Exportar Excel" también en la sección de Facturas del detalle de proyecto
+- Columnas de facturas: Nº Factura · OC · Fecha · Valor · Pagado · Saldo
+
+**SP6-04 Criterios:**
+- Nueva sección "Alertas de Cobranza" en el Dashboard, debajo de las gráficas
+- Muestra facturas con saldo > 0 y `fechaFactura` con más de 30 días de antigüedad
+- Columnas: Proyecto · Cliente · Nº Factura · Fecha · Valor · Saldo · **Días de mora** (en rojo)
+- Badge rojo en el ítem "Dashboard" del sidebar si hay alertas: `<Badge value={n} severity="danger" />`
+- Si no hay alertas: mostrar mensaje verde "Sin facturas vencidas"
+- Umbral configurable: 30 días (parámetro `?dias=30` en la API)
+
+**SP6-05 Criterios:**
+- Tests Jest para la lógica de alertas: factura de 31 días → aparece · 29 días → no aparece
+- Tests para la función de exportación (genera el array correcto de filas)
+- Verificar que las gráficas no crashean con 0 proyectos o 0 facturas
+- Push a `main` y deploy verde en Vercel
 
 ---
 
