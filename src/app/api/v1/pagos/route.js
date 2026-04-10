@@ -52,14 +52,21 @@ export async function POST(request) {
     }, { status: 422 })
   }
 
-  const pago = await prisma.pago.create({
-    data: {
-      facturaId: parseInt(facturaId),
-      valor: parseFloat(valor),
-      fecha: new Date(fecha),
-      observacion: observacion?.trim() || null,
-    },
-  })
+  try {
+    const pago = await prisma.pago.create({
+      data: {
+        facturaId: parseInt(facturaId),
+        valor: parseFloat(valor),
+        fecha: new Date(fecha),
+        observacion: observacion?.trim() || null,
+      },
+    })
 
-  return NextResponse.json({ success: true, data: { ...pago, valor: Number(pago.valor) }, message: 'Pago registrado' }, { status: 201 })
+    return NextResponse.json({ success: true, data: { ...pago, valor: Number(pago.valor) }, message: 'Pago registrado' }, { status: 201 })
+  } catch (error) {
+    if (error.code === 'P2003') {
+      return NextResponse.json({ success: false, message: 'Factura no encontrada' }, { status: 422 })
+    }
+    throw error
+  }
 }

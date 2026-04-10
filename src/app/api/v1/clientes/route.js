@@ -52,19 +52,23 @@ export async function POST(request) {
     )
   }
 
-  const cliente = await prisma.cliente.create({
-    data: {
-      nombre: nombre.trim(),
-      apellido: apellido.trim(),
-      telefono: telefono?.trim() || null,
-      mail: mail?.trim() || null,
-      empresaId: parseInt(empresaId),
-    },
-    include: { empresa: { select: { id: true, nombre: true } } },
-  })
+  try {
+    const cliente = await prisma.cliente.create({
+      data: {
+        nombre: nombre.trim(),
+        apellido: apellido.trim(),
+        telefono: telefono?.trim() || null,
+        mail: mail?.trim() || null,
+        empresaId: parseInt(empresaId),
+      },
+      include: { empresa: { select: { id: true, nombre: true } } },
+    })
 
-  return NextResponse.json(
-    { success: true, data: cliente, message: 'Cliente creado exitosamente' },
-    { status: 201 }
-  )
+    return NextResponse.json(
+      { success: true, data: cliente, message: 'Cliente creado exitosamente' },
+      { status: 201 }
+    )
+  } catch (error) {
+    throw error
+  }
 }

@@ -71,27 +71,34 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'Error de validación', errors }, { status: 422 })
   }
 
-  const proyecto = await prisma.proyecto.create({
-    data: {
-      detalle: detalle.trim(),
-      empresaId: parseInt(empresaId),
-      valor: valor ? parseFloat(valor) : 0,
-      fechaCreacion: new Date(fechaCreacion),
-      fechaCierre: fechaCierre ? new Date(fechaCierre) : null,
-      estadoId: parseInt(estadoId),
-      projectOnline: projectOnline?.trim() || null,
-      clientes: {
-        create: clienteIds.map((id) => ({ clienteId: parseInt(id) })),
+  try {
+    const proyecto = await prisma.proyecto.create({
+      data: {
+        detalle: detalle.trim(),
+        empresaId: parseInt(empresaId),
+        valor: valor ? parseFloat(valor) : 0,
+        fechaCreacion: new Date(fechaCreacion),
+        fechaCierre: fechaCierre ? new Date(fechaCierre) : null,
+        estadoId: parseInt(estadoId),
+        projectOnline: projectOnline?.trim() || null,
+        clientes: {
+          create: clienteIds.map((id) => ({ clienteId: parseInt(id) })),
+        },
+        responsables: {
+          create: responsableIds.map((id) => ({ userId: parseInt(id) })),
+        },
       },
-      responsables: {
-        create: responsableIds.map((id) => ({ userId: parseInt(id) })),
-      },
-    },
-    include: PROYECTO_INCLUDE,
-  })
+      include: PROYECTO_INCLUDE,
+    })
 
-  return NextResponse.json(
-    { success: true, data: calcularCampos(proyecto), message: 'Proyecto creado exitosamente' },
-    { status: 201 }
-  )
+    return NextResponse.json(
+      { success: true, data: calcularCampos(proyecto), message: 'Proyecto creado exitosamente' },
+      { status: 201 }
+    )
+  } catch (error) {
+    if (error.code === 'P2003') {
+      return NextResponse.json({ success: false, message: 'Empresa o estado no encontrado' }, { status: 422 })
+    }
+    throw error
+  }
 }
