@@ -10,28 +10,21 @@ import { ProgressSpinner } from 'primereact/progressspinner'
 import { propuestaService } from '@/services/propuestaService'
 import { empresaService } from '@/services/empresaService'
 import { usuarioService } from '@/services/usuarioService'
+import { configuracionService, buildPropuestaConfig } from '@/services/configuracionService'
 import { formatCurrency, formatDate } from '@/utils/format'
 import PropuestaFormDialog from '@/components/shared/PropuestaFormDialog'
 import CambiarEstadoPropuestaDialog from '@/components/shared/CambiarEstadoPropuestaDialog'
 
-const PROPUESTA_CONFIG = {
-  Factibilidad: { severity: 'warning',   label: 'Factibilidad', icon: 'pi-lightbulb',    color: '#f59e0b' },
-  Haciendo:     { severity: 'info',      label: 'Haciendo',     icon: 'pi-cog',           color: '#3b82f6' },
-  Enviada:      { severity: 'secondary', label: 'Enviada',      icon: 'pi-send',          color: '#6b7280' },
-  Aprobada:     { severity: 'success',   label: 'Aprobada',     icon: 'pi-check-circle',  color: '#22c55e' },
-  Rechazada:    { severity: 'danger',    label: 'Rechazada',    icon: 'pi-times-circle',  color: '#ef4444' },
-}
-
-// Qué transiciones están disponibles según el estado actual
-const TRANSICIONES_UI = {
-  Factibilidad: [{ estado: 'Haciendo',  label: 'Mover a Haciendo',   severity: 'info',    icon: 'pi-arrow-right' }],
+// Transiciones permitidas (claves internas — nunca cambian)
+const TRANSICIONES_KEYS = {
+  Factibilidad: [{ estado: 'Haciendo',  icon: 'pi-arrow-right', severity: 'info'      }],
   Haciendo:     [
-    { estado: 'Factibilidad', label: 'Volver a Factibilidad', severity: 'warning', icon: 'pi-arrow-left'  },
-    { estado: 'Enviada',      label: 'Marcar como Enviada',   severity: 'secondary',icon: 'pi-send'        },
+    { estado: 'Factibilidad', icon: 'pi-arrow-left',   severity: 'warning'   },
+    { estado: 'Enviada',      icon: 'pi-send',          severity: 'secondary' },
   ],
   Enviada:      [
-    { estado: 'Aprobada',  label: 'Aprobar',   severity: 'success', icon: 'pi-check-circle' },
-    { estado: 'Rechazada', label: 'Rechazar',  severity: 'danger',  icon: 'pi-times-circle' },
+    { estado: 'Aprobada',  icon: 'pi-check-circle', severity: 'success' },
+    { estado: 'Rechazada', icon: 'pi-times-circle', severity: 'danger'  },
   ],
   Aprobada:  [],
   Rechazada: [],
@@ -45,9 +38,9 @@ export default function PropuestaDetallePage({ params }) {
   const [propuesta, setPropuesta] = useState(null)
   const [empresas, setEmpresas] = useState([])
   const [usuarios, setUsuarios] = useState([])
+  const [propuestaConfig, setPropuestaConfig] = useState({})
   const [loading, setLoading] = useState(true)
 
-  // Dialogs
   const [editDialogVisible, setEditDialogVisible] = useState(false)
   const [estadoDialog, setEstadoDialog] = useState({ visible: false, estadoDestino: null, saving: false })
 
@@ -56,14 +49,16 @@ export default function PropuestaDetallePage({ params }) {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [propRes, empRes, usrRes] = await Promise.all([
+      const [propRes, empRes, usrRes, cfgRes] = await Promise.all([
         propuestaService.getById(id),
         empresaService.getAll(),
         usuarioService.getAll(),
+        configuracionService.getAll(),
       ])
       setPropuesta(propRes.data)
       setEmpresas(empRes.data)
       setUsuarios(usrRes.data)
+      setPropuestaConfig(buildPropuestaConfig(cfgRes.data.data.estadosPropuesta))
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar la propuesta', life: 4000 })
     } finally {
@@ -83,14 +78,16 @@ export default function PropuestaDetallePage({ params }) {
       setEstadoDialog({ visible: false, estadoDestino: null, saving: false })
 
       if (res.proyectoCreado) {
+        const labelAprobada = propuestaConfig['Aprobada']?.label || 'Aprobada'
         toast.current.show({
           severity: 'success',
-          summary: '¡Propuesta aprobada!',
-          detail: `Proyecto "${res.proyectoCreado.detalle}" creado automáticamente.`,
+          summary: 'Propuesta ' + labelAprobada + '!',
+          detail: 'Proyecto "' + res.proyectoCreado.detalle + '" creado automáticamente.',
           life: 6000,
         })
       } else {
-        toast.current.show({ severity: 'success', summary: 'Estado actualizado', detail: res.message, life: 3000 })
+        const labelDestino = propuestaConfig[estadoDialog.estadoDestino]?.label || estadoDialog.estadoDestino
+        toast.current.show({ severity: 'success', summary: 'Estado actualizado', detail: 'Propuesta movida a ' + labelDestino, life: 3000 })
       }
     } catch (err) {
       setEstadoDialog((prev) => ({ ...prev, saving: false }))
@@ -111,9 +108,16 @@ export default function PropuestaDetallePage({ params }) {
     </div>
   )
 
-  const cfg = PROPUESTA_CONFIG[propuesta.estado] || { severity: 'secondary', label: propuesta.estado, color: '#6b7280', icon: 'pi-circle' }
-  const transiciones = TRANSICIONES_UI[propuesta.estado] || []
+  const cfg = propuestaConfig[propuesta.estado] || { severity: 'secondary', label: propuesta.estado, color: '#6b7280', icon: 'pi-circle' }
   const esTerminal = ['Aprobada', 'Rechazada'].includes(propuesta.estado)
+
+  // Botones de transición usando labels dinámicos
+  const transicionesUI = (TRANSICIONES_KEYS[propuesta.estado] || []).map((t) => ({
+    ...t,
+    label: propuestaConfig[t.estado]
+      ? 'Mover a: ' + propuestaConfig[t.estado].label
+      : t.estado,
+  }))
 
   return (
     <div className="p-4">
@@ -148,14 +152,14 @@ export default function PropuestaDetallePage({ params }) {
             </div>
 
             {/* Botones de transición */}
-            {transiciones.length > 0 && (
+            {transicionesUI.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3 p-3 surface-50 border-round">
                 <span className="text-sm font-semibold text-color-secondary align-self-center mr-1">Cambiar a:</span>
-                {transiciones.map((t) => (
+                {transicionesUI.map((t) => (
                   <Button
                     key={t.estado}
                     label={t.label}
-                    icon={`pi ${t.icon}`}
+                    icon={'pi ' + t.icon}
                     severity={t.severity}
                     outlined={t.estado !== 'Aprobada' && t.estado !== 'Rechazada'}
                     size="small"
@@ -191,7 +195,7 @@ export default function PropuestaDetallePage({ params }) {
             }
           </Card>
 
-          {/* Proyecto vinculado (si fue aprobada) */}
+          {/* Proyecto vinculado */}
           {propuesta.proyecto && (
             <Card className="mb-3">
               <div className="flex align-items-center justify-content-between">
@@ -205,7 +209,7 @@ export default function PropuestaDetallePage({ params }) {
                   severity="success"
                   outlined
                   size="small"
-                  onClick={() => router.push(`/proyectos/${propuesta.proyecto.id}`)}
+                  onClick={() => router.push('/proyectos/' + propuesta.proyecto.id)}
                 />
               </div>
             </Card>
@@ -223,30 +227,27 @@ export default function PropuestaDetallePage({ params }) {
             ) : (
               <div className="flex flex-column gap-0">
                 {propuesta.logs.map((log, idx) => {
-                  const cfgNuevo = PROPUESTA_CONFIG[log.estadoNuevo] || { color: '#6b7280', label: log.estadoNuevo, icon: 'pi-circle' }
+                  const cfgNuevo = propuestaConfig[log.estadoNuevo] || { color: '#6b7280', label: log.estadoNuevo, icon: 'pi-circle', severity: 'secondary' }
+                  const cfgAnterior = log.estadoAnterior ? (propuestaConfig[log.estadoAnterior] || { label: log.estadoAnterior, color: '#6b7280' }) : null
                   const isLast = idx === propuesta.logs.length - 1
                   return (
                     <div key={log.id} className="flex gap-3">
-                      {/* Línea de tiempo */}
                       <div className="flex flex-column align-items-center" style={{ width: '28px', flexShrink: 0 }}>
                         <div
                           className="flex align-items-center justify-content-center border-circle flex-shrink-0"
-                          style={{ width: '28px', height: '28px', background: cfgNuevo.color + '20', border: `2px solid ${cfgNuevo.color}` }}
+                          style={{ width: '28px', height: '28px', background: cfgNuevo.color + '20', border: '2px solid ' + cfgNuevo.color }}
                         >
-                          <i className={`pi ${cfgNuevo.icon}`} style={{ fontSize: '11px', color: cfgNuevo.color }} />
+                          <i className={'pi ' + cfgNuevo.icon} style={{ fontSize: '11px', color: cfgNuevo.color }} />
                         </div>
                         {!isLast && (
                           <div style={{ width: '2px', flex: 1, minHeight: '20px', background: 'var(--surface-border)' }} />
                         )}
                       </div>
-                      {/* Contenido */}
                       <div className="pb-3 flex-1">
                         <div className="flex align-items-center gap-2 flex-wrap mb-1">
-                          {log.estadoAnterior && (
+                          {cfgAnterior && (
                             <>
-                              <span className="text-sm font-medium" style={{ color: PROPUESTA_CONFIG[log.estadoAnterior]?.color || '#6b7280' }}>
-                                {PROPUESTA_CONFIG[log.estadoAnterior]?.label || log.estadoAnterior}
-                              </span>
+                              <span className="text-sm font-medium" style={{ color: cfgAnterior.color }}>{cfgAnterior.label}</span>
                               <i className="pi pi-arrow-right text-color-secondary" style={{ fontSize: '10px' }} />
                             </>
                           )}
@@ -311,7 +312,7 @@ export default function PropuestaDetallePage({ params }) {
                       label={propuesta.proyecto.detalle}
                       link
                       className="p-0 text-sm"
-                      onClick={() => router.push(`/proyectos/${propuesta.proyecto.id}`)}
+                      onClick={() => router.push('/proyectos/' + propuesta.proyecto.id)}
                     />
                   </div>
                 </>
@@ -325,7 +326,11 @@ export default function PropuestaDetallePage({ params }) {
       <PropuestaFormDialog
         visible={editDialogVisible}
         onHide={() => setEditDialogVisible(false)}
-        onSave={() => { setEditDialogVisible(false); loadAll(); toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Propuesta actualizada', life: 3000 }) }}
+        onSave={() => {
+          setEditDialogVisible(false)
+          loadAll()
+          toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Propuesta actualizada', life: 3000 })
+        }}
         propuesta={propuesta}
         empresas={empresas}
         usuarios={usuarios}
@@ -337,6 +342,7 @@ export default function PropuestaDetallePage({ params }) {
         estadoActual={propuesta.estado}
         estadoDestino={estadoDialog.estadoDestino}
         saving={estadoDialog.saving}
+        propuestaConfig={propuestaConfig}
       />
     </div>
   )

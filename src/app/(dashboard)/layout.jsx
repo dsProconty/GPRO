@@ -22,8 +22,9 @@ const menuItemsBase = [
   {
     label: 'Configuración',
     items: [
-      { label: 'Clientes',  icon: 'pi pi-building',  path: '/clientes' },
-      { label: 'Usuarios',  icon: 'pi pi-users',     path: '/usuarios', adminOnly: true },
+      { label: 'Clientes',        icon: 'pi pi-building',  path: '/clientes' },
+      { label: 'Usuarios',        icon: 'pi pi-users',     path: '/usuarios',       adminOnly: true },
+      { label: 'Personalización', icon: 'pi pi-sliders-h', path: '/configuracion',  adminOnly: true },
     ],
   },
 ]

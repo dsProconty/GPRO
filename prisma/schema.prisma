@@ -236,6 +236,21 @@ model ProyectoEstadoLog {
   @@map("proyecto_estado_logs")
 }
 
+// ─── CONFIGURACIÓN: LABELS DE ESTADOS DE PROPUESTA ───────────────────────────
+// Permite renombrar los estados de propuesta sin cambiar la lógica interna.
+// key: identificador interno inmutable (Factibilidad, Haciendo, Enviada, Aprobada, Rechazada)
+// label: nombre visible al usuario, personalizable desde /configuracion
+model PropuestaEstadoLabel {
+  key       String   @id @db.VarChar(50)
+  label     String   @db.VarChar(100)
+  severity  String   @db.VarChar(20)
+  icon      String   @db.VarChar(50)
+  orden     Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("propuesta_estado_labels")
+}
+
 // ─── PROPUESTA ────────────────────────────────────────────────────────────────
 // Pipeline comercial previo a la adjudicación de proyectos.
 // Estados: Factibilidad → Haciendo → Enviada → Aprobada|Rechazada

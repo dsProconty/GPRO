@@ -15,24 +15,8 @@ import PropuestaFormDialog from '@/components/shared/PropuestaFormDialog'
 import { propuestaService } from '@/services/propuestaService'
 import { empresaService } from '@/services/empresaService'
 import { usuarioService } from '@/services/usuarioService'
+import { configuracionService, buildPropuestaConfig } from '@/services/configuracionService'
 import { formatCurrency, formatDate } from '@/utils/format'
-
-const PROPUESTA_CONFIG = {
-  Factibilidad: { severity: 'warning',   label: 'Factibilidad' },
-  Haciendo:     { severity: 'info',      label: 'Haciendo' },
-  Enviada:      { severity: 'secondary', label: 'Enviada' },
-  Aprobada:     { severity: 'success',   label: 'Aprobada' },
-  Rechazada:    { severity: 'danger',    label: 'Rechazada' },
-}
-
-const ESTADOS_FILTRO = [
-  { label: 'Todos', value: null },
-  { label: 'Factibilidad', value: 'Factibilidad' },
-  { label: 'Haciendo', value: 'Haciendo' },
-  { label: 'Enviada', value: 'Enviada' },
-  { label: 'Aprobada', value: 'Aprobada' },
-  { label: 'Rechazada', value: 'Rechazada' },
-]
 
 export default function PropuestasPage() {
   const toast = useRef(null)
@@ -41,6 +25,7 @@ export default function PropuestasPage() {
   const [propuestas, setPropuestas] = useState([])
   const [empresas, setEmpresas] = useState([])
   const [usuarios, setUsuarios] = useState([])
+  const [propuestaConfig, setPropuestaConfig] = useState({})
   const [loading, setLoading] = useState(true)
   const [globalFilter, setGlobalFilter] = useState('')
   const [estadoFiltro, setEstadoFiltro] = useState(null)
@@ -52,20 +37,27 @@ export default function PropuestasPage() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [propRes, empRes, usrRes] = await Promise.all([
+      const [propRes, empRes, usrRes, cfgRes] = await Promise.all([
         propuestaService.getAll(),
         empresaService.getAll(),
         usuarioService.getAll(),
+        configuracionService.getAll(),
       ])
       setPropuestas(propRes.data)
       setEmpresas(empRes.data)
       setUsuarios(usrRes.data)
+      setPropuestaConfig(buildPropuestaConfig(cfgRes.data.data.estadosPropuesta))
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar las propuestas', life: 4000 })
     } finally {
       setLoading(false)
     }
   }
+
+  const estadosFiltro = useMemo(() => [
+    { label: 'Todos', value: null },
+    ...Object.values(propuestaConfig).map((cfg) => ({ label: cfg.label, value: cfg.key })),
+  ], [propuestaConfig])
 
   const propuestasFiltradas = useMemo(() => {
     let lista = propuestas
@@ -74,7 +66,7 @@ export default function PropuestasPage() {
   }, [propuestas, estadoFiltro])
 
   const openCreate = () => { setSelected(null); setDialogVisible(true) }
-  const openEdit = (p) => { setSelected(p); setDialogVisible(true) }
+  const openEdit   = (p) => { setSelected(p);    setDialogVisible(true) }
 
   const handleSave = () => {
     setDialogVisible(false)
@@ -85,11 +77,12 @@ export default function PropuestasPage() {
   const confirmDelete = (p) => {
     const bloqueado = !['Factibilidad', 'Haciendo'].includes(p.estado)
     if (bloqueado) {
-      toast.current.show({ severity: 'warn', summary: 'No permitido', detail: `No se puede eliminar una propuesta en estado "${p.estado}"`, life: 4000 })
+      const cfg = propuestaConfig[p.estado]
+      toast.current.show({ severity: 'warn', summary: 'No permitido', detail: 'No se puede eliminar una propuesta en estado "' + (cfg?.label || p.estado) + '"', life: 4000 })
       return
     }
     confirmDialog({
-      message: `¿Eliminar la propuesta "${p.titulo}"?`,
+      message: '¿Eliminar la propuesta "' + p.titulo + '"?',
       header: 'Confirmar eliminación',
       icon: 'pi pi-exclamation-triangle',
       acceptLabel: 'Eliminar',
@@ -131,13 +124,13 @@ export default function PropuestasPage() {
         </span>
         <Dropdown
           value={estadoFiltro}
-          options={ESTADOS_FILTRO}
+          options={estadosFiltro}
           optionLabel="label"
           optionValue="value"
           onChange={(e) => setEstadoFiltro(e.value)}
           placeholder="Filtrar por estado"
           showClear
-          style={{ minWidth: '180px' }}
+          style={{ minWidth: '200px' }}
         />
       </div>
 
@@ -145,21 +138,20 @@ export default function PropuestasPage() {
         value={propuestasFiltradas}
         globalFilter={globalFilter}
         loading={loading}
-        paginator
-        rows={10}
-        rowsPerPageOptions={[10, 25, 50]}
+        paginator rows={10} rowsPerPageOptions={[10, 25, 50]}
         emptyMessage="No hay propuestas registradas"
         stripedRows
       >
         <Column field="id" header="ID" style={{ width: '60px' }} sortable />
-        <Column header="Título" sortable sortField="titulo" body={(r) => (
+        <Column header="Título" sortable sortField="titulo" style={{ minWidth: '200px' }} body={(r) => (
           <Button label={r.titulo} link className="p-0 text-left" style={{ fontWeight: 500 }}
-            onClick={() => router.push(`/propuestas/${r.id}`)} />
-        )} style={{ minWidth: '200px' }} />
+            onClick={() => router.push('/propuestas/' + r.id)} />
+        )} />
         <Column header="Empresa" body={(r) => r.empresa?.nombre} sortable sortField="empresa.nombre" />
-        <Column header="Valor est." body={(r) => r.valorEstimado ? formatCurrency(r.valorEstimado) : '—'} style={{ textAlign: 'right', width: '130px' }} />
-        <Column header="Estado" style={{ width: '130px' }} body={(r) => {
-          const cfg = PROPUESTA_CONFIG[r.estado] || { severity: 'secondary', label: r.estado }
+        <Column header="Valor est." style={{ textAlign: 'right', width: '130px' }}
+          body={(r) => r.valorEstimado ? formatCurrency(r.valorEstimado) : '—'} />
+        <Column header="Estado" style={{ width: '180px' }} body={(r) => {
+          const cfg = propuestaConfig[r.estado] || { severity: 'secondary', label: r.estado }
           return <Tag value={cfg.label} severity={cfg.severity} />
         }} />
         <Column header="Responsables" body={(r) => (
@@ -167,10 +159,11 @@ export default function PropuestasPage() {
             {r.responsables?.map((res) => res.user?.name).join(', ') || '—'}
           </span>
         )} />
-        <Column header="Creada" body={(r) => formatDate(r.fechaCreacion)} style={{ width: '110px' }} />
+        <Column header="Creada" style={{ width: '110px' }} body={(r) => formatDate(r.fechaCreacion)} />
         <Column header="Acciones" style={{ width: '120px' }} body={(r) => (
           <div className="flex gap-1">
-            <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/propuestas/${r.id}`)} />
+            <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }}
+              onClick={() => router.push('/propuestas/' + r.id)} />
             <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Editar" tooltipOptions={{ position: 'top' }}
               onClick={() => openEdit(r)} disabled={['Aprobada', 'Rechazada'].includes(r.estado)} />
             <Button icon="pi pi-trash" rounded text severity="danger" tooltip="Eliminar" tooltipOptions={{ position: 'top' }}
