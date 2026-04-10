@@ -96,6 +96,7 @@ model Proyecto {
   responsables   ProyectoResponsable[]
   facturas       Factura[]
   observaciones  Observacion[]
+  recordatorios  RecordatorioFactura[]
 
   @@map("proyectos")
 }
@@ -159,6 +160,37 @@ model Pago {
   factura     Factura  @relation(fields: [facturaId], references: [id], onDelete: Cascade)
 
   @@map("pagos")
+}
+
+// ─── RECORDATORIO DE FACTURACIÓN ─────────────────────────────────────────────
+// Permite configurar alertas recurrentes por día del mes para un proyecto.
+// El cron job (/api/cron/recordatorios) lo ejecuta Vercel a las 8am UTC diariamente.
+model RecordatorioFactura {
+  id            Int       @id @default(autoincrement()) @map("id_recordatorio")
+  proyectoId    Int       @map("id_negocio")
+  diaMes        Int       @map("dia_mes")       // 1-28
+  descripcion   String    @db.Text
+  destinatarios String    @db.Text              // emails separados por coma
+  activo        Boolean   @default(true)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  proyecto      Proyecto          @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  logs          RecordatorioLog[]
+
+  @@map("recordatorio_facturas")
+}
+
+model RecordatorioLog {
+  id              Int                 @id @default(autoincrement())
+  recordatorioId  Int                 @map("id_recordatorio")
+  enviadoEn       DateTime            @default(now()) @map("enviado_en")
+  exitoso         Boolean
+  error           String?             @db.Text
+
+  recordatorio    RecordatorioFactura @relation(fields: [recordatorioId], references: [id], onDelete: Cascade)
+
+  @@map("recordatorio_logs")
 }
 
 // ─── OBSERVACION (INMUTABLE) ──────────────────────────────────────────────────

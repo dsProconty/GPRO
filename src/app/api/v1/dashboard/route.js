@@ -8,16 +8,13 @@ export async function GET() {
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
 
   try {
-    const [proyectos, facturas, pagos] = await Promise.all([
-      prisma.proyecto.findMany({
-        select: { id: true, estadoId: true },
-      }),
-      prisma.factura.findMany({
-        select: { valor: true },
-      }),
-      prisma.pago.findMany({
-        select: { valor: true },
-      }),
+    const diaHoy = new Date().getDate()
+
+    const [proyectos, facturas, pagos, recordatoriosHoy] = await Promise.all([
+      prisma.proyecto.findMany({ select: { id: true, estadoId: true } }),
+      prisma.factura.findMany({ select: { valor: true } }),
+      prisma.pago.findMany({ select: { valor: true } }),
+      prisma.recordatorioFactura.count({ where: { activo: true, diaMes: diaHoy } }),
     ])
 
     // Estados: 1=Prefactibilidad, 2=Elaboracion_Propuesta, 3=Adjudicado, 4=Rechazado, 5=Cerrado
@@ -37,6 +34,7 @@ export async function GET() {
         facturadoTotal,
         cobradoTotal,
         saldoPendiente,
+        recordatoriosHoy,
       },
       message: '',
     })

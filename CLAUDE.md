@@ -427,10 +427,10 @@ export const calcTiempoVida = (fechaCreacion, fechaCierre) => {
 
 ---
 
-### SPRINT 6 — Visibilidad Gerencial (27 pts)
+### SPRINT 6 — Visibilidad Gerencial (48 pts)
 
 **Objetivo:** Dar al gerente herramientas de análisis y control. Dashboard con gráficas reales,
-exportación para contabilidad, y alertas de cobranza. Ninguna historia requiere cambios en el schema de BD.
+exportación para contabilidad, alertas de cobranza y recordatorios automáticos de facturación recurrente por email.
 
 | ID | Título | Story Points | Prioridad |
 |----|--------|-------------|-----------|
@@ -439,6 +439,10 @@ exportación para contabilidad, y alertas de cobranza. Ninguna historia requiere
 | SP6-03 | Exportación a Excel/CSV | 5 | Alta |
 | SP6-04 | Alertas de facturas vencidas | 5 | Alta |
 | SP6-05 | Tests y ajustes Sprint 6 | 4 | Media |
+| SP6-06 | Schema + API Recordatorios CRUD | 5 | Alta |
+| SP6-07 | UI: Sección recordatorios en detalle de proyecto | 5 | Alta |
+| SP6-08 | Integración Resend + Cron Vercel | 8 | Alta |
+| SP6-09 | Badge sidebar + recordatoriosHoy en dashboard | 3 | Media |
 
 **SP6-01 Criterios:**
 - Ampliar `GET /api/v1/dashboard` con campo `porMes`: array de últimos 12 meses con `{ mes, facturado, cobrado }`
@@ -477,6 +481,33 @@ exportación para contabilidad, y alertas de cobranza. Ninguna historia requiere
 - Tests para la función de exportación (genera el array correcto de filas)
 - Verificar que las gráficas no crashean con 0 proyectos o 0 facturas
 - Push a `main` y deploy verde en Vercel
+
+**SP6-06 Criterios:**
+- 2 tablas nuevas en BD: `recordatorio_facturas` y `recordatorio_logs` (via `prisma db push`)
+- Relación `Proyecto → RecordatorioFactura` en schema.prisma
+- `GET /api/v1/recordatorios?proyecto_id=` → lista con último log de cada uno
+- `POST /api/v1/recordatorios` → valida diaMes 1-28, emails válidos, proyectoId requerido
+- `PUT /api/v1/recordatorios/:id` · `DELETE /api/v1/recordatorios/:id`
+- Todos protegidos con `getServerSession`
+
+**SP6-07 Criterios:**
+- Card "Recordatorios de Facturación" en `/proyectos/[id]` entre Observaciones y Facturas
+- DataTable: día del mes · descripción · destinatarios (truncado) · estado (activo/inactivo) · último envío · acciones
+- Dialog crear/editar con: `InputNumber` día (1-28), `InputTextarea` descripción, `InputText` emails, `InputSwitch` activo
+- Confirmar antes de eliminar · Toast de éxito/error
+
+**SP6-08 Criterios:**
+- Instalar `resend` como dependencia
+- `src/lib/email.js`: función `enviarRecordatorio()` con plantilla HTML profesional
+- `vercel.json`: cron `"0 8 * * *"` apuntando a `/api/cron/recordatorios`
+- `GET /api/cron/recordatorios`: verifica `CRON_SECRET`, busca recordatorios con `diaMes = hoy`, envía emails, guarda logs
+- Si falla el envío: registra log con `exitoso: false, error: mensaje` (no interrumpe los demás)
+- Variable de entorno requerida: `RESEND_API_KEY` (agregar en Vercel dashboard)
+
+**SP6-09 Criterios:**
+- `GET /api/v1/dashboard` retorna campo `recordatoriosHoy` (count de recordatorios activos para hoy)
+- `layout.jsx`: carga el dato al montar · muestra `<Badge value={n} severity="danger" />` junto al ítem Dashboard si `n > 0`
+- Badge desaparece cuando `recordatoriosHoy = 0`
 
 ---
 

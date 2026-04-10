@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import axios from 'axios'
 import { Button } from 'primereact/button'
+import { Badge } from 'primereact/badge'
 import { Ripple } from 'primereact/ripple'
 import { classNames } from 'primereact/utils'
 
@@ -29,6 +31,14 @@ export default function DashboardLayout({ children }) {
   const router   = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [recordatoriosHoy, setRecordatoriosHoy] = useState(0)
+
+  useEffect(() => {
+    // Carga recordatoriosHoy para mostrar badge en sidebar
+    axios.get('/api/v1/dashboard')
+      .then((res) => setRecordatoriosHoy(res.data.data?.recordatoriosHoy ?? 0))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -79,7 +89,10 @@ export default function DashboardLayout({ children }) {
                       <Link href={item.path} style={{ textDecoration: 'none' }}>
                         <div className={classNames('p-ripple flex align-items-center gap-2 px-3 py-2 border-round cursor-pointer', active ? 'bg-primary text-white' : 'text-700 hover:surface-200')}>
                           <i className={classNames(item.icon, 'text-base')} />
-                          <span className="font-medium text-sm">{item.label}</span>
+                          <span className="font-medium text-sm flex-1">{item.label}</span>
+                          {item.path === '/dashboard' && recordatoriosHoy > 0 && (
+                            <Badge value={recordatoriosHoy} severity="danger" />
+                          )}
                           <Ripple />
                         </div>
                       </Link>

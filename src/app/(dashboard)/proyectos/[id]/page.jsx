@@ -21,6 +21,8 @@ import FacturaFormDialog from '@/components/shared/FacturaFormDialog'
 import PagoFormDialog from '@/components/shared/PagoFormDialog'
 import ObservacionFormDialog from '@/components/shared/ObservacionFormDialog'
 import ProyectoFormDialog from '@/components/shared/ProyectoFormDialog'
+import RecordatorioFormDialog from '@/components/shared/RecordatorioFormDialog'
+import { recordatorioService } from '@/services/recordatorioService'
 import axios from 'axios'
 
 const ESTADO_CONFIG = {
@@ -58,6 +60,12 @@ export default function ProyectoDetallePage({ params }) {
   const [obsDialogVisible, setObsDialogVisible] = useState(false)
   const [editDialogVisible, setEditDialogVisible] = useState(false)
 
+  // Recordatorios
+  const [recordatorios, setRecordatorios] = useState([])
+  const [loadingRec, setLoadingRec] = useState(false)
+  const [recDialogVisible, setRecDialogVisible] = useState(false)
+  const [selectedRecordatorio, setSelectedRecordatorio] = useState(null)
+
   useEffect(() => {
     loadAll()
   }, [id])
@@ -65,13 +73,14 @@ export default function ProyectoDetallePage({ params }) {
   const loadAll = async () => {
     setLoadingProyecto(true)
     try {
-      const [proyRes, factRes, obsRes, estRes, empRes, usrRes] = await Promise.all([
+      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes] = await Promise.all([
         proyectoService.getById(id),
         facturaService.getAll({ proyecto_id: id }),
         observacionService.getAll({ proyecto_id: id }),
         axios.get('/api/v1/estados'),
         axios.get('/api/v1/empresas'),
         axios.get('/api/v1/usuarios'),
+        recordatorioService.getAll({ proyecto_id: id }),
       ])
       setProyecto(proyRes.data)
       setFacturas(factRes.data)
@@ -79,6 +88,7 @@ export default function ProyectoDetallePage({ params }) {
       setEstados(estRes.data.data)
       setEmpresas(empRes.data.data)
       setUsuarios(usrRes.data.data)
+      setRecordatorios(recRes.data)
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar el proyecto', life: 4000 })
     } finally {
@@ -204,6 +214,43 @@ export default function ProyectoDetallePage({ params }) {
     setObsDialogVisible(false)
     toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Observación registrada', life: 3000 })
     loadObservaciones()
+  }
+
+  // === Recordatorios ===
+  const loadRecordatorios = async () => {
+    setLoadingRec(true)
+    try {
+      const res = await recordatorioService.getAll({ proyecto_id: id })
+      setRecordatorios(res.data)
+    } finally {
+      setLoadingRec(false)
+    }
+  }
+
+  const handleSaveRecordatorio = () => {
+    setRecDialogVisible(false)
+    toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Recordatorio guardado', life: 3000 })
+    loadRecordatorios()
+  }
+
+  const confirmDeleteRecordatorio = (rec) => {
+    confirmDialog({
+      message: `¿Eliminar el recordatorio del día ${rec.diaMes} de cada mes?`,
+      header: 'Confirmar eliminación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Eliminar',
+      rejectLabel: 'Cancelar',
+      acceptClassName: 'p-button-danger',
+      accept: async () => {
+        try {
+          await recordatorioService.remove(rec.id)
+          toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Recordatorio eliminado', life: 3000 })
+          loadRecordatorios()
+        } catch (err) {
+          toast.current.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'Error al eliminar', life: 4000 })
+        }
+      },
+    })
   }
 
   // === Editar proyecto ===
@@ -419,6 +466,60 @@ export default function ProyectoDetallePage({ params }) {
         </div>
       </div>
 
+      {/* Recordatorios de Facturación */}
+      <Card className="mt-3">
+        <div className="flex justify-content-between align-items-center mb-3">
+          <div>
+            <h3 className="m-0 font-semibold"><i className="pi pi-bell mr-2" />Recordatorios de Facturación</h3>
+            <p className="text-color-secondary text-xs mt-1 mb-0">Alertas automáticas por email en un día fijo cada mes</p>
+          </div>
+          <Button label="Nuevo Recordatorio" icon="pi pi-plus" size="small" severity="warning" outlined
+            onClick={() => { setSelectedRecordatorio(null); setRecDialogVisible(true) }} />
+        </div>
+
+        {loadingRec ? (
+          <div className="flex justify-content-center p-3"><ProgressSpinner style={{ width: '30px', height: '30px' }} /></div>
+        ) : recordatorios.length === 0 ? (
+          <p className="text-color-secondary text-sm m-0">No hay recordatorios configurados para este proyecto.</p>
+        ) : (
+          <DataTable value={recordatorios} size="small" stripedRows emptyMessage="Sin recordatorios">
+            <Column header="Día" body={(r) => (
+              <span className="font-bold text-primary">Día {r.diaMes}</span>
+            )} style={{ width: '80px' }} />
+            <Column field="descripcion" header="Descripción" />
+            <Column header="Destinatarios" body={(r) => (
+              <span className="text-sm text-color-secondary" title={r.destinatarios}>
+                {r.destinatarios.length > 40 ? r.destinatarios.slice(0, 40) + '…' : r.destinatarios}
+              </span>
+            )} />
+            <Column header="Estado" style={{ width: '100px' }} body={(r) => (
+              <span className={`font-semibold text-sm ${r.activo ? 'text-green-600' : 'text-color-secondary'}`}>
+                <i className={`pi ${r.activo ? 'pi-check-circle' : 'pi-minus-circle'} mr-1`} />
+                {r.activo ? 'Activo' : 'Inactivo'}
+              </span>
+            )} />
+            <Column header="Último envío" style={{ width: '130px' }} body={(r) => {
+              const ultimo = r.logs?.[0]
+              if (!ultimo) return <span className="text-color-secondary text-xs">Nunca</span>
+              return (
+                <span className={`text-xs ${ultimo.exitoso ? 'text-green-600' : 'text-red-500'}`}>
+                  <i className={`pi ${ultimo.exitoso ? 'pi-check' : 'pi-times'} mr-1`} />
+                  {new Date(ultimo.enviadoEn).toLocaleDateString('es-EC')}
+                </span>
+              )
+            }} />
+            <Column header="Acciones" style={{ width: '90px' }} body={(r) => (
+              <div className="flex gap-1">
+                <Button icon="pi pi-pencil" rounded text severity="info" size="small"
+                  onClick={() => { setSelectedRecordatorio(r); setRecDialogVisible(true) }} />
+                <Button icon="pi pi-trash" rounded text severity="danger" size="small"
+                  onClick={() => confirmDeleteRecordatorio(r)} />
+              </div>
+            )} />
+          </DataTable>
+        )}
+      </Card>
+
       {/* Facturas */}
       <Card className="mt-3">
         <div className="flex justify-content-between align-items-center mb-3">
@@ -465,6 +566,7 @@ export default function ProyectoDetallePage({ params }) {
       <PagoFormDialog visible={pagoDialogVisible} onHide={() => setPagoDialogVisible(false)} onSave={handleSavePago} pago={selectedPago} factura={facturaParaPago} />
       <ObservacionFormDialog visible={obsDialogVisible} onHide={() => setObsDialogVisible(false)} onSave={handleSaveObservacion} proyectoId={id} />
       <ProyectoFormDialog visible={editDialogVisible} onHide={() => setEditDialogVisible(false)} onSave={handleSaveProyecto} proyecto={proyecto} empresas={empresas} estados={estados} usuarios={usuarios} />
+      <RecordatorioFormDialog visible={recDialogVisible} onHide={() => setRecDialogVisible(false)} onSave={handleSaveRecordatorio} recordatorio={selectedRecordatorio} proyectoId={id} />
     </div>
   )
 }
