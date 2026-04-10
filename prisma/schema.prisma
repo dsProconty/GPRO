@@ -25,9 +25,11 @@ model User {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   // Relaciones
-  proyectosResponsable ProyectoResponsable[]
-  observaciones        Observacion[]
-  estadoLogs           ProyectoEstadoLog[]
+  proyectosResponsable   ProyectoResponsable[]
+  observaciones          Observacion[]
+  estadoLogs             ProyectoEstadoLog[]
+  propuestaResponsables  PropuestaResponsable[]
+  propuestaLogs          PropuestaEstadoLog[]
 
   @@map("users")
 }
@@ -41,8 +43,9 @@ model Empresa {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relaciones
-  clientes  Cliente[]
-  proyectos Proyecto[]
+  clientes   Cliente[]
+  proyectos  Proyecto[]
+  propuestas Propuesta[]
 
   @@map("empresas")
 }
@@ -101,6 +104,7 @@ model Proyecto {
   observaciones  Observacion[]
   recordatorios  RecordatorioFactura[]
   estadoLogs     ProyectoEstadoLog[]
+  propuesta      Propuesta?
 
   @@map("proyectos")
 }
@@ -230,4 +234,58 @@ model ProyectoEstadoLog {
   user           User     @relation(fields: [userId], references: [id])
 
   @@map("proyecto_estado_logs")
+}
+
+// ─── PROPUESTA ────────────────────────────────────────────────────────────────
+// Pipeline comercial previo a la adjudicación de proyectos.
+// Estados: Factibilidad → Haciendo → Enviada → Aprobada|Rechazada
+// Al pasar a Aprobada se crea automáticamente un Proyecto (estadoId=3 Adjudicado)
+model Propuesta {
+  id             Int       @id @default(autoincrement())
+  titulo         String    @db.VarChar(255)
+  descripcion    String?   @db.Text
+  empresaId      Int       @map("id_empresa")
+  valorEstimado  Decimal?  @map("valor_estimado") @db.Decimal(12, 2)
+  fechaCreacion  DateTime  @map("fecha_creacion") @db.Date
+  fechaEnvio     DateTime? @map("fecha_envio")    @db.Date
+  estado         String    @default("Factibilidad") @db.VarChar(30)
+  proyectoId     Int?      @unique @map("id_proyecto")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  empresa      Empresa              @relation(fields: [empresaId], references: [id])
+  proyecto     Proyecto?            @relation(fields: [proyectoId], references: [id])
+  responsables PropuestaResponsable[]
+  logs         PropuestaEstadoLog[]
+
+  @@map("propuestas")
+}
+
+// ─── PIVOT: PROPUESTA ↔ RESPONSABLE ─────────────────────────────────────────
+model PropuestaResponsable {
+  propuestaId Int @map("id_propuesta")
+  userId      Int @map("id_user")
+
+  propuesta   Propuesta @relation(fields: [propuestaId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([propuestaId, userId])
+  @@map("propuesta_responsable")
+}
+
+// ─── TRAZABILIDAD DE ESTADO DE PROPUESTA (INMUTABLE) ─────────────────────────
+// Se crea en cada cambio de estado. Nunca se modifica ni elimina.
+model PropuestaEstadoLog {
+  id             Int      @id @default(autoincrement())
+  propuestaId    Int      @map("id_propuesta")
+  estadoAnterior String?  @map("estado_anterior") @db.VarChar(30)
+  estadoNuevo    String   @map("estado_nuevo")    @db.VarChar(30)
+  userId         Int      @map("id_user")
+  nota           String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  propuesta      Propuesta @relation(fields: [propuestaId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id])
+
+  @@map("propuesta_estado_logs")
 }

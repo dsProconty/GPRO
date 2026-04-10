@@ -14,8 +14,9 @@ const menuItemsBase = [
   {
     label: 'Principal',
     items: [
-      { label: 'Dashboard', icon: 'pi pi-home',      path: '/dashboard' },
-      { label: 'Proyectos', icon: 'pi pi-briefcase', path: '/proyectos' },
+      { label: 'Dashboard',  icon: 'pi pi-home',      path: '/dashboard' },
+      { label: 'Propuestas', icon: 'pi pi-send',      path: '/propuestas' },
+      { label: 'Proyectos',  icon: 'pi pi-briefcase', path: '/proyectos' },
     ],
   },
   {
