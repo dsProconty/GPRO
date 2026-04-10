@@ -16,12 +16,13 @@ export async function GET(request, { params }) {
   try {
     const [proyecto, empresaCfg] = await Promise.all([
       prisma.proyecto.findUnique({
-      where: { id },
-      include: {
-        empresa: { select: { id: true, nombre: true } },
-        estado: { select: { id: true, nombre: true } },
-        clientes: { include: { cliente: { select: { nombre: true, apellido: true } } } },
-        responsables: { include: { user: { select: { name: true } } } },
+        where: { id },
+        include: {
+          empresa: { select: { id: true, nombre: true } },
+          estado: { select: { id: true, nombre: true } },
+          clientes: { include: { cliente: { select: { nombre: true, apellido: true } } } },
+          responsables: { include: { user: { select: { name: true } } } },
+        },
       }),
       prisma.configuracionEmpresa.findUnique({ where: { id: 1 } }),
     ])
