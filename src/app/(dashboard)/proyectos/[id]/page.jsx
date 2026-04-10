@@ -78,7 +78,7 @@ export default function ProyectoDetallePage({ params }) {
       setObservaciones(obsRes.data)
       setEstados(estRes.data.data)
       setEmpresas(empRes.data.data)
-      setUsuarios(usrRes.data)
+      setUsuarios(usrRes.data.data)
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar el proyecto', life: 4000 })
     } finally {
