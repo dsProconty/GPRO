@@ -2,10 +2,14 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { tienePermiso, PERMISOS } from '@/lib/permisos'
 
 export async function PUT(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.PAGOS.EDITAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para editar pagos' }, { status: 403 })
+  }
 
   const id = parseInt(params.id)
   const body = await request.json()
@@ -53,6 +57,9 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.PAGOS.ELIMINAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para eliminar pagos' }, { status: 403 })
+  }
 
   const id = parseInt(params.id)
   try {

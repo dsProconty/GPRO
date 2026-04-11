@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { tienePermiso, PERMISOS } from '@/lib/permisos'
 
 export async function GET(request) {
   const session = await getServerSession(authOptions)
@@ -23,6 +24,9 @@ export async function GET(request) {
 export async function POST(request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.OBSERVACIONES.CREAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para agregar observaciones' }, { status: 403 })
+  }
 
   const body = await request.json()
   const { proyectoId, descripcion } = body

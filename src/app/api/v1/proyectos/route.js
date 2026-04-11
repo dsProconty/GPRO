@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { tienePermiso, PERMISOS } from '@/lib/permisos'
 
 const PROYECTO_INCLUDE = {
   empresa: { select: { id: true, nombre: true } },
@@ -57,6 +58,9 @@ export async function POST(request) {
   const session = await getServerSession(authOptions)
   if (!session) {
     return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  }
+  if (!tienePermiso(session, PERMISOS.PROYECTOS.CREAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para crear proyectos' }, { status: 403 })
   }
 
   const { detalle, empresaId, valor, fechaCreacion, fechaCierre, estadoId, projectOnline, clienteIds = [], responsableIds = [] } = await request.json()

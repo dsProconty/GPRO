@@ -16,6 +16,7 @@ import { propuestaService } from '@/services/propuestaService'
 import { empresaService } from '@/services/empresaService'
 import { usuarioService } from '@/services/usuarioService'
 import { formatCurrency, formatDate } from '@/utils/format'
+import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
 const PROPUESTA_CONFIG = {
   Factibilidad: { severity: 'warning',   label: 'Factibilidad' },
@@ -37,6 +38,7 @@ const ESTADOS_FILTRO = [
 export default function PropuestasPage() {
   const toast = useRef(null)
   const router = useRouter()
+  const { puede } = usePermisos()
 
   const [propuestas, setPropuestas] = useState([])
   const [empresas, setEmpresas] = useState([])
@@ -121,7 +123,9 @@ export default function PropuestasPage() {
           <h1 className="text-2xl font-bold m-0">Propuestas</h1>
           <p className="text-color-secondary text-sm mt-1 mb-0">{propuestasFiltradas.length} propuesta(s)</p>
         </div>
-        <Button label="Nueva Propuesta" icon="pi pi-plus" onClick={openCreate} />
+        {puede(PERMISOS.PROPUESTAS.CREAR) && (
+          <Button label="Nueva Propuesta" icon="pi pi-plus" onClick={openCreate} />
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3 mb-3">
@@ -170,11 +174,16 @@ export default function PropuestasPage() {
         <Column header="Creada" body={(r) => formatDate(r.fechaCreacion)} style={{ width: '110px' }} />
         <Column header="Acciones" style={{ width: '120px' }} body={(r) => (
           <div className="flex gap-1">
-            <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/propuestas/${r.id}`)} />
-            <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Editar" tooltipOptions={{ position: 'top' }}
-              onClick={() => openEdit(r)} disabled={['Aprobada', 'Rechazada'].includes(r.estado)} />
-            <Button icon="pi pi-trash" rounded text severity="danger" tooltip="Eliminar" tooltipOptions={{ position: 'top' }}
-              onClick={() => confirmDelete(r)} disabled={!['Factibilidad', 'Haciendo'].includes(r.estado)} />
+            <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }}
+              onClick={() => router.push('/propuestas/' + r.id)} />
+            {puede(PERMISOS.PROPUESTAS.EDITAR) && (
+              <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Editar" tooltipOptions={{ position: 'top' }}
+                onClick={() => openEdit(r)} disabled={['Aprobada', 'Rechazada'].includes(r.estado)} />
+            )}
+            {puede(PERMISOS.PROPUESTAS.ELIMINAR) && (
+              <Button icon="pi pi-trash" rounded text severity="danger" tooltip="Eliminar" tooltipOptions={{ position: 'top' }}
+                onClick={() => confirmDelete(r)} disabled={!['Factibilidad', 'Haciendo'].includes(r.estado)} />
+            )}
           </div>
         )} />
       </DataTable>

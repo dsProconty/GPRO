@@ -14,16 +14,18 @@ const menuItemsBase = [
   {
     label: 'Principal',
     items: [
-      { label: 'Dashboard',  icon: 'pi pi-home',      path: '/dashboard' },
-      { label: 'Propuestas', icon: 'pi pi-send',      path: '/propuestas' },
-      { label: 'Proyectos',  icon: 'pi pi-briefcase', path: '/proyectos' },
+      { label: 'Dashboard',  icon: 'pi pi-home',      path: '/dashboard',  permiso: 'dashboard.ver' },
+      { label: 'Propuestas', icon: 'pi pi-send',      path: '/propuestas', permiso: 'propuestas.ver' },
+      { label: 'Proyectos',  icon: 'pi pi-briefcase', path: '/proyectos',  permiso: 'proyectos.ver' },
     ],
   },
   {
     label: 'Configuración',
     items: [
-      { label: 'Clientes',  icon: 'pi pi-building',  path: '/clientes' },
-      { label: 'Usuarios',  icon: 'pi pi-users',     path: '/usuarios', adminOnly: true },
+      { label: 'Clientes',        icon: 'pi pi-building',    path: '/clientes',      permiso: 'clientes.ver' },
+      { label: 'Usuarios',        icon: 'pi pi-users',       path: '/usuarios',      adminOnly: true },
+      { label: 'Perfiles',        icon: 'pi pi-id-card',     path: '/perfiles',      adminOnly: true },
+      { label: 'Personalización', icon: 'pi pi-sliders-h',   path: '/configuracion', adminOnly: true },
     ],
   },
 ]
@@ -35,9 +37,15 @@ export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [recordatoriosHoy, setRecordatoriosHoy] = useState(0)
   const isAdmin = session?.user?.role === 'admin'
+  const permisos = session?.user?.permisos || []
+
   const menuItems = menuItemsBase.map((section) => ({
     ...section,
-    items: section.items.filter((item) => !item.adminOnly || isAdmin),
+    items: section.items.filter((item) => {
+      if (item.adminOnly) return isAdmin
+      if (item.permiso && !isAdmin) return permisos.includes(item.permiso)
+      return true
+    }),
   }))
 
   useEffect(() => {

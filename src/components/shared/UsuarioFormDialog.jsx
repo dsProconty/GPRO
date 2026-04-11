@@ -12,17 +12,26 @@ const ROLES = [
   { label: 'Administrador', value: 'admin' },
 ]
 
-const EMPTY = { name: '', email: '', password: '', role: 'user' }
+const EMPTY = { name: '', email: '', password: '', role: 'user', perfilUsuarioId: null }
 
 export default function UsuarioFormDialog({ visible, onHide, onSave, usuario }) {
   const isEdit = !!usuario
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
+  const [perfiles, setPerfiles] = useState([])
 
+  // Cargar perfiles de acceso al abrir el dialog
   useEffect(() => {
     if (visible) {
-      setForm(usuario ? { name: usuario.name, email: usuario.email, password: '', role: usuario.role } : EMPTY)
+      axios.get('/api/v1/perfiles-usuario')
+        .then((res) => setPerfiles(res.data.data || []))
+        .catch(() => {})
+
+      setForm(usuario
+        ? { name: usuario.name, email: usuario.email, password: '', role: usuario.role, perfilUsuarioId: usuario.perfilUsuarioId ?? null }
+        : EMPTY
+      )
       setErrors({})
     }
   }, [visible, usuario])
@@ -47,7 +56,12 @@ export default function UsuarioFormDialog({ visible, onHide, onSave, usuario }) 
     if (Object.keys(errs).length > 0) { setErrors(errs); return }
     setSaving(true)
     try {
-      const payload = { name: form.name.trim(), email: form.email.trim(), role: form.role }
+      const payload = {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        role: form.role,
+        perfilUsuarioId: form.role === 'admin' ? null : (form.perfilUsuarioId ?? null),
+      }
       if (form.password) payload.password = form.password
       if (isEdit) {
         await axios.put(`/api/v1/usuarios/${usuario.id}`, payload)
@@ -72,6 +86,11 @@ export default function UsuarioFormDialog({ visible, onHide, onSave, usuario }) 
     }
   }
 
+  const perfilOptions = [
+    { label: '— Sin perfil (sin acceso) —', value: null },
+    ...perfiles.map((p) => ({ label: p.nombre, value: p.id })),
+  ]
+
   const footer = (
     <div className="flex justify-content-end gap-2">
       <Button label="Cancelar" icon="pi pi-times" severity="secondary" outlined onClick={onHide} disabled={saving} />
@@ -84,7 +103,7 @@ export default function UsuarioFormDialog({ visible, onHide, onSave, usuario }) 
       visible={visible}
       onHide={onHide}
       header={isEdit ? 'Editar Usuario' : 'Nuevo Usuario'}
-      style={{ width: '420px' }}
+      style={{ width: '440px' }}
       footer={footer}
       modal
     >
@@ -114,6 +133,20 @@ export default function UsuarioFormDialog({ visible, onHide, onSave, usuario }) 
           <label className="text-sm font-medium">Rol</label>
           <Dropdown value={form.role} options={ROLES} onChange={set('role')} optionLabel="label" optionValue="value" />
         </div>
+        {form.role !== 'admin' && (
+          <div className="flex flex-column gap-1">
+            <label className="text-sm font-medium">Perfil de acceso</label>
+            <Dropdown
+              value={form.perfilUsuarioId}
+              options={perfilOptions}
+              onChange={set('perfilUsuarioId')}
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Sin perfil"
+            />
+            <small className="text-color-secondary">Determina los permisos del usuario. Aplica al próximo inicio de sesión.</small>
+          </div>
+        )}
       </div>
     </Dialog>
   )

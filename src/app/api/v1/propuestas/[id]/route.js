@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { tienePermiso, PERMISOS } from '@/lib/permisos'
 
 // Transiciones de estado permitidas
 const TRANSICIONES = {
@@ -44,6 +45,9 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.PROPUESTAS.EDITAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para editar propuestas' }, { status: 403 })
+  }
 
   const id = parseInt(params.id)
   if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
@@ -90,6 +94,9 @@ export async function PUT(request, { params }) {
 export async function PATCH(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.PROPUESTAS.CAMBIAR_ESTADO)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para cambiar el estado de propuestas' }, { status: 403 })
+  }
 
   const id = parseInt(params.id)
   if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
@@ -205,6 +212,9 @@ export async function PATCH(request, { params }) {
 export async function DELETE(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.PROPUESTAS.ELIMINAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para eliminar propuestas' }, { status: 403 })
+  }
 
   const id = parseInt(params.id)
   if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { tienePermiso, PERMISOS } from '@/lib/permisos'
 
 function calcFactura(f) {
   const totalPagos = f.pagos.reduce((s, p) => s + Number(p.valor), 0)
@@ -28,6 +29,9 @@ export async function GET(request) {
 export async function POST(request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.FACTURAS.CREAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para crear facturas' }, { status: 403 })
+  }
 
   const body = await request.json()
   const { numFactura, proyectoId, ordenCompra, valor, fechaFactura, observacion } = body

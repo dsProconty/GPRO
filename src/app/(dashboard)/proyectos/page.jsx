@@ -19,6 +19,7 @@ import { usuarioService } from '@/services/usuarioService'
 import axios from 'axios'
 import { formatCurrency, formatDate, calcTiempoVida } from '@/utils/format'
 import * as XLSX from 'xlsx'
+import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
 const ESTADO_CONFIG = {
   Prefactibilidad:       { severity: 'warning',   label: 'Prefactibilidad' },
@@ -31,6 +32,7 @@ const ESTADO_CONFIG = {
 export default function ProyectosPage() {
   const toast = useRef(null)
   const router = useRouter()
+  const { puede, puedeEditarProyecto } = usePermisos()
 
   const [proyectos, setProyectos] = useState([])
   const [empresas, setEmpresas] = useState([])
@@ -150,8 +152,12 @@ export default function ProyectosPage() {
   const accionesTemplate = (row) => (
     <div className="flex gap-1">
       <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
-      <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => openEdit(row)} />
-      <Button icon="pi pi-trash" rounded text severity="danger" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => confirmDelete(row)} />
+      {(puede(PERMISOS.PROYECTOS.EDITAR) && puedeEditarProyecto(row.estadoId)) && (
+        <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => openEdit(row)} />
+      )}
+      {puede(PERMISOS.PROYECTOS.ELIMINAR) && (
+        <Button icon="pi pi-trash" rounded text severity="danger" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => confirmDelete(row)} />
+      )}
     </div>
   )
 
@@ -223,7 +229,9 @@ export default function ProyectosPage() {
         </div>
         <div className="flex gap-2">
           <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined onClick={exportarExcel} disabled={proyectosFiltrados.length === 0} />
-          <Button label="Nuevo Proyecto" icon="pi pi-plus" onClick={openCreate} />
+          {puede(PERMISOS.PROYECTOS.CREAR) && (
+            <Button label="Nuevo Proyecto" icon="pi pi-plus" onClick={openCreate} />
+          )}
         </div>
       </div>
 
