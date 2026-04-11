@@ -15,7 +15,11 @@ import { Toast } from 'primereact/toast'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { ProgressSpinner } from 'primereact/progressspinner'
 import { InputTextarea } from 'primereact/inputtextarea'
+import { InputNumber } from 'primereact/inputnumber'
+import { InputSwitch } from 'primereact/inputswitch'
 import { configuracionService, SEVERITY_COLORS } from '@/services/configuracionService'
+import { perfilConsultorService, NIVEL_OPTIONS } from '@/services/perfilConsultorService'
+import { formatCurrency } from '@/utils/format'
 
 const MONEDA_OPTIONS = [
   { label: 'USD — Dólar estadounidense',  value: 'USD' },
@@ -183,6 +187,101 @@ function EstadoPropuestaDialog({ visible, onHide, onSave, estadoLabel }) {
   )
 }
 
+// ─── Dialog crear/editar perfil de consultor ─────────────────────────────────
+function PerfilConsultorDialog({ visible, onHide, onSave, perfil }) {
+  const isEdit = !!perfil
+  const [form, setForm] = useState({ nombre: '', nivel: 'Senior', costoHora: null, precioHora: null, activo: true })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (visible) {
+      setForm(perfil
+        ? { nombre: perfil.nombre, nivel: perfil.nivel, costoHora: Number(perfil.costoHora), precioHora: Number(perfil.precioHora), activo: perfil.activo }
+        : { nombre: '', nivel: 'Senior', costoHora: null, precioHora: null, activo: true }
+      )
+      setError('')
+    }
+  }, [visible, perfil])
+
+  const handleSave = async () => {
+    if (!form.nombre.trim()) { setError('El nombre del rol es requerido'); return }
+    if (!form.costoHora || form.costoHora <= 0) { setError('El costo/hora debe ser mayor a 0'); return }
+    if (!form.precioHora || form.precioHora <= 0) { setError('El precio/hora debe ser mayor a 0'); return }
+    setSaving(true)
+    try {
+      if (isEdit) {
+        await perfilConsultorService.update(perfil.id, form)
+      } else {
+        await perfilConsultorService.create(form)
+      }
+      onSave()
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error al guardar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const margen = form.costoHora && form.precioHora
+    ? Math.round(((form.precioHora - form.costoHora) / form.precioHora) * 100)
+    : null
+
+  const footer = (
+    <div className="flex justify-content-end gap-2">
+      <Button label="Cancelar" icon="pi pi-times" severity="secondary" outlined onClick={onHide} disabled={saving} />
+      <Button label={isEdit ? 'Guardar cambios' : 'Crear perfil'} icon="pi pi-check" onClick={handleSave} loading={saving} />
+    </div>
+  )
+
+  return (
+    <Dialog visible={visible} onHide={onHide} header={isEdit ? 'Editar Perfil' : 'Nuevo Perfil de Consultor'} style={{ width: '440px' }} footer={footer} modal>
+      <div className="flex flex-column gap-3 mt-2">
+        {error && <div className="p-2 border-round text-red-600 text-sm surface-100">{error}</div>}
+        <div className="grid">
+          <div className="col-8">
+            <div className="flex flex-column gap-1">
+              <label className="text-sm font-medium">Rol <span className="text-red-500">*</span></label>
+              <InputText value={form.nombre} onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))} placeholder="Ej: Full Stack, QA, PM" />
+            </div>
+          </div>
+          <div className="col-4">
+            <div className="flex flex-column gap-1">
+              <label className="text-sm font-medium">Nivel <span className="text-red-500">*</span></label>
+              <Dropdown value={form.nivel} options={NIVEL_OPTIONS} optionLabel="label" optionValue="value" onChange={(e) => setForm((p) => ({ ...p, nivel: e.value }))} />
+            </div>
+          </div>
+        </div>
+        <div className="grid">
+          <div className="col-6">
+            <div className="flex flex-column gap-1">
+              <label className="text-sm font-medium">Costo/hora (interno) <span className="text-red-500">*</span></label>
+              <InputNumber value={form.costoHora} onValueChange={(e) => setForm((p) => ({ ...p, costoHora: e.value }))} mode="currency" currency="USD" locale="es-EC" minFractionDigits={2} />
+            </div>
+          </div>
+          <div className="col-6">
+            <div className="flex flex-column gap-1">
+              <label className="text-sm font-medium">Precio/hora (cliente) <span className="text-red-500">*</span></label>
+              <InputNumber value={form.precioHora} onValueChange={(e) => setForm((p) => ({ ...p, precioHora: e.value }))} mode="currency" currency="USD" locale="es-EC" minFractionDigits={2} />
+            </div>
+          </div>
+        </div>
+        {margen !== null && (
+          <div className={`p-2 border-round text-sm text-center font-semibold ${margen >= 40 ? 'bg-green-50 text-green-700' : margen >= 20 ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'}`}>
+            Margen estimado: {margen}%
+          </div>
+        )}
+        {isEdit && (
+          <div className="flex align-items-center gap-2">
+            <InputSwitch checked={form.activo} onChange={(e) => setForm((p) => ({ ...p, activo: e.value }))} />
+            <label className="text-sm">Perfil activo</label>
+          </div>
+        )}
+      </div>
+    </Dialog>
+  )
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function ConfiguracionPage() {
   const { data: session, status } = useSession()
@@ -194,10 +293,12 @@ export default function ConfiguracionPage() {
   const [estadosPropuesta, setEstadosPropuesta] = useState([])
   const [empresaForm, setEmpresaForm] = useState({ nombre: '', moneda: 'USD', logoUrl: '', direccion: '', telefono: '', email: '' })
   const [empresaSaving, setEmpresaSaving] = useState(false)
+  const [perfiles, setPerfiles] = useState([])
 
   // Dialogs
   const [epDialog, setEpDialog] = useState({ visible: false, estado: null })       // estado proyecto
   const [elDialog, setElDialog] = useState({ visible: false, estadoLabel: null })  // label propuesta
+  const [pfDialog, setPfDialog] = useState({ visible: false, perfil: null })       // perfil consultor
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -212,10 +313,13 @@ export default function ConfiguracionPage() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const res = await configuracionService.getAll()
-      setEstadosProyecto(res.data.data.estadosProyecto)
-      setEstadosPropuesta(res.data.data.estadosPropuesta)
-      const emp = res.data.data.empresa || {}
+      const [cfgRes, pfRes] = await Promise.all([
+        configuracionService.getAll(),
+        perfilConsultorService.getAll(),
+      ])
+      setEstadosProyecto(cfgRes.data.data.estadosProyecto)
+      setEstadosPropuesta(cfgRes.data.data.estadosPropuesta)
+      const emp = cfgRes.data.data.empresa || {}
       setEmpresaForm({
         nombre:    emp.nombre    || '',
         moneda:    emp.moneda    || 'USD',
@@ -224,6 +328,7 @@ export default function ConfiguracionPage() {
         telefono:  emp.telefono  || '',
         email:     emp.email     || '',
       })
+      setPerfiles(pfRes.data.data)
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar la configuración', life: 4000 })
     } finally {
@@ -241,6 +346,41 @@ export default function ConfiguracionPage() {
     setElDialog({ visible: false, estadoLabel: null })
     toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Nombre de estado actualizado', life: 3000 })
     loadAll()
+  }
+
+  const handleSavePerfil = () => {
+    setPfDialog({ visible: false, perfil: null })
+    toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Perfil guardado', life: 3000 })
+    loadAll()
+  }
+
+  const confirmDeletePerfil = (perfil) => {
+    confirmDialog({
+      message: `¿Eliminar el perfil "${perfil.nombre} ${perfil.nivel}"? Solo es posible si no está en uso en ningún caso de negocio.`,
+      header: 'Confirmar eliminación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Eliminar',
+      rejectLabel: 'Cancelar',
+      acceptClassName: 'p-button-danger',
+      accept: async () => {
+        try {
+          await perfilConsultorService.remove(perfil.id)
+          toast.current.show({ severity: 'success', summary: 'Eliminado', detail: 'Perfil eliminado', life: 3000 })
+          loadAll()
+        } catch (err) {
+          toast.current.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'No se pudo eliminar', life: 5000 })
+        }
+      },
+    })
+  }
+
+  const toggleActivoPerfil = async (perfil) => {
+    try {
+      await perfilConsultorService.update(perfil.id, { ...perfil, activo: !perfil.activo })
+      loadAll()
+    } catch {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: 'No se pudo actualizar', life: 3000 })
+    }
   }
 
   const handleSaveEmpresa = async () => {
@@ -384,6 +524,44 @@ export default function ConfiguracionPage() {
         </div>
       </div>
 
+      {/* ── Perfiles de Consultor ── */}
+      <Card className="mt-4">
+        <div className="flex align-items-center justify-content-between mb-3">
+          <div>
+            <h3 className="m-0 font-semibold"><i className="pi pi-users mr-2" />Perfiles de Consultor</h3>
+            <p className="text-color-secondary text-xs mt-1 mb-0">Roles con tarifas de costo e ingreso para los casos de negocio</p>
+          </div>
+          <Button label="Nuevo perfil" icon="pi pi-plus" size="small" onClick={() => setPfDialog({ visible: true, perfil: null })} />
+        </div>
+        <DataTable value={perfiles} emptyMessage="Sin perfiles registrados" size="small" stripedRows>
+          <Column header="Rol" body={(r) => <span className="font-semibold">{r.nombre}</span>} />
+          <Column header="Nivel" body={(r) => (
+            <Tag
+              value={r.nivel}
+              severity={r.nivel === 'Senior' ? 'success' : r.nivel === 'Semi Senior' ? 'info' : 'secondary'}
+              style={{ fontSize: '0.75rem' }}
+            />
+          )} style={{ width: '120px' }} />
+          <Column header="Costo/h" body={(r) => <span className="text-color-secondary">{formatCurrency(Number(r.costoHora))}</span>} style={{ width: '110px', textAlign: 'right' }} />
+          <Column header="Precio/h" body={(r) => <span className="font-semibold">{formatCurrency(Number(r.precioHora))}</span>} style={{ width: '110px', textAlign: 'right' }} />
+          <Column header="Margen" body={(r) => {
+            const m = Math.round(((Number(r.precioHora) - Number(r.costoHora)) / Number(r.precioHora)) * 100)
+            return <span className={`font-semibold ${m >= 40 ? 'text-green-600' : m >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>{m}%</span>
+          }} style={{ width: '80px', textAlign: 'right' }} />
+          <Column header="Activo" body={(r) => (
+            <InputSwitch checked={r.activo} onChange={() => toggleActivoPerfil(r)} />
+          )} style={{ width: '70px' }} />
+          <Column header="Acciones" style={{ width: '90px' }} body={(r) => (
+            <div className="flex gap-1">
+              <Button icon="pi pi-pencil" rounded text severity="info" size="small" tooltip="Editar" tooltipOptions={{ position: 'top' }}
+                onClick={() => setPfDialog({ visible: true, perfil: r })} />
+              <Button icon="pi pi-trash" rounded text severity="danger" size="small" tooltip="Eliminar" tooltipOptions={{ position: 'top' }}
+                onClick={() => confirmDeletePerfil(r)} />
+            </div>
+          )} />
+        </DataTable>
+      </Card>
+
       {/* ── Datos de la Empresa ── */}
       <Card className="mt-4">
         <div className="flex align-items-center justify-content-between mb-3">
@@ -478,6 +656,12 @@ export default function ConfiguracionPage() {
         onHide={() => setElDialog({ visible: false, estadoLabel: null })}
         onSave={handleSaveEstadoPropuesta}
         estadoLabel={elDialog.estadoLabel}
+      />
+      <PerfilConsultorDialog
+        visible={pfDialog.visible}
+        onHide={() => setPfDialog({ visible: false, perfil: null })}
+        onSave={handleSavePerfil}
+        perfil={pfDialog.perfil}
       />
     </div>
   )

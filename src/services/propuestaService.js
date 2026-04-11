@@ -29,4 +29,16 @@ export const propuestaService = {
     const response = await axios.get(`/api/v1/propuestas/${id}/logs`)
     return response.data
   },
+  async getCasoNegocio(id) {
+    const response = await axios.get(`/api/v1/propuestas/${id}/caso-negocio`)
+    return response.data
+  },
+  async upsertLineaCaso(id, data) {
+    const response = await axios.post(`/api/v1/propuestas/${id}/caso-negocio`, data)
+    return response.data
+  },
+  async deleteLineaCaso(id, perfilId) {
+    const response = await axios.delete(`/api/v1/propuestas/${id}/caso-negocio?perfilId=${perfilId}`)
+    return response.data
+  },
 }
