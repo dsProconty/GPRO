@@ -27,6 +27,8 @@ import { recordatorioService } from '@/services/recordatorioService'
 import { configuracionService } from '@/services/configuracionService'
 import axios from 'axios'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
+import { Dialog } from 'primereact/dialog'
+import { InputNumber } from 'primereact/inputnumber'
 
 const ESTADO_CONFIG = {
   Prefactibilidad:       { severity: 'warning',   label: 'Prefactibilidad' },
@@ -73,7 +75,12 @@ export default function ProyectoDetallePage({ params }) {
   const [recDialogVisible, setRecDialogVisible] = useState(false)
   const [selectedRecordatorio, setSelectedRecordatorio] = useState(null)
   const [moneda, setMoneda] = useState('USD')
-  const [casoNegocio, setCasoNegocio] = useState(null)  // { lineas, resumen } del propuesta vinculada
+  const [casoNegocio, setCasoNegocio] = useState(null)  // { lineas, resumen } del proyecto
+  const [perfilesConsultor, setPerfilesConsultor] = useState([])
+  const [addLineaVisible, setAddLineaVisible] = useState(false)
+  const [editingLinea, setEditingLinea] = useState(null)  // { perfilId, horas } al editar
+  const [savingLinea, setSavingLinea] = useState(false)
+  const [lineaForm, setLineaForm] = useState({ perfilId: null, horas: null })
 
   useEffect(() => {
     loadAll()
@@ -82,7 +89,7 @@ export default function ProyectoDetallePage({ params }) {
   const loadAll = async () => {
     setLoadingProyecto(true)
     try {
-      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes, cfgRes] = await Promise.all([
+      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes, cfgRes, perfilesRes] = await Promise.all([
         proyectoService.getById(id),
         facturaService.getAll({ proyecto_id: id }),
         observacionService.getAll({ proyecto_id: id }),
@@ -91,6 +98,7 @@ export default function ProyectoDetallePage({ params }) {
         axios.get('/api/v1/usuarios'),
         recordatorioService.getAll({ proyecto_id: id }),
         configuracionService.getAll(),
+        axios.get('/api/v1/perfiles-consultor?activo=true'),
       ])
       setProyecto(proyRes.data)
       setFacturas(factRes.data)
@@ -100,21 +108,28 @@ export default function ProyectoDetallePage({ params }) {
       setUsuarios(usrRes.data.data)
       setRecordatorios(recRes.data)
       if (cfgRes.data.data?.empresa?.moneda) setMoneda(cfgRes.data.data.empresa.moneda)
+      setPerfilesConsultor(perfilesRes.data.data || [])
       // Historial de estado (no bloquea si falla)
       axios.get(`/api/v1/proyectos/${id}/estado-logs`)
         .then((r) => setEstadoLogs(r.data.data || []))
         .catch(() => {})
-      // Caso de negocio de la propuesta vinculada (no bloquea si no existe)
-      const propuestaId = proyRes.data?.propuesta?.id
-      if (propuestaId) {
-        axios.get(`/api/v1/propuestas/${propuestaId}/caso-negocio`)
-          .then((r) => { if (r.data.data?.lineas?.length > 0) setCasoNegocio(r.data.data) })
-          .catch(() => {})
-      }
+      // Caso de negocio del proyecto (no bloquea si falla)
+      axios.get(`/api/v1/proyectos/${id}/caso-negocio`)
+        .then((r) => setCasoNegocio(r.data.data || { lineas: [], resumen: { totalHoras: 0, totalCosto: 0, totalPrecio: 0, gm: 0, gmPct: 0 } }))
+        .catch(() => {})
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar el proyecto', life: 4000 })
     } finally {
       setLoadingProyecto(false)
+    }
+  }
+
+  const loadCasoNegocio = async () => {
+    try {
+      const r = await axios.get(`/api/v1/proyectos/${id}/caso-negocio`)
+      setCasoNegocio(r.data.data || { lineas: [], resumen: { totalHoras: 0, totalCosto: 0, totalPrecio: 0, gm: 0, gmPct: 0 } })
+    } catch {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'Error cargando caso de negocio', life: 3000 })
     }
   }
 
@@ -301,6 +316,51 @@ export default function ProyectoDetallePage({ params }) {
     setEditDialogVisible(false)
     toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Proyecto actualizado', life: 3000 })
     loadAll()
+  }
+
+  // === Caso de negocio del proyecto ===
+  const openAddLinea = (linea = null) => {
+    setEditingLinea(linea)
+    setLineaForm({ perfilId: linea?.perfilConsultorId ?? null, horas: linea?.horas ?? null })
+    setAddLineaVisible(true)
+  }
+
+  const handleSaveLinea = async () => {
+    if (!lineaForm.perfilId || !lineaForm.horas || lineaForm.horas <= 0) {
+      toast.current.show({ severity: 'warn', summary: 'Validación', detail: 'Selecciona un perfil e ingresa horas mayores a 0', life: 3000 })
+      return
+    }
+    setSavingLinea(true)
+    try {
+      await axios.post(`/api/v1/proyectos/${id}/caso-negocio`, { perfilId: lineaForm.perfilId, horas: lineaForm.horas })
+      toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Línea guardada', life: 3000 })
+      setAddLineaVisible(false)
+      loadCasoNegocio()
+    } catch (err) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'Error al guardar', life: 4000 })
+    } finally {
+      setSavingLinea(false)
+    }
+  }
+
+  const handleDeleteLinea = (perfilConsultorId) => {
+    confirmDialog({
+      message: '¿Eliminar esta línea del caso de negocio?',
+      header: 'Confirmar eliminación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Eliminar',
+      rejectLabel: 'Cancelar',
+      acceptClassName: 'p-button-danger',
+      accept: async () => {
+        try {
+          await axios.delete(`/api/v1/proyectos/${id}/caso-negocio?perfilId=${perfilConsultorId}`)
+          toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Línea eliminada', life: 3000 })
+          loadCasoNegocio()
+        } catch (err) {
+          toast.current.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'Error al eliminar', life: 4000 })
+        }
+      },
+    })
   }
 
   // === Templates facturas ===
@@ -544,86 +604,106 @@ export default function ProyectoDetallePage({ params }) {
           </Card>
         </div>
 
-        {/* ── Rentabilidad esperada (del caso de negocio de la propuesta) ── */}
-        {casoNegocio && (
+        {/* ── Caso de Negocio del Proyecto ── */}
+        {(casoNegocio !== null && (casoNegocio.lineas.length > 0 || puede(PERMISOS.CASOS_NEGOCIO.EDITAR))) && (
           <div className="col-12 mt-3">
             <Card>
               <div className="flex align-items-center justify-content-between mb-3">
                 <div>
-                  <h3 className="m-0 font-semibold"><i className="pi pi-chart-line mr-2 text-green-600" />Rentabilidad esperada</h3>
+                  <h3 className="m-0 font-semibold"><i className="pi pi-chart-line mr-2 text-green-600" />Caso de Negocio</h3>
                   <p className="text-color-secondary text-xs mt-1 mb-0">
-                    Del caso de negocio de la propuesta vinculada
+                    Recursos y rentabilidad del proyecto
                     {proyecto.propuesta && (
-                      <Button label="Ver propuesta" link className="p-0 ml-2 text-xs"
+                      <Button label="Ver propuesta origen" link className="p-0 ml-2 text-xs"
                         onClick={() => router.push('/propuestas/' + proyecto.propuesta.id)} />
                     )}
                   </p>
                 </div>
-                <span className={`text-2xl font-bold ${(casoNegocio.resumen.gmPct || 0) >= 40 ? 'text-green-600' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
-                  GM {casoNegocio.resumen.gmPct}%
-                </span>
-              </div>
-
-              <div className="grid">
-                <div className="col-12 md:col-4">
-                  <div className="p-3 surface-50 border-round text-center">
-                    <div className="text-xs text-color-secondary mb-1">Ingresos estimados</div>
-                    <div className="text-lg font-bold">{formatCurrency(casoNegocio.resumen.totalPrecio, moneda)}</div>
-                  </div>
-                </div>
-                <div className="col-12 md:col-4">
-                  <div className="p-3 surface-50 border-round text-center">
-                    <div className="text-xs text-color-secondary mb-1">Costo estimado</div>
-                    <div className="text-lg font-bold text-color-secondary">{formatCurrency(casoNegocio.resumen.totalCosto, moneda)}</div>
-                  </div>
-                </div>
-                <div className="col-12 md:col-4">
-                  <div className={`p-3 border-round text-center ${(casoNegocio.resumen.gmPct || 0) >= 40 ? 'bg-green-50' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'bg-yellow-50' : 'bg-red-50'}`}>
-                    <div className="text-xs text-color-secondary mb-1">Margen bruto (GM)</div>
-                    <div className={`text-lg font-bold ${(casoNegocio.resumen.gmPct || 0) >= 40 ? 'text-green-600' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
-                      {formatCurrency(casoNegocio.resumen.gm, moneda)}
-                    </div>
-                  </div>
+                <div className="flex align-items-center gap-3">
+                  {casoNegocio.lineas.length > 0 && (
+                    <span className={`text-2xl font-bold ${(casoNegocio.resumen.gmPct || 0) >= 40 ? 'text-green-600' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      GM {casoNegocio.resumen.gmPct}%
+                    </span>
+                  )}
+                  {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) && (
+                    <Button label="Agregar perfil" icon="pi pi-plus" size="small" severity="success" outlined onClick={() => openAddLinea()} />
+                  )}
                 </div>
               </div>
 
-              <div className="mt-3">
-                <div className="flex justify-content-between text-xs text-color-secondary mb-1">
-                  <span>Margen bruto</span>
-                  <span>{casoNegocio.resumen.gmPct}%</span>
-                </div>
-                <ProgressBar value={casoNegocio.resumen.gmPct || 0} showValue={false} style={{ height: '8px' }}
-                  color={(casoNegocio.resumen.gmPct || 0) >= 40 ? 'var(--green-500)' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'var(--yellow-500)' : 'var(--red-500)'}
-                />
-              </div>
-
-              {/* Detalle por perfil */}
-              <div className="mt-3">
-                <div className="grid m-0 px-2 py-1 surface-100 text-xs font-semibold text-color-secondary border-round-top">
-                  <div className="col-5">Perfil</div>
-                  <div className="col-1 text-right">Horas</div>
-                  <div className="col-2 text-right">Costo</div>
-                  <div className="col-2 text-right">Ingreso</div>
-                  <div className="col-2 text-right">Margen</div>
-                </div>
-                {casoNegocio.lineas.map((l, idx) => {
-                  const m = l.precio > 0 ? Math.round(((l.precio - l.costo) / l.precio) * 100) : 0
-                  return (
-                    <div key={l.perfilId} className={`grid m-0 px-2 py-2 text-sm align-items-center ${idx % 2 === 1 ? 'surface-50' : ''}`} style={{ borderTop: '1px solid var(--surface-border)' }}>
-                      <div className="col-5">
-                        <span className="font-medium">{l.perfil.nombre}</span>
-                        <Tag value={l.perfil.nivel} severity={l.perfil.nivel === 'Senior' ? 'success' : l.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'} className="ml-2" style={{ fontSize: '0.7rem' }} />
-                      </div>
-                      <div className="col-1 text-right text-color-secondary">{l.horas}h</div>
-                      <div className="col-2 text-right text-color-secondary">{formatCurrency(l.costo, moneda)}</div>
-                      <div className="col-2 text-right">{formatCurrency(l.precio, moneda)}</div>
-                      <div className="col-2 text-right">
-                        <span className={`font-semibold ${m >= 40 ? 'text-green-600' : m >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>{m}%</span>
+              {casoNegocio.lineas.length === 0 ? (
+                <p className="text-color-secondary text-sm m-0">No hay líneas de caso de negocio. Agrega perfiles para estimar la rentabilidad.</p>
+              ) : (
+                <>
+                  <div className="grid">
+                    <div className="col-12 md:col-4">
+                      <div className="p-3 surface-50 border-round text-center">
+                        <div className="text-xs text-color-secondary mb-1">Ingresos estimados</div>
+                        <div className="text-lg font-bold">{formatCurrency(casoNegocio.resumen.totalPrecio, moneda)}</div>
                       </div>
                     </div>
-                  )
-                })}
-              </div>
+                    <div className="col-12 md:col-4">
+                      <div className="p-3 surface-50 border-round text-center">
+                        <div className="text-xs text-color-secondary mb-1">Costo estimado</div>
+                        <div className="text-lg font-bold text-color-secondary">{formatCurrency(casoNegocio.resumen.totalCosto, moneda)}</div>
+                      </div>
+                    </div>
+                    <div className="col-12 md:col-4">
+                      <div className={`p-3 border-round text-center ${(casoNegocio.resumen.gmPct || 0) >= 40 ? 'bg-green-50' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'bg-yellow-50' : 'bg-red-50'}`}>
+                        <div className="text-xs text-color-secondary mb-1">Margen bruto (GM)</div>
+                        <div className={`text-lg font-bold ${(casoNegocio.resumen.gmPct || 0) >= 40 ? 'text-green-600' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
+                          {formatCurrency(casoNegocio.resumen.gm, moneda)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3">
+                    <div className="flex justify-content-between text-xs text-color-secondary mb-1">
+                      <span>Margen bruto</span>
+                      <span>{casoNegocio.resumen.gmPct}%</span>
+                    </div>
+                    <ProgressBar value={casoNegocio.resumen.gmPct || 0} showValue={false} style={{ height: '8px' }}
+                      color={(casoNegocio.resumen.gmPct || 0) >= 40 ? 'var(--green-500)' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'var(--yellow-500)' : 'var(--red-500)'}
+                    />
+                  </div>
+
+                  {/* Detalle por perfil */}
+                  <div className="mt-3">
+                    <div className={`grid m-0 px-2 py-1 surface-100 text-xs font-semibold text-color-secondary border-round-top ${puede(PERMISOS.CASOS_NEGOCIO.EDITAR) ? '' : ''}`}>
+                      <div className="col-4">Perfil</div>
+                      <div className="col-1 text-right">Horas</div>
+                      <div className="col-2 text-right">Costo/h</div>
+                      <div className="col-2 text-right">Precio/h</div>
+                      <div className="col-2 text-right">Margen</div>
+                      {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) && <div className="col-1" />}
+                    </div>
+                    {casoNegocio.lineas.map((l, idx) => {
+                      const m = l.gmPct ?? (l.precio > 0 ? Math.round(((l.precio - l.costo) / l.precio) * 100) : 0)
+                      return (
+                        <div key={l.perfilConsultorId} className={`grid m-0 px-2 py-2 text-sm align-items-center ${idx % 2 === 1 ? 'surface-50' : ''}`} style={{ borderTop: '1px solid var(--surface-border)' }}>
+                          <div className="col-4">
+                            <span className="font-medium">{l.perfil.nombre}</span>
+                            <Tag value={l.perfil.nivel} severity={l.perfil.nivel === 'Senior' ? 'success' : l.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'} className="ml-2" style={{ fontSize: '0.7rem' }} />
+                          </div>
+                          <div className="col-1 text-right text-color-secondary">{l.horas}h</div>
+                          <div className="col-2 text-right text-color-secondary">{formatCurrency(l.costoHora, moneda)}</div>
+                          <div className="col-2 text-right">{formatCurrency(l.precioHora, moneda)}</div>
+                          <div className="col-2 text-right">
+                            <span className={`font-semibold ${m >= 40 ? 'text-green-600' : m >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>{m}%</span>
+                          </div>
+                          {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) && (
+                            <div className="col-1 flex gap-1 justify-content-end">
+                              <Button icon="pi pi-pencil" rounded text severity="info" size="small" onClick={() => openAddLinea(l)} tooltip="Editar horas" tooltipOptions={{ position: 'top' }} />
+                              <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => handleDeleteLinea(l.perfilConsultorId)} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} />
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
             </Card>
           </div>
         )}
@@ -747,6 +827,52 @@ export default function ProyectoDetallePage({ params }) {
       <ObservacionFormDialog visible={obsDialogVisible} onHide={() => setObsDialogVisible(false)} onSave={handleSaveObservacion} proyectoId={id} />
       <ProyectoFormDialog visible={editDialogVisible} onHide={() => setEditDialogVisible(false)} onSave={handleSaveProyecto} proyecto={proyecto} empresas={empresas} estados={estados} usuarios={usuarios} />
       <RecordatorioFormDialog visible={recDialogVisible} onHide={() => setRecDialogVisible(false)} onSave={handleSaveRecordatorio} recordatorio={selectedRecordatorio} proyectoId={id} />
+
+      {/* Dialog: agregar/editar línea de caso de negocio */}
+      <Dialog
+        header={editingLinea ? 'Editar horas de perfil' : 'Agregar perfil al caso de negocio'}
+        visible={addLineaVisible}
+        onHide={() => setAddLineaVisible(false)}
+        style={{ width: '400px' }}
+        footer={
+          <div className="flex justify-content-end gap-2">
+            <Button label="Cancelar" severity="secondary" outlined onClick={() => setAddLineaVisible(false)} disabled={savingLinea} />
+            <Button label={savingLinea ? 'Guardando…' : 'Guardar'} icon="pi pi-check" onClick={handleSaveLinea} disabled={savingLinea} loading={savingLinea} />
+          </div>
+        }
+      >
+        <div className="flex flex-column gap-3 pt-2">
+          <div className="flex flex-column gap-1">
+            <label className="text-sm font-semibold">Perfil *</label>
+            <Dropdown
+              value={lineaForm.perfilId}
+              options={perfilesConsultor}
+              optionLabel={(p) => `${p.nombre} ${p.nivel}`}
+              optionValue="id"
+              onChange={(e) => setLineaForm((f) => ({ ...f, perfilId: e.value }))}
+              placeholder="Seleccionar perfil"
+              disabled={!!editingLinea}
+              filter
+              className="w-full"
+            />
+            {editingLinea && (
+              <small className="text-color-secondary">El perfil no se puede cambiar. Elimina la línea y agrega una nueva si necesitas cambiar el perfil.</small>
+            )}
+          </div>
+          <div className="flex flex-column gap-1">
+            <label className="text-sm font-semibold">Horas *</label>
+            <InputNumber
+              value={lineaForm.horas}
+              onValueChange={(e) => setLineaForm((f) => ({ ...f, horas: e.value }))}
+              min={1}
+              max={99999}
+              placeholder="Ej: 160"
+              suffix="h"
+              className="w-full"
+            />
+          </div>
+        </div>
+      </Dialog>
     </div>
   )
 }

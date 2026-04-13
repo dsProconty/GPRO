@@ -124,6 +124,7 @@ model Proyecto {
   recordatorios  RecordatorioFactura[]
   estadoLogs     ProyectoEstadoLog[]
   propuesta      Propuesta?
+  casoNegocio    ProyectoCasoNegocioLinea[]
 
   @@map("proyectos")
 }
@@ -297,9 +298,29 @@ model PerfilConsultor {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  lineasCaso CasoNegocioLinea[]
+  lineasCaso         CasoNegocioLinea[]
+  lineasProyecto     ProyectoCasoNegocioLinea[]
 
   @@map("perfiles_consultor")
+}
+
+// ─── CASO DE NEGOCIO DEL PROYECTO ────────────────────────────────────────────
+// Copia snapshot de las líneas de la propuesta al momento de ser aprobada.
+// costoHora y precioHora se almacenan para preservar tarifas históricas.
+model ProyectoCasoNegocioLinea {
+  proyectoId        Int             @map("id_proyecto")
+  perfilConsultorId Int             @map("id_perfil_consultor")
+  horas             Decimal         @db.Decimal(10, 2)
+  costoHora         Decimal         @map("costo_hora")  @db.Decimal(10, 2)
+  precioHora        Decimal         @map("precio_hora") @db.Decimal(10, 2)
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  proyecto          Proyecto        @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  perfilConsultor   PerfilConsultor @relation(fields: [perfilConsultorId], references: [id])
+
+  @@id([proyectoId, perfilConsultorId])
+  @@map("proyecto_caso_negocio")
 }
 
 // ─── PROPUESTA ────────────────────────────────────────────────────────────────

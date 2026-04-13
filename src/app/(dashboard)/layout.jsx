@@ -14,9 +14,10 @@ const menuItemsBase = [
   {
     label: 'Principal',
     items: [
-      { label: 'Dashboard',  icon: 'pi pi-home',      path: '/dashboard',  permiso: 'dashboard.ver' },
-      { label: 'Propuestas', icon: 'pi pi-send',      path: '/propuestas', permiso: 'propuestas.ver' },
-      { label: 'Proyectos',  icon: 'pi pi-briefcase', path: '/proyectos',  permiso: 'proyectos.ver' },
+      { label: 'Dashboard',        icon: 'pi pi-home',         path: '/dashboard',      permiso: 'dashboard.ver' },
+      { label: 'Propuestas',       icon: 'pi pi-send',         path: '/propuestas',     permiso: 'propuestas.ver' },
+      { label: 'Proyectos',        icon: 'pi pi-briefcase',    path: '/proyectos',      permiso: 'proyectos.ver' },
+      { label: 'Casos de Negocio', icon: 'pi pi-chart-bar',    path: '/casos-negocio',  permiso: 'casosNegocio.ver' },
     ],
   },
   {

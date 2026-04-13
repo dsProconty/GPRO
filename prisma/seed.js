@@ -114,6 +114,7 @@ async function main() {
     'pagos.ver',       'pagos.crear',      'pagos.editar',     'pagos.eliminar',
     'observaciones.ver', 'observaciones.crear',
     'recordatorios.ver', 'recordatorios.crear', 'recordatorios.editar', 'recordatorios.eliminar',
+    'casosNegocio.ver', 'casosNegocio.editar',
   ]
 
   const perfilesSistema = [
@@ -160,6 +161,7 @@ async function main() {
         'empresas.ver',
         'facturas.ver', 'facturas.crear', 'facturas.editar', 'facturas.eliminar',
         'pagos.ver',    'pagos.crear',    'pagos.editar',    'pagos.eliminar',
+        'casosNegocio.ver',
       ],
       estadosProyectoEditables: null,
     },

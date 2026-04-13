@@ -57,6 +57,10 @@ export const PERMISOS = {
     EDITAR:   'recordatorios.editar',
     ELIMINAR: 'recordatorios.eliminar',
   },
+  CASOS_NEGOCIO: {
+    VER:    'casosNegocio.ver',
+    EDITAR: 'casosNegocio.editar',
+  },
 }
 
 // Lista plana de todos los permisos posibles (útil para UI de selección)

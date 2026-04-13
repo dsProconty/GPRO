@@ -124,6 +124,12 @@ export async function PATCH(request, { params }) {
 
   // ── Caso especial: APROBADA → crear Proyecto en transacción ──────────────
   if (estadoNuevo === 'Aprobada') {
+    // Cargar líneas del caso de negocio con tarifas actuales del perfil
+    const lineasCaso = await prisma.casoNegocioLinea.findMany({
+      where: { propuestaId: id },
+      include: { perfil: true },
+    })
+
     let proyectoCreado = null
     let propuestaActualizada = null
 
@@ -138,6 +144,16 @@ export async function PATCH(request, { params }) {
           responsables: {
             create: propuesta.responsables.map((r) => ({ userId: r.userId })),
           },
+          ...(lineasCaso.length > 0 && {
+            casoNegocio: {
+              create: lineasCaso.map((l) => ({
+                perfilConsultorId: l.perfilId,
+                horas:      l.horas,
+                costoHora:  l.perfil.costoHora,
+                precioHora: l.perfil.precioHora,
+              })),
+            },
+          }),
         },
         select: { id: true, detalle: true },
       })
