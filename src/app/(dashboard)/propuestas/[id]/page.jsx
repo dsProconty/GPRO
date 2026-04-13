@@ -120,9 +120,10 @@ export default function PropuestaDetallePage({ params }) {
     if (!casoResumen?.totalPrecio) return
     try {
       await propuestaService.update(id, {
-        titulo:        propuesta.titulo,
-        empresaId:     propuesta.empresaId,
-        valorEstimado: casoResumen.totalPrecio,
+        titulo:         propuesta.titulo,
+        empresaId:      propuesta.empresaId,
+        fechaCreacion:  propuesta.fechaCreacion,
+        valorEstimado:  casoResumen.totalPrecio,
         responsableIds: propuesta.responsables?.map((r) => r.userId) || [],
       })
       toast.current.show({ severity: 'success', summary: 'Aplicado', detail: `Valor estimado actualizado a ${formatCurrency(casoResumen.totalPrecio)}`, life: 3000 })
