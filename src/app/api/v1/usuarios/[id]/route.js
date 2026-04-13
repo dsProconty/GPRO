@@ -12,7 +12,7 @@ export async function PUT(request, { params }) {
   const id = parseInt(params.id)
   if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
 
-  const { name, email, password, role } = await request.json()
+  const { name, email, password, role, perfilUsuarioId } = await request.json()
 
   const errors = {}
   if (!name?.trim()) errors.name = ['El nombre es requerido']
@@ -26,7 +26,12 @@ export async function PUT(request, { params }) {
   const emailConflict = await prisma.user.findFirst({ where: { email: email.trim(), NOT: { id } } })
   if (emailConflict) return NextResponse.json({ success: false, message: 'Email ya en uso por otro usuario', errors: { email: ['Email ya en uso'] } }, { status: 422 })
 
-  const data = { name: name.trim(), email: email.trim(), role: role || 'user' }
+  const data = {
+    name: name.trim(),
+    email: email.trim(),
+    role: role || 'user',
+    perfilUsuarioId: perfilUsuarioId ? parseInt(perfilUsuarioId) : null,
+  }
   if (password && password.length >= 6) {
     data.password = await bcrypt.hash(password, 10)
   }
@@ -35,7 +40,7 @@ export async function PUT(request, { params }) {
     const usuario = await prisma.user.update({
       where: { id },
       data,
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      select: { id: true, name: true, email: true, role: true, perfilUsuarioId: true, createdAt: true },
     })
     return NextResponse.json({ success: true, data: usuario, message: 'Usuario actualizado exitosamente' })
   } catch (e) {

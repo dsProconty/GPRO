@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { tienePermiso, puedeEditarProyecto, PERMISOS } from '@/lib/permisos'
 
 const PROYECTO_INCLUDE = {
   empresa: { select: { id: true, nombre: true } },
@@ -59,6 +60,15 @@ export async function PUT(request, { params }) {
   const id = parseInt(params.id)
   if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
 
+  // Check editar permission + state restriction (RN Sprint 11)
+  if (!tienePermiso(session, PERMISOS.PROYECTOS.EDITAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para editar proyectos' }, { status: 403 })
+  }
+  const proyectoActual = await prisma.proyecto.findUnique({ where: { id }, select: { estadoId: true } })
+  if (proyectoActual && !puedeEditarProyecto(session, proyectoActual.estadoId)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para editar proyectos en este estado' }, { status: 403 })
+  }
+
   const { detalle, empresaId, valor, fechaCreacion, fechaCierre, estadoId, projectOnline, clienteIds = [], responsableIds = [] } = await request.json()
 
   const errors = {}
@@ -108,6 +118,9 @@ export async function PUT(request, { params }) {
 export async function PATCH(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.PROYECTOS.CAMBIAR_ESTADO)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para cambiar el estado del proyecto' }, { status: 403 })
+  }
 
   const id = parseInt(params.id)
   if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
@@ -159,6 +172,9 @@ export async function DELETE(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) {
     return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  }
+  if (!tienePermiso(session, PERMISOS.PROYECTOS.ELIMINAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para eliminar proyectos' }, { status: 403 })
   }
 
   const id = parseInt(params.id)

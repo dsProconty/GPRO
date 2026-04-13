@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { tienePermiso, PERMISOS } from '@/lib/permisos'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -9,6 +10,9 @@ export async function PUT(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) {
     return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  }
+  if (!tienePermiso(session, PERMISOS.CLIENTES.EDITAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para editar clientes' }, { status: 403 })
   }
 
   const id = parseInt(params.id)
@@ -64,6 +68,9 @@ export async function DELETE(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) {
     return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  }
+  if (!tienePermiso(session, PERMISOS.CLIENTES.ELIMINAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para eliminar clientes' }, { status: 403 })
   }
 
   const id = parseInt(params.id)

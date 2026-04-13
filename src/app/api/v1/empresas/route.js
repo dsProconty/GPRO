@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { tienePermiso, PERMISOS } from '@/lib/permisos'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -20,6 +21,9 @@ export async function POST(request) {
   const session = await getServerSession(authOptions)
   if (!session) {
     return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  }
+  if (!tienePermiso(session, PERMISOS.EMPRESAS.CREAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para crear empresas' }, { status: 403 })
   }
 
   const { nombre, ciudad } = await request.json()

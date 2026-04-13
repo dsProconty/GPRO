@@ -32,8 +32,6 @@ async function main() {
   console.log('✅ Estados de proyecto cargados (5 registros)')
 
   // ── 2. LABELS DE ESTADOS DE PROPUESTA (personalizables) ──────────────────
-  // key: identificador interno inmutable usado en la lógica de transiciones
-  // label: nombre visible que el admin puede cambiar desde /configuracion
   const propuestaLabels = [
     { key: 'Factibilidad', label: 'Factibilidad',        severity: 'warning',   icon: 'pi-lightbulb',   orden: 1 },
     { key: 'Haciendo',     label: 'Generando Propuesta', severity: 'info',      icon: 'pi-cog',         orden: 2 },
@@ -71,10 +69,10 @@ async function main() {
     where:  { id: 1 },
     update: {},   // No sobreescribir si el admin ya personalizó
     create: {
-      id:       1,
-      nombre:   'Proconty',
-      moneda:   'USD',
-      logoUrl:  null,
+      id:        1,
+      nombre:    'Proconty',
+      moneda:    'USD',
+      logoUrl:   null,
       direccion: null,
       telefono:  null,
       email:     null,
@@ -83,7 +81,7 @@ async function main() {
   console.log('✅ Configuración de empresa cargada')
 
   // ── 5. PERFILES DE CONSULTOR (catálogo inicial) ──────────────────────────
-  const perfiles = [
+  const perfilesConsultor = [
     { id: 1, nombre: 'Full Stack',   nivel: 'Senior',      costoHora: 15.00, precioHora: 33.00 },
     { id: 2, nombre: 'Full Stack',   nivel: 'Semi Senior', costoHora: 12.00, precioHora: 26.00 },
     { id: 3, nombre: 'Full Stack',   nivel: 'Junior',      costoHora: 10.00, precioHora: 20.00 },
@@ -94,16 +92,89 @@ async function main() {
     { id: 8, nombre: 'DevOps',       nivel: 'Senior',      costoHora: 16.00, precioHora: 35.00 },
   ]
 
-  for (const p of perfiles) {
+  for (const p of perfilesConsultor) {
     await prisma.perfilConsultor.upsert({
       where:  { id: p.id },
-      update: {},   // No sobreescribir si el admin ya personalizó
+      update: {},
       create: p,
     })
   }
   console.log('✅ Perfiles de consultor cargados (8 registros)')
 
-  // ── 6. DATOS DE DEMO ─────────────────────────────────────────────────────
+  // ── 6. PERFILES DE USUARIO (RBAC) ────────────────────────────────────────
+  const TODOS = [
+    'dashboard.ver',
+    'proyectos.ver',   'proyectos.crear',  'proyectos.editar', 'proyectos.eliminar',
+    'proyectos.cambiarEstado', 'proyectos.pdf',
+    'propuestas.ver',  'propuestas.crear', 'propuestas.editar', 'propuestas.eliminar',
+    'propuestas.cambiarEstado',
+    'clientes.ver',    'clientes.crear',   'clientes.editar',  'clientes.eliminar',
+    'empresas.ver',    'empresas.crear',   'empresas.editar',  'empresas.eliminar',
+    'facturas.ver',    'facturas.crear',   'facturas.editar',  'facturas.eliminar',
+    'pagos.ver',       'pagos.crear',      'pagos.editar',     'pagos.eliminar',
+    'observaciones.ver', 'observaciones.crear',
+    'recordatorios.ver', 'recordatorios.crear', 'recordatorios.editar', 'recordatorios.eliminar',
+  ]
+
+  const perfilesSistema = [
+    {
+      id: 1,
+      nombre: 'Gerencial',
+      descripcion: 'Acceso completo a todos los módulos',
+      permisos: TODOS,
+      estadosProyectoEditables: null,
+    },
+    {
+      id: 2,
+      nombre: 'PM',
+      descripcion: 'Acceso total excepto eliminar proyectos. Solo puede editar proyectos en estados Por Facturar, Adjudicado y Facturado.',
+      permisos: TODOS.filter((p) => p !== 'proyectos.eliminar'),
+      estadosProyectoEditables: [2, 3, 4],
+    },
+    {
+      id: 3,
+      nombre: 'Consultor',
+      descripcion: 'Solo lectura en todos los módulos, puede agregar observaciones y descargar PDFs de proyectos',
+      permisos: [
+        'dashboard.ver',
+        'proyectos.ver', 'proyectos.pdf',
+        'propuestas.ver',
+        'clientes.ver',
+        'empresas.ver',
+        'facturas.ver',
+        'pagos.ver',
+        'observaciones.ver', 'observaciones.crear',
+        'recordatorios.ver',
+      ],
+      estadosProyectoEditables: null,
+    },
+    {
+      id: 4,
+      nombre: 'Financiero',
+      descripcion: 'Gestión completa de facturas y pagos, lectura de proyectos, propuestas, clientes y empresas',
+      permisos: [
+        'dashboard.ver',
+        'proyectos.ver',
+        'propuestas.ver',
+        'clientes.ver',
+        'empresas.ver',
+        'facturas.ver', 'facturas.crear', 'facturas.editar', 'facturas.eliminar',
+        'pagos.ver',    'pagos.crear',    'pagos.editar',    'pagos.eliminar',
+      ],
+      estadosProyectoEditables: null,
+    },
+  ]
+
+  for (const pf of perfilesSistema) {
+    await prisma.perfilUsuario.upsert({
+      where:  { id: pf.id },
+      update: { nombre: pf.nombre, descripcion: pf.descripcion, permisos: pf.permisos, estadosProyectoEditables: pf.estadosProyectoEditables },
+      create: pf,
+    })
+  }
+  console.log('✅ Perfiles de usuario cargados (Gerencial, PM, Consultor, Financiero)')
+
+  // ── 7. DATOS DE DEMO ─────────────────────────────────────────────────────
   const empresaDemo = await prisma.empresa.upsert({
     where:  { id: 1 },
     update: {},

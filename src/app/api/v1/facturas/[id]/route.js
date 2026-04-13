@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { tienePermiso, PERMISOS } from '@/lib/permisos'
 
 function calcFactura(f) {
   const totalPagos = f.pagos.reduce((s, p) => s + Number(p.valor), 0)
@@ -24,6 +25,9 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.FACTURAS.EDITAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para editar facturas' }, { status: 403 })
+  }
 
   const id = parseInt(params.id)
   const body = await request.json()
@@ -63,6 +67,9 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.FACTURAS.ELIMINAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para eliminar facturas' }, { status: 403 })
+  }
 
   const id = parseInt(params.id)
   try {

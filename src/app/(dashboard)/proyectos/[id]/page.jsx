@@ -26,6 +26,7 @@ import RecordatorioFormDialog from '@/components/shared/RecordatorioFormDialog'
 import { recordatorioService } from '@/services/recordatorioService'
 import { configuracionService } from '@/services/configuracionService'
 import axios from 'axios'
+import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
 const ESTADO_CONFIG = {
   Prefactibilidad:       { severity: 'warning',   label: 'Prefactibilidad' },
@@ -39,6 +40,7 @@ export default function ProyectoDetallePage({ params }) {
   const toast = useRef(null)
   const router = useRouter()
   const id = parseInt(params.id)
+  const { puede, puedeEditarProyecto } = usePermisos()
 
   const [proyecto, setProyecto] = useState(null)
   const [facturas, setFacturas] = useState([])
@@ -318,8 +320,12 @@ export default function ProyectoDetallePage({ params }) {
           <Column field="observacion" header="Observación" body={(p) => p.observacion || '—'} />
           <Column header="Acciones" style={{ width: '100px' }} body={(p) => (
             <div className="flex gap-1">
-              <Button icon="pi pi-pencil" rounded text severity="info" size="small" onClick={() => openEditPago(p, factura)} />
-              <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => confirmDeletePago(p)} />
+              {puede(PERMISOS.PAGOS.EDITAR) && (
+                <Button icon="pi pi-pencil" rounded text severity="info" size="small" onClick={() => openEditPago(p, factura)} />
+              )}
+              {puede(PERMISOS.PAGOS.ELIMINAR) && (
+                <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => confirmDeletePago(p)} />
+              )}
             </div>
           )} />
         </DataTable>
@@ -355,8 +361,12 @@ export default function ProyectoDetallePage({ params }) {
           <span className="text-900 font-semibold">{proyecto.detalle}</span>
         </div>
         <div className="flex gap-2">
-          <Button label="PDF" icon="pi pi-file-pdf" severity="danger" outlined onClick={() => window.open(`/api/v1/proyectos/${id}/pdf`, '_blank')} />
-          <Button label="Editar" icon="pi pi-pencil" severity="info" outlined onClick={() => setEditDialogVisible(true)} />
+          {puede(PERMISOS.PROYECTOS.PDF) && (
+            <Button label="PDF" icon="pi pi-file-pdf" severity="danger" outlined onClick={() => window.open(`/api/v1/proyectos/${id}/pdf`, '_blank')} />
+          )}
+          {(puede(PERMISOS.PROYECTOS.EDITAR) && puedeEditarProyecto(proyecto?.estadoId)) && (
+            <Button label="Editar" icon="pi pi-pencil" severity="info" outlined onClick={() => setEditDialogVisible(true)} />
+          )}
         </div>
       </div>
 
@@ -468,7 +478,9 @@ export default function ProyectoDetallePage({ params }) {
                 <h3 className="m-0 font-semibold"><i className="pi pi-comment mr-2" />Observaciones</h3>
                 <p className="text-color-secondary text-xs mt-1 mb-0">Bitácora inmutable del proyecto</p>
               </div>
-              <Button label="Nueva observación" icon="pi pi-plus" size="small" onClick={() => setObsDialogVisible(true)} />
+              {puede(PERMISOS.OBSERVACIONES.CREAR) && (
+                <Button label="Nueva observación" icon="pi pi-plus" size="small" onClick={() => setObsDialogVisible(true)} />
+              )}
             </div>
 
             {loadingObs ? (
@@ -624,8 +636,10 @@ export default function ProyectoDetallePage({ params }) {
             <h3 className="m-0 font-semibold"><i className="pi pi-bell mr-2" />Recordatorios de Facturación</h3>
             <p className="text-color-secondary text-xs mt-1 mb-0">Alertas automáticas por email en un día fijo cada mes</p>
           </div>
-          <Button label="Nuevo Recordatorio" icon="pi pi-plus" size="small" severity="warning" outlined
-            onClick={() => { setSelectedRecordatorio(null); setRecDialogVisible(true) }} />
+          {puede(PERMISOS.RECORDATORIOS.CREAR) && (
+            <Button label="Nuevo Recordatorio" icon="pi pi-plus" size="small" severity="warning" outlined
+              onClick={() => { setSelectedRecordatorio(null); setRecDialogVisible(true) }} />
+          )}
         </div>
 
         {loadingRec ? (
@@ -661,10 +675,14 @@ export default function ProyectoDetallePage({ params }) {
             }} />
             <Column header="Acciones" style={{ width: '90px' }} body={(r) => (
               <div className="flex gap-1">
-                <Button icon="pi pi-pencil" rounded text severity="info" size="small"
-                  onClick={() => { setSelectedRecordatorio(r); setRecDialogVisible(true) }} />
-                <Button icon="pi pi-trash" rounded text severity="danger" size="small"
-                  onClick={() => confirmDeleteRecordatorio(r)} />
+                {puede(PERMISOS.RECORDATORIOS.EDITAR) && (
+                  <Button icon="pi pi-pencil" rounded text severity="info" size="small"
+                    onClick={() => { setSelectedRecordatorio(r); setRecDialogVisible(true) }} />
+                )}
+                {puede(PERMISOS.RECORDATORIOS.ELIMINAR) && (
+                  <Button icon="pi pi-trash" rounded text severity="danger" size="small"
+                    onClick={() => confirmDeleteRecordatorio(r)} />
+                )}
               </div>
             )} />
           </DataTable>
@@ -680,7 +698,9 @@ export default function ProyectoDetallePage({ params }) {
           </div>
           <div className="flex gap-2">
             <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined size="small" onClick={exportarFacturas} disabled={facturas.length === 0} />
-            <Button label="Nueva Factura" icon="pi pi-plus" onClick={openNewFactura} />
+            {puede(PERMISOS.FACTURAS.CREAR) && (
+              <Button label="Nueva Factura" icon="pi pi-plus" onClick={openNewFactura} />
+            )}
           </div>
         </div>
         <DataTable
@@ -707,9 +727,15 @@ export default function ProyectoDetallePage({ params }) {
           )} />
           <Column header="Acciones" style={{ width: '130px' }} body={(row) => (
             <div className="flex gap-1">
-              <Button icon="pi pi-plus" rounded text severity="success" tooltip="Registrar pago" tooltipOptions={{ position: 'top' }} onClick={() => openNewPago(row)} disabled={row.saldo <= 0.001} />
-              <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => openEditFactura(row)} />
-              <Button icon="pi pi-trash" rounded text severity="danger" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => confirmDeleteFactura(row)} />
+              {puede(PERMISOS.PAGOS.CREAR) && (
+                <Button icon="pi pi-plus" rounded text severity="success" tooltip="Registrar pago" tooltipOptions={{ position: 'top' }} onClick={() => openNewPago(row)} disabled={row.saldo <= 0.001} />
+              )}
+              {puede(PERMISOS.FACTURAS.EDITAR) && (
+                <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => openEditFactura(row)} />
+              )}
+              {puede(PERMISOS.FACTURAS.ELIMINAR) && (
+                <Button icon="pi pi-trash" rounded text severity="danger" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => confirmDeleteFactura(row)} />
+              )}
             </div>
           )} />
         </DataTable>

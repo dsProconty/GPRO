@@ -16,15 +16,17 @@ datasource db {
 
 // ─── USUARIOS (tabla de Laravel = users, aquí = User) ────────────────────────
 model User {
-  id            Int      @id @default(autoincrement())
-  name          String   @db.VarChar(150)
-  email         String   @unique @db.VarChar(200)
-  password      String
-  role          String   @default("user") @db.VarChar(50)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id                Int            @id @default(autoincrement())
+  name              String         @db.VarChar(150)
+  email             String         @unique @db.VarChar(200)
+  password          String
+  role              String         @default("user") @db.VarChar(50)
+  perfilUsuarioId   Int?           @map("id_perfil_usuario")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
 
   // Relaciones
+  perfilUsuario          PerfilUsuario?        @relation(fields: [perfilUsuarioId], references: [id])
   proyectosResponsable   ProyectoResponsable[]
   observaciones          Observacion[]
   estadoLogs             ProyectoEstadoLog[]
@@ -32,6 +34,23 @@ model User {
   propuestaLogs          PropuestaEstadoLog[]
 
   @@map("users")
+}
+
+// ─── PERFIL DE USUARIO (RBAC) ─────────────────────────────────────────────────
+// Permisos almacenados como array JSON de strings (ej: ["proyectos.ver","facturas.crear"])
+// estadosProyectoEditables: null = sin restricción de estado; int[] = solo esos estados
+model PerfilUsuario {
+  id                       Int      @id @default(autoincrement())
+  nombre                   String   @db.VarChar(100)
+  descripcion              String?  @db.VarChar(255)
+  permisos                 Json     // string[] de permission keys
+  estadosProyectoEditables Json?    @map("estados_proyecto_editables") // null | int[]
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  usuarios User[]
+
+  @@map("perfiles_usuario")
 }
 
 // ─── EMPRESA ─────────────────────────────────────────────────────────────────

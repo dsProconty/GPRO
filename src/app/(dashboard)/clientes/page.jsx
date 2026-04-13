@@ -12,10 +12,12 @@ import { ProgressSpinner } from 'primereact/progressspinner'
 import { Badge } from 'primereact/badge'
 import EmpresaFormDialog from '@/components/shared/EmpresaFormDialog'
 import { empresaService } from '@/services/empresaService'
+import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
 export default function ClientesPage() {
   const toast = useRef(null)
   const router = useRouter()
+  const { puede } = usePermisos()
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
   const [globalFilter, setGlobalFilter] = useState('')
@@ -91,31 +93,29 @@ export default function ClientesPage() {
     <div className="flex gap-1">
       <Button
         icon="pi pi-users"
-        rounded
-        text
-        severity="success"
+        rounded text severity="success"
         tooltip="Ver contactos"
         tooltipOptions={{ position: 'top' }}
         onClick={() => router.push(`/clientes/${rowData.id}`)}
       />
-      <Button
-        icon="pi pi-pencil"
-        rounded
-        text
-        severity="info"
-        tooltip="Editar"
-        tooltipOptions={{ position: 'top' }}
-        onClick={() => openEdit(rowData)}
-      />
-      <Button
-        icon="pi pi-trash"
-        rounded
-        text
-        severity="danger"
-        tooltip="Eliminar"
-        tooltipOptions={{ position: 'top' }}
-        onClick={() => confirmDelete(rowData)}
-      />
+      {puede(PERMISOS.EMPRESAS.EDITAR) && (
+        <Button
+          icon="pi pi-pencil"
+          rounded text severity="info"
+          tooltip="Editar"
+          tooltipOptions={{ position: 'top' }}
+          onClick={() => openEdit(rowData)}
+        />
+      )}
+      {puede(PERMISOS.EMPRESAS.ELIMINAR) && (
+        <Button
+          icon="pi pi-trash"
+          rounded text severity="danger"
+          tooltip="Eliminar"
+          tooltipOptions={{ position: 'top' }}
+          onClick={() => confirmDelete(rowData)}
+        />
+      )}
     </div>
   )
 
@@ -137,7 +137,9 @@ export default function ClientesPage() {
           <h1 className="text-2xl font-bold m-0">Clientes</h1>
           <p className="text-color-secondary text-sm mt-1 mb-0">Empresas clientes y sus contactos/PMs</p>
         </div>
-        <Button label="Nuevo Cliente" icon="pi pi-plus" onClick={openCreate} />
+        {puede(PERMISOS.EMPRESAS.CREAR) && (
+          <Button label="Nuevo Cliente" icon="pi pi-plus" onClick={openCreate} />
+        )}
       </div>
 
       <div className="mb-3">

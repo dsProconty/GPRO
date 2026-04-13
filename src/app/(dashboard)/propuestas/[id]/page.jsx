@@ -19,6 +19,7 @@ import { perfilConsultorService } from '@/services/perfilConsultorService'
 import { formatCurrency, formatDate } from '@/utils/format'
 import PropuestaFormDialog from '@/components/shared/PropuestaFormDialog'
 import CambiarEstadoPropuestaDialog from '@/components/shared/CambiarEstadoPropuestaDialog'
+import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
 // Transiciones permitidas (claves internas — nunca cambian)
 const TRANSICIONES_KEYS = {
@@ -38,6 +39,7 @@ const TRANSICIONES_KEYS = {
 export default function PropuestaDetallePage({ params }) {
   const toast = useRef(null)
   const router = useRouter()
+  const { puede } = usePermisos()
   const id = parseInt(params.id)
 
   const [propuesta, setPropuesta] = useState(null)
@@ -194,7 +196,7 @@ export default function PropuestaDetallePage({ params }) {
           <i className="pi pi-angle-right text-color-secondary" />
           <span className="text-900 font-semibold">{propuesta.titulo}</span>
         </div>
-        {!esTerminal && (
+        {!esTerminal && puede(PERMISOS.PROPUESTAS.EDITAR) && (
           <Button label="Editar" icon="pi pi-pencil" severity="info" outlined onClick={() => setEditDialogVisible(true)} />
         )}
       </div>
@@ -216,7 +218,7 @@ export default function PropuestaDetallePage({ params }) {
             </div>
 
             {/* Botones de transición */}
-            {transicionesUI.length > 0 && (
+            {transicionesUI.length > 0 && puede(PERMISOS.PROPUESTAS.CAMBIAR_ESTADO) && (
               <div className="flex flex-wrap gap-2 mb-3 p-3 surface-50 border-round">
                 <span className="text-sm font-semibold text-color-secondary align-self-center mr-1">Cambiar a:</span>
                 {transicionesUI.map((t) => (

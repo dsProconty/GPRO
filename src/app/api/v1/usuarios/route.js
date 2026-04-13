@@ -9,7 +9,12 @@ export async function GET() {
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
 
   const usuarios = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, createdAt: true },
+    select: {
+      id: true, name: true, email: true, role: true,
+      perfilUsuarioId: true,
+      perfilUsuario: { select: { id: true, nombre: true } },
+      createdAt: true,
+    },
     orderBy: { name: 'asc' },
   })
 
@@ -21,7 +26,7 @@ export async function POST(request) {
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   if (session.user.role !== 'admin') return NextResponse.json({ success: false, message: 'Solo administradores pueden crear usuarios' }, { status: 403 })
 
-  const { name, email, password, role } = await request.json()
+  const { name, email, password, role, perfilUsuarioId } = await request.json()
 
   const errors = {}
   if (!name?.trim()) errors.name = ['El nombre es requerido']
@@ -38,8 +43,14 @@ export async function POST(request) {
 
   const hashed = await bcrypt.hash(password, 10)
   const usuario = await prisma.user.create({
-    data: { name: name.trim(), email: email.trim(), password: hashed, role: role || 'user' },
-    select: { id: true, name: true, email: true, role: true, createdAt: true },
+    data: {
+      name: name.trim(),
+      email: email.trim(),
+      password: hashed,
+      role: role || 'user',
+      perfilUsuarioId: perfilUsuarioId ? parseInt(perfilUsuarioId) : null,
+    },
+    select: { id: true, name: true, email: true, role: true, perfilUsuarioId: true, createdAt: true },
   })
 
   return NextResponse.json({ success: true, data: usuario, message: 'Usuario creado exitosamente' }, { status: 201 })
