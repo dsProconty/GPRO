@@ -24,6 +24,7 @@ import ObservacionFormDialog from '@/components/shared/ObservacionFormDialog'
 import ProyectoFormDialog from '@/components/shared/ProyectoFormDialog'
 import RecordatorioFormDialog from '@/components/shared/RecordatorioFormDialog'
 import { recordatorioService } from '@/services/recordatorioService'
+import { configuracionService } from '@/services/configuracionService'
 import axios from 'axios'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
@@ -71,6 +72,8 @@ export default function ProyectoDetallePage({ params }) {
   const [loadingRec, setLoadingRec] = useState(false)
   const [recDialogVisible, setRecDialogVisible] = useState(false)
   const [selectedRecordatorio, setSelectedRecordatorio] = useState(null)
+  const [moneda, setMoneda] = useState('USD')
+  const [casoNegocio, setCasoNegocio] = useState(null)  // { lineas, resumen } del propuesta vinculada
 
   useEffect(() => {
     loadAll()
@@ -79,7 +82,7 @@ export default function ProyectoDetallePage({ params }) {
   const loadAll = async () => {
     setLoadingProyecto(true)
     try {
-      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes] = await Promise.all([
+      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes, cfgRes] = await Promise.all([
         proyectoService.getById(id),
         facturaService.getAll({ proyecto_id: id }),
         observacionService.getAll({ proyecto_id: id }),
@@ -87,6 +90,7 @@ export default function ProyectoDetallePage({ params }) {
         axios.get('/api/v1/empresas'),
         axios.get('/api/v1/usuarios'),
         recordatorioService.getAll({ proyecto_id: id }),
+        configuracionService.getAll(),
       ])
       setProyecto(proyRes.data)
       setFacturas(factRes.data)
@@ -95,10 +99,18 @@ export default function ProyectoDetallePage({ params }) {
       setEmpresas(empRes.data.data)
       setUsuarios(usrRes.data.data)
       setRecordatorios(recRes.data)
+      if (cfgRes.data.data?.empresa?.moneda) setMoneda(cfgRes.data.data.empresa.moneda)
       // Historial de estado (no bloquea si falla)
       axios.get(`/api/v1/proyectos/${id}/estado-logs`)
         .then((r) => setEstadoLogs(r.data.data || []))
         .catch(() => {})
+      // Caso de negocio de la propuesta vinculada (no bloquea si no existe)
+      const propuestaId = proyRes.data?.propuesta?.id
+      if (propuestaId) {
+        axios.get(`/api/v1/propuestas/${propuestaId}/caso-negocio`)
+          .then((r) => { if (r.data.data?.lineas?.length > 0) setCasoNegocio(r.data.data) })
+          .catch(() => {})
+      }
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar el proyecto', life: 4000 })
     } finally {
@@ -205,7 +217,7 @@ export default function ProyectoDetallePage({ params }) {
 
   const confirmDeletePago = (pago) => {
     confirmDialog({
-      message: `¿Eliminar el pago de ${formatCurrency(pago.valor)}?`,
+      message: `¿Eliminar el pago de ${formatCurrency(pago.valor, moneda)}?`,
       header: 'Confirmar eliminación',
       icon: 'pi pi-exclamation-triangle',
       acceptLabel: 'Eliminar',
@@ -304,7 +316,7 @@ export default function ProyectoDetallePage({ params }) {
         <DataTable value={factura.pagos} size="small" stripedRows>
           <Column field="id" header="ID" style={{ width: '60px' }} />
           <Column header="Fecha" body={(p) => formatDate(p.fecha)} />
-          <Column header="Valor" body={(p) => formatCurrency(Number(p.valor))} style={{ textAlign: 'right' }} />
+          <Column header="Valor" body={(p) => formatCurrency(Number(p.valor), moneda)} style={{ textAlign: 'right' }} />
           <Column field="observacion" header="Observación" body={(p) => p.observacion || '—'} />
           <Column header="Acciones" style={{ width: '100px' }} body={(p) => (
             <div className="flex gap-1">
@@ -497,11 +509,11 @@ export default function ProyectoDetallePage({ params }) {
             <div className="flex flex-column gap-3">
               <div className="flex justify-content-between">
                 <span className="text-color-secondary">Valor contrato</span>
-                <strong>{formatCurrency(proyecto.valor)}</strong>
+                <strong>{formatCurrency(proyecto.valor, moneda)}</strong>
               </div>
               <div className="flex justify-content-between">
                 <span className="text-color-secondary">Facturado</span>
-                <strong>{formatCurrency(resumen.facturado)}</strong>
+                <strong>{formatCurrency(resumen.facturado, moneda)}</strong>
               </div>
               <div>
                 <div className="flex justify-content-between mb-1">
@@ -512,7 +524,7 @@ export default function ProyectoDetallePage({ params }) {
               </div>
               <div className="flex justify-content-between">
                 <span className="text-color-secondary">Pagado</span>
-                <strong>{formatCurrency(resumen.pagado)}</strong>
+                <strong>{formatCurrency(resumen.pagado, moneda)}</strong>
               </div>
               <div>
                 <div className="flex justify-content-between mb-1">
@@ -525,12 +537,96 @@ export default function ProyectoDetallePage({ params }) {
               <div className="flex justify-content-between">
                 <span className="font-semibold">Saldo pendiente</span>
                 <strong style={{ color: resumen.saldo > 0.001 ? 'var(--red-500)' : 'var(--green-500)' }}>
-                  {formatCurrency(resumen.saldo)}
+                  {formatCurrency(resumen.saldo, moneda)}
                 </strong>
               </div>
             </div>
           </Card>
         </div>
+
+        {/* ── Rentabilidad esperada (del caso de negocio de la propuesta) ── */}
+        {casoNegocio && (
+          <div className="col-12 mt-3">
+            <Card>
+              <div className="flex align-items-center justify-content-between mb-3">
+                <div>
+                  <h3 className="m-0 font-semibold"><i className="pi pi-chart-line mr-2 text-green-600" />Rentabilidad esperada</h3>
+                  <p className="text-color-secondary text-xs mt-1 mb-0">
+                    Del caso de negocio de la propuesta vinculada
+                    {proyecto.propuesta && (
+                      <Button label="Ver propuesta" link className="p-0 ml-2 text-xs"
+                        onClick={() => router.push('/propuestas/' + proyecto.propuesta.id)} />
+                    )}
+                  </p>
+                </div>
+                <span className={`text-2xl font-bold ${(casoNegocio.resumen.gmPct || 0) >= 40 ? 'text-green-600' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  GM {casoNegocio.resumen.gmPct}%
+                </span>
+              </div>
+
+              <div className="grid">
+                <div className="col-12 md:col-4">
+                  <div className="p-3 surface-50 border-round text-center">
+                    <div className="text-xs text-color-secondary mb-1">Ingresos estimados</div>
+                    <div className="text-lg font-bold">{formatCurrency(casoNegocio.resumen.totalPrecio, moneda)}</div>
+                  </div>
+                </div>
+                <div className="col-12 md:col-4">
+                  <div className="p-3 surface-50 border-round text-center">
+                    <div className="text-xs text-color-secondary mb-1">Costo estimado</div>
+                    <div className="text-lg font-bold text-color-secondary">{formatCurrency(casoNegocio.resumen.totalCosto, moneda)}</div>
+                  </div>
+                </div>
+                <div className="col-12 md:col-4">
+                  <div className={`p-3 border-round text-center ${(casoNegocio.resumen.gmPct || 0) >= 40 ? 'bg-green-50' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'bg-yellow-50' : 'bg-red-50'}`}>
+                    <div className="text-xs text-color-secondary mb-1">Margen bruto (GM)</div>
+                    <div className={`text-lg font-bold ${(casoNegocio.resumen.gmPct || 0) >= 40 ? 'text-green-600' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {formatCurrency(casoNegocio.resumen.gm, moneda)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <div className="flex justify-content-between text-xs text-color-secondary mb-1">
+                  <span>Margen bruto</span>
+                  <span>{casoNegocio.resumen.gmPct}%</span>
+                </div>
+                <ProgressBar value={casoNegocio.resumen.gmPct || 0} showValue={false} style={{ height: '8px' }}
+                  color={(casoNegocio.resumen.gmPct || 0) >= 40 ? 'var(--green-500)' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'var(--yellow-500)' : 'var(--red-500)'}
+                />
+              </div>
+
+              {/* Detalle por perfil */}
+              <div className="mt-3">
+                <div className="grid m-0 px-2 py-1 surface-100 text-xs font-semibold text-color-secondary border-round-top">
+                  <div className="col-5">Perfil</div>
+                  <div className="col-1 text-right">Horas</div>
+                  <div className="col-2 text-right">Costo</div>
+                  <div className="col-2 text-right">Ingreso</div>
+                  <div className="col-2 text-right">Margen</div>
+                </div>
+                {casoNegocio.lineas.map((l, idx) => {
+                  const m = l.precio > 0 ? Math.round(((l.precio - l.costo) / l.precio) * 100) : 0
+                  return (
+                    <div key={l.perfilId} className={`grid m-0 px-2 py-2 text-sm align-items-center ${idx % 2 === 1 ? 'surface-50' : ''}`} style={{ borderTop: '1px solid var(--surface-border)' }}>
+                      <div className="col-5">
+                        <span className="font-medium">{l.perfil.nombre}</span>
+                        <Tag value={l.perfil.nivel} severity={l.perfil.nivel === 'Senior' ? 'success' : l.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'} className="ml-2" style={{ fontSize: '0.7rem' }} />
+                      </div>
+                      <div className="col-1 text-right text-color-secondary">{l.horas}h</div>
+                      <div className="col-2 text-right text-color-secondary">{formatCurrency(l.costo, moneda)}</div>
+                      <div className="col-2 text-right">{formatCurrency(l.precio, moneda)}</div>
+                      <div className="col-2 text-right">
+                        <span className={`font-semibold ${m >= 40 ? 'text-green-600' : m >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>{m}%</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
 
       {/* Recordatorios de Facturación */}
@@ -622,11 +718,11 @@ export default function ProyectoDetallePage({ params }) {
           <Column field="numFactura" header="Nº Factura" sortable />
           <Column field="ordenCompra" header="OC" body={(row) => row.ordenCompra || '—'} />
           <Column header="Fecha" body={(row) => formatDate(row.fechaFactura)} sortable sortField="fechaFactura" />
-          <Column header="Valor" body={(row) => formatCurrency(row.valor)} sortable sortField="valor" style={{ textAlign: 'right' }} />
-          <Column header="Pagado" body={(row) => formatCurrency(row.totalPagos)} style={{ textAlign: 'right' }} />
+          <Column header="Valor" body={(row) => formatCurrency(row.valor, moneda)} sortable sortField="valor" style={{ textAlign: 'right' }} />
+          <Column header="Pagado" body={(row) => formatCurrency(row.totalPagos, moneda)} style={{ textAlign: 'right' }} />
           <Column header="Saldo" style={{ textAlign: 'right' }} body={(row) => (
             <span style={{ color: row.saldo > 0.001 ? 'var(--red-500)' : 'var(--green-500)', fontWeight: 600 }}>
-              {formatCurrency(row.saldo)}
+              {formatCurrency(row.saldo, moneda)}
             </span>
           )} />
           <Column header="Acciones" style={{ width: '130px' }} body={(row) => (

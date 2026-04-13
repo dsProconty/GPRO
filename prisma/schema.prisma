@@ -255,6 +255,53 @@ model ProyectoEstadoLog {
   @@map("proyecto_estado_logs")
 }
 
+// ─── CONFIGURACIÓN: DATOS DE LA EMPRESA (singleton id=1) ─────────────────────
+// Nombre, moneda, logo y datos de contacto usados en PDF, layout y emails.
+model ConfiguracionEmpresa {
+  id        Int      @id @default(1)
+  nombre    String   @default("Mi Empresa") @db.VarChar(150)
+  moneda    String   @default("USD")         @db.VarChar(10)
+  logoUrl   String?  @map("logo_url")        @db.VarChar(500)
+  direccion String?  @db.VarChar(300)
+  telefono  String?  @db.VarChar(50)
+  email     String?  @db.VarChar(200)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("configuracion_empresa")
+}
+
+// ─── CONFIGURACIÓN: LABELS DE ESTADOS DE PROPUESTA ───────────────────────────
+// Permite renombrar los estados de propuesta sin cambiar la lógica interna.
+// key: identificador interno inmutable (Factibilidad, Haciendo, Enviada, Aprobada, Rechazada)
+// label: nombre visible al usuario, personalizable desde /configuracion
+model PropuestaEstadoLabel {
+  key       String   @id @db.VarChar(50)
+  label     String   @db.VarChar(100)
+  severity  String   @db.VarChar(20)
+  icon      String   @db.VarChar(50)
+  orden     Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("propuesta_estado_labels")
+}
+
+// ─── CATÁLOGO: PERFILES DE CONSULTOR ─────────────────────────────────────────
+// Parametrización: rol + nivel + tarifas. Usado en el Caso de Negocio.
+model PerfilConsultor {
+  id         Int      @id @default(autoincrement())
+  nombre     String   @db.VarChar(100)   // Ej: "Full Stack", "QA", "PM"
+  nivel      String   @db.VarChar(50)    // "Senior" | "Semi Senior" | "Junior"
+  costoHora  Decimal  @map("costo_hora") @db.Decimal(10, 2)
+  precioHora Decimal  @map("precio_hora") @db.Decimal(10, 2)
+  activo     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  lineasCaso CasoNegocioLinea[]
+
+  @@map("perfiles_consultor")
+}
+
 // ─── PROPUESTA ────────────────────────────────────────────────────────────────
 // Pipeline comercial previo a la adjudicación de proyectos.
 // Estados: Factibilidad → Haciendo → Enviada → Aprobada|Rechazada
@@ -276,8 +323,24 @@ model Propuesta {
   proyecto     Proyecto?            @relation(fields: [proyectoId], references: [id])
   responsables PropuestaResponsable[]
   logs         PropuestaEstadoLog[]
+  casoNegocio  CasoNegocioLinea[]
 
   @@map("propuestas")
+}
+
+// ─── CASO DE NEGOCIO: LÍNEAS (pivot propuesta × perfil) ──────────────────────
+// Opcional por propuesta. costo/precio/GM se calculan en tiempo real.
+// RN-CN04: bloqueado (solo lectura) cuando propuesta está Aprobada o Rechazada.
+model CasoNegocioLinea {
+  propuestaId Int     @map("id_propuesta")
+  perfilId    Int     @map("id_perfil")
+  horas       Decimal @db.Decimal(10, 2)
+
+  propuesta Propuesta      @relation(fields: [propuestaId], references: [id], onDelete: Cascade)
+  perfil    PerfilConsultor @relation(fields: [perfilId], references: [id])
+
+  @@id([propuestaId, perfilId])
+  @@map("caso_negocio_lineas")
 }
 
 // ─── PIVOT: PROPUESTA ↔ RESPONSABLE ─────────────────────────────────────────

@@ -16,6 +16,7 @@ import ProyectoFormDialog from '@/components/shared/ProyectoFormDialog'
 import { proyectoService } from '@/services/proyectoService'
 import { empresaService } from '@/services/empresaService'
 import { usuarioService } from '@/services/usuarioService'
+import { configuracionService } from '@/services/configuracionService'
 import axios from 'axios'
 import { formatCurrency, formatDate, calcTiempoVida } from '@/utils/format'
 import * as XLSX from 'xlsx'
@@ -38,6 +39,7 @@ export default function ProyectosPage() {
   const [empresas, setEmpresas] = useState([])
   const [estados, setEstados] = useState([])
   const [usuarios, setUsuarios] = useState([])
+  const [moneda, setMoneda] = useState('USD')
   const [loading, setLoading] = useState(true)
   const [globalFilter, setGlobalFilter] = useState('')
   const [estadoFiltro, setEstadoFiltro] = useState(null)
@@ -53,16 +55,18 @@ export default function ProyectosPage() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [proyRes, empRes, usrRes, estRes] = await Promise.all([
+      const [proyRes, empRes, usrRes, estRes, cfgRes] = await Promise.all([
         proyectoService.getAll(),
         empresaService.getAll(),
         usuarioService.getAll(),
         axios.get('/api/v1/estados'),
+        configuracionService.getAll(),
       ])
       setProyectos(proyRes.data)
       setEmpresas(empRes.data)
       setUsuarios(usrRes.data)
       setEstados(estRes.data.data)
+      if (cfgRes.data.data?.empresa?.moneda) setMoneda(cfgRes.data.data.empresa.moneda)
     } catch {
       toast.current.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los proyectos', life: 4000 })
     } finally {
@@ -136,13 +140,13 @@ export default function ProyectosPage() {
     return <Tag value={cfg.label} severity={cfg.severity} />
   }
 
-  const valorTemplate = (row) => formatCurrency(row.valor)
-  const facturadoTemplate = (row) => formatCurrency(row.facturado)
-  const pagadoTemplate = (row) => formatCurrency(row.pagado)
+  const valorTemplate = (row) => formatCurrency(row.valor, moneda)
+  const facturadoTemplate = (row) => formatCurrency(row.facturado, moneda)
+  const pagadoTemplate = (row) => formatCurrency(row.pagado, moneda)
 
   const saldoTemplate = (row) => (
     <span style={{ color: row.saldo > 0 ? 'var(--red-500)' : 'var(--green-500)', fontWeight: 600 }}>
-      {formatCurrency(row.saldo)}
+      {formatCurrency(row.saldo, moneda)}
     </span>
   )
 

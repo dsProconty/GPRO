@@ -36,6 +36,7 @@ export default function DashboardLayout({ children }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [recordatoriosHoy, setRecordatoriosHoy] = useState(0)
+  const [nombreEmpresa, setNombreEmpresa] = useState('GPRO')
   const isAdmin = session?.user?.role === 'admin'
   const permisos = session?.user?.permisos || []
 
@@ -49,9 +50,11 @@ export default function DashboardLayout({ children }) {
   }))
 
   useEffect(() => {
-    // Carga recordatoriosHoy para mostrar badge en sidebar
     axios.get('/api/v1/dashboard')
       .then((res) => setRecordatoriosHoy(res.data.data?.recordatoriosHoy ?? 0))
+      .catch(() => {})
+    axios.get('/api/v1/configuracion')
+      .then((res) => { if (res.data.data?.empresa?.nombre) setNombreEmpresa(res.data.data.empresa.nombre) })
       .catch(() => {})
   }, [])
 
@@ -89,7 +92,7 @@ export default function DashboardLayout({ children }) {
           </div>
           <div>
             <div className="text-900 font-bold text-lg">GPRO</div>
-            <div className="text-400 text-xs">Gestor de Proyectos</div>
+            <div className="text-400 text-xs">{nombreEmpresa}</div>
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto p-3">
@@ -135,7 +138,7 @@ export default function DashboardLayout({ children }) {
       <div className="flex flex-column flex-1" style={{ overflow: 'hidden' }}>
         <header className="flex align-items-center gap-3 px-4 surface-card shadow-1" style={{ height: '64px', borderBottom: '1px solid var(--surface-border)', flexShrink: 0 }}>
           <Button icon="pi pi-bars" rounded text severity="secondary" onClick={() => setSidebarOpen(!sidebarOpen)} />
-          <span className="text-900 font-semibold">GPRO · Proconty</span>
+          <span className="text-900 font-semibold">GPRO · {nombreEmpresa}</span>
           <div className="flex-1" />
           <span className="text-400 text-sm">{new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
         </header>

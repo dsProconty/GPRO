@@ -14,15 +14,18 @@ export async function GET(request, { params }) {
   if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
 
   try {
-    const proyecto = await prisma.proyecto.findUnique({
-      where: { id },
-      include: {
-        empresa: { select: { id: true, nombre: true } },
-        estado: { select: { id: true, nombre: true } },
-        clientes: { include: { cliente: { select: { nombre: true, apellido: true } } } },
-        responsables: { include: { user: { select: { name: true } } } },
-      },
-    })
+    const [proyecto, empresaCfg] = await Promise.all([
+      prisma.proyecto.findUnique({
+        where: { id },
+        include: {
+          empresa: { select: { id: true, nombre: true } },
+          estado: { select: { id: true, nombre: true } },
+          clientes: { include: { cliente: { select: { nombre: true, apellido: true } } } },
+          responsables: { include: { user: { select: { name: true } } } },
+        },
+      }),
+      prisma.configuracionEmpresa.findUnique({ where: { id: 1 } }),
+    ])
 
     if (!proyecto) return NextResponse.json({ success: false, message: 'Proyecto no encontrado' }, { status: 404 })
 
@@ -50,6 +53,7 @@ export async function GET(request, { params }) {
         proyecto: { ...proyecto, valor: Number(proyecto.valor) },
         facturas: facturasConPagos,
         observaciones,
+        empresa: empresaCfg || {},
       })
     )
 

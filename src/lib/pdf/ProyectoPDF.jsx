@@ -77,15 +77,18 @@ const styles = StyleSheet.create({
 })
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const fmt = (val) => {
+const makeFmt = (currency = 'USD') => (val) => {
   const n = Number(val ?? 0)
-  return new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n)
+  return new Intl.NumberFormat('es-EC', { style: 'currency', currency, minimumFractionDigits: 2 }).format(n)
 }
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-EC') : '—'
 
 // ── Componente ────────────────────────────────────────────────────────────────
-export function ProyectoPDF({ proyecto, facturas, observaciones }) {
+export function ProyectoPDF({ proyecto, facturas, observaciones, empresa = {} }) {
+  const nombreEmpresa = empresa.nombre || 'GPRO'
+  const moneda        = empresa.moneda  || 'USD'
+  const fmt           = makeFmt(moneda)
   const estadoNombre  = proyecto.estado?.nombre || 'Desconocido'
   const estadoLabel   = estadoNombre.replace('_', ' ')
   const estadoColor   = ESTADO_COLORS[estadoNombre] || C.gray
@@ -111,15 +114,21 @@ export function ProyectoPDF({ proyecto, facturas, observaciones }) {
         {/* ── Header ── */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <View style={styles.logoBox}><Text style={styles.logoText}>GPRO</Text></View>
+            <View style={styles.logoBox}><Text style={styles.logoText}>{nombreEmpresa}</Text></View>
             <Text style={styles.proyectoNombre}>{proyecto.detalle}</Text>
             <Text style={{ fontSize: 8, color: C.gray }}>{proyecto.empresa?.nombre}</Text>
+            {(empresa.direccion || empresa.telefono || empresa.email) && (
+              <Text style={{ fontSize: 7, color: C.gray, marginTop: 3 }}>
+                {[empresa.direccion, empresa.telefono, empresa.email].filter(Boolean).join('  ·  ')}
+              </Text>
+            )}
           </View>
           <View style={styles.headerRight}>
             <View style={[styles.estadoBadge, { backgroundColor: estadoColor }]}>
               <Text style={styles.estadoText}>{estadoLabel}</Text>
             </View>
             <Text style={styles.fechaGen}>Generado: {fmtDate(new Date())}</Text>
+            {moneda !== 'USD' && <Text style={{ fontSize: 7, color: C.gray, marginTop: 2 }}>Moneda: {moneda}</Text>}
           </View>
         </View>
 
@@ -250,7 +259,7 @@ export function ProyectoPDF({ proyecto, facturas, observaciones }) {
 
         {/* ── Footer ── */}
         <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>GPRO · Proconty · {new Date().getFullYear()}</Text>
+          <Text style={styles.footerText}>GPRO · {nombreEmpresa} · {new Date().getFullYear()}</Text>
           <Text style={styles.footerText} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
         </View>
 
