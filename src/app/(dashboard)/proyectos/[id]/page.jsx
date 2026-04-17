@@ -669,38 +669,45 @@ export default function ProyectoDetallePage({ params }) {
                   </div>
 
                   {/* Detalle por perfil */}
-                  <div className="mt-3">
-                    <div className={`grid m-0 px-2 py-1 surface-100 text-xs font-semibold text-color-secondary border-round-top ${puede(PERMISOS.CASOS_NEGOCIO.EDITAR) ? '' : ''}`}>
-                      <div className="col-4">Perfil</div>
+                  <div className="mt-3" style={{ overflowX: 'auto' }}>
+                    <div className="grid m-0 px-2 py-1 surface-100 text-xs font-semibold text-color-secondary border-round-top" style={{ minWidth: '600px' }}>
+                      <div className="col-3">Perfil</div>
                       <div className="col-1 text-right">Horas</div>
                       <div className="col-2 text-right">Costo/h</div>
+                      <div className="col-2 text-right">Total Costo</div>
                       <div className="col-2 text-right">Precio/h</div>
-                      <div className="col-2 text-right">Margen</div>
+                      <div className="col-1 text-right">Total Precio</div>
+                      {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) ? <div className="col-1" /> : <div className="col-1" />}
+                    </div>
+                    {casoNegocio.lineas.map((l, idx) => (
+                      <div key={l.perfilConsultorId} className={`grid m-0 px-2 py-2 text-sm align-items-center ${idx % 2 === 1 ? 'surface-50' : ''}`} style={{ borderTop: '1px solid var(--surface-border)', minWidth: '600px' }}>
+                        <div className="col-3">
+                          <span className="font-medium">{l.perfil.nombre}</span>
+                          <Tag value={l.perfil.nivel} severity={l.perfil.nivel === 'Senior' ? 'success' : l.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'} className="ml-2" style={{ fontSize: '0.7rem' }} />
+                        </div>
+                        <div className="col-1 text-right text-color-secondary">{l.horas}h</div>
+                        <div className="col-2 text-right text-color-secondary">{formatCurrency(l.costoHora, moneda)}</div>
+                        <div className="col-2 text-right text-color-secondary">{formatCurrency(l.costo, moneda)}</div>
+                        <div className="col-2 text-right text-color-secondary">{formatCurrency(l.precioHora, moneda)}</div>
+                        <div className="col-1 text-right font-semibold">{formatCurrency(l.precio, moneda)}</div>
+                        {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) ? (
+                          <div className="col-1 flex gap-1 justify-content-end">
+                            <Button icon="pi pi-pencil" rounded text severity="info" size="small" onClick={() => openAddLinea(l)} tooltip="Editar horas" tooltipOptions={{ position: 'top' }} />
+                            <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => handleDeleteLinea(l.perfilConsultorId)} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} />
+                          </div>
+                        ) : <div className="col-1" />}
+                      </div>
+                    ))}
+                    {/* Fila TOTAL */}
+                    <div className="grid m-0 px-2 py-2 text-sm font-bold surface-100 border-round-bottom" style={{ borderTop: '2px solid var(--surface-border)', minWidth: '600px' }}>
+                      <div className="col-3">TOTAL</div>
+                      <div className="col-1 text-right">{casoNegocio.resumen.totalHoras}h</div>
+                      <div className="col-2" />
+                      <div className="col-2 text-right">{formatCurrency(casoNegocio.resumen.totalCosto, moneda)}</div>
+                      <div className="col-2" />
+                      <div className="col-1 text-right text-green-700">{formatCurrency(casoNegocio.resumen.totalPrecio, moneda)}</div>
                       {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) && <div className="col-1" />}
                     </div>
-                    {casoNegocio.lineas.map((l, idx) => {
-                      const m = l.gmPct ?? (l.precio > 0 ? Math.round(((l.precio - l.costo) / l.precio) * 100) : 0)
-                      return (
-                        <div key={l.perfilConsultorId} className={`grid m-0 px-2 py-2 text-sm align-items-center ${idx % 2 === 1 ? 'surface-50' : ''}`} style={{ borderTop: '1px solid var(--surface-border)' }}>
-                          <div className="col-4">
-                            <span className="font-medium">{l.perfil.nombre}</span>
-                            <Tag value={l.perfil.nivel} severity={l.perfil.nivel === 'Senior' ? 'success' : l.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'} className="ml-2" style={{ fontSize: '0.7rem' }} />
-                          </div>
-                          <div className="col-1 text-right text-color-secondary">{l.horas}h</div>
-                          <div className="col-2 text-right text-color-secondary">{formatCurrency(l.costoHora, moneda)}</div>
-                          <div className="col-2 text-right">{formatCurrency(l.precioHora, moneda)}</div>
-                          <div className="col-2 text-right">
-                            <span className={`font-semibold ${m >= 40 ? 'text-green-600' : m >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>{m}%</span>
-                          </div>
-                          {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) && (
-                            <div className="col-1 flex gap-1 justify-content-end">
-                              <Button icon="pi pi-pencil" rounded text severity="info" size="small" onClick={() => openAddLinea(l)} tooltip="Editar horas" tooltipOptions={{ position: 'top' }} />
-                              <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => handleDeleteLinea(l.perfilConsultorId)} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} />
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
                   </div>
                 </>
               )}
