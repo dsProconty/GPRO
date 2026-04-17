@@ -288,48 +288,42 @@ export default function PropuestaDetallePage({ params }) {
             ) : (
               <>
                 {/* Tabla de líneas */}
-                <div className="border-round overflow-hidden mb-3" style={{ border: '1px solid var(--surface-border)' }}>
-                  <div className="grid m-0 px-3 py-2 surface-100 text-xs font-semibold text-color-secondary">
-                    <div className="col-4">Perfil</div>
+                <div className="border-round overflow-hidden mb-3" style={{ border: '1px solid var(--surface-border)', overflowX: 'auto' }}>
+                  <div className="grid m-0 px-3 py-2 surface-100 text-xs font-semibold text-color-secondary" style={{ minWidth: '600px' }}>
+                    <div className="col-3">Perfil</div>
                     <div className="col-1 text-right">Horas</div>
-                    <div className="col-2 text-right">Costo</div>
-                    <div className="col-2 text-right">Ingreso</div>
-                    <div className="col-2 text-right">Margen</div>
+                    <div className="col-2 text-right">Costo/h</div>
+                    <div className="col-2 text-right">Total Costo</div>
+                    <div className="col-2 text-right">Precio/h</div>
+                    <div className="col-1 text-right">Total Precio</div>
                     <div className="col-1" />
                   </div>
-                  {casoLineas.map((l, idx) => {
-                    const margen = l.precio > 0 ? Math.round(((l.precio - l.costo) / l.precio) * 100) : 0
-                    return (
-                      <div key={l.perfilId} className={`grid m-0 px-3 py-2 align-items-center ${idx % 2 === 1 ? 'surface-50' : ''}`} style={{ borderTop: '1px solid var(--surface-border)' }}>
-                        <div className="col-4">
-                          <span className="font-semibold text-sm">{l.perfil.nombre}</span>
-                          <Tag value={l.perfil.nivel} severity={l.perfil.nivel === 'Senior' ? 'success' : l.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'} className="ml-2" style={{ fontSize: '0.7rem' }} />
-                        </div>
-                        <div className="col-1 text-right text-sm">{l.horas}h</div>
-                        <div className="col-2 text-right text-sm text-color-secondary">{formatCurrency(l.costo)}</div>
-                        <div className="col-2 text-right text-sm font-semibold">{formatCurrency(l.precio)}</div>
-                        <div className="col-2 text-right">
-                          <span className={`text-sm font-semibold ${margen >= 40 ? 'text-green-600' : margen >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>{margen}%</span>
-                        </div>
-                        <div className="col-1 text-right">
-                          {!esTerminal && (
-                            <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => handleDeleteLinea(l.perfilId)} />
-                          )}
-                        </div>
+                  {casoLineas.map((l, idx) => (
+                    <div key={l.perfilId} className={`grid m-0 px-3 py-2 align-items-center ${idx % 2 === 1 ? 'surface-50' : ''}`} style={{ borderTop: '1px solid var(--surface-border)', minWidth: '600px' }}>
+                      <div className="col-3">
+                        <span className="font-semibold text-sm">{l.perfil.nombre}</span>
+                        <Tag value={l.perfil.nivel} severity={l.perfil.nivel === 'Senior' ? 'success' : l.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'} className="ml-2" style={{ fontSize: '0.7rem' }} />
                       </div>
-                    )
-                  })}
-                  {/* Totales */}
-                  <div className="grid m-0 px-3 py-2 font-semibold surface-100" style={{ borderTop: '2px solid var(--surface-border)' }}>
-                    <div className="col-4 text-sm">TOTAL</div>
-                    <div className="col-1 text-right text-sm">{casoResumen?.totalHoras}h</div>
-                    <div className="col-2 text-right text-sm text-color-secondary">{formatCurrency(casoResumen?.totalCosto)}</div>
-                    <div className="col-2 text-right text-sm">{formatCurrency(casoResumen?.totalPrecio)}</div>
-                    <div className="col-2 text-right">
-                      <span className={`text-sm font-bold ${(casoResumen?.gmPct || 0) >= 40 ? 'text-green-600' : (casoResumen?.gmPct || 0) >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
-                        {casoResumen?.gmPct}%
-                      </span>
+                      <div className="col-1 text-right text-sm">{l.horas}h</div>
+                      <div className="col-2 text-right text-sm text-color-secondary">{formatCurrency(l.costoHora)}</div>
+                      <div className="col-2 text-right text-sm text-color-secondary">{formatCurrency(l.costo)}</div>
+                      <div className="col-2 text-right text-sm text-color-secondary">{formatCurrency(l.precioHora)}</div>
+                      <div className="col-1 text-right text-sm font-semibold">{formatCurrency(l.precio)}</div>
+                      <div className="col-1 text-right">
+                        {!esTerminal && (
+                          <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => handleDeleteLinea(l.perfilId)} />
+                        )}
+                      </div>
                     </div>
+                  ))}
+                  {/* Totales */}
+                  <div className="grid m-0 px-3 py-2 font-semibold surface-100" style={{ borderTop: '2px solid var(--surface-border)', minWidth: '600px' }}>
+                    <div className="col-3 text-sm">TOTAL</div>
+                    <div className="col-1 text-right text-sm">{casoResumen?.totalHoras}h</div>
+                    <div className="col-2" />
+                    <div className="col-2 text-right text-sm text-color-secondary">{formatCurrency(casoResumen?.totalCosto)}</div>
+                    <div className="col-2" />
+                    <div className="col-1 text-right text-sm text-green-700">{formatCurrency(casoResumen?.totalPrecio)}</div>
                     <div className="col-1" />
                   </div>
                 </div>

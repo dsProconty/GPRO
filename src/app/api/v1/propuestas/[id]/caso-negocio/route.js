@@ -34,6 +34,8 @@ export async function GET(request, { params }) {
     perfilId:     l.perfilId,
     horas:        Number(l.horas),
     perfil:       l.perfil,
+    costoHora:    Number(l.perfil.costoHora),
+    precioHora:   Number(l.perfil.precioHora),
     costo:        Number(l.horas) * Number(l.perfil.costoHora),
     precio:       Number(l.horas) * Number(l.perfil.precioHora),
   }))

@@ -125,19 +125,12 @@ export default function CasosNegocioPage() {
     <div className="p-3 surface-50 border-round">
       <p className="font-semibold text-sm mb-2">Detalle por perfil</p>
       <DataTable value={caso.lineas} size="small">
-        <Column header="Perfil"      body={(l) => `${l.perfil.nombre} ${l.perfil.nivel}`} />
-        <Column header="Horas"       body={(l) => `${l.horas}h`}                       style={{ width: '80px' }} />
-        <Column header="Costo/h"     body={(l) => formatCurrency(l.costoHora)}          style={{ width: '110px', textAlign: 'right' }} />
-        <Column header="Precio/h"    body={(l) => formatCurrency(l.precioHora)}         style={{ width: '110px', textAlign: 'right' }} />
-        <Column header="Costo Total" body={(l) => formatCurrency(l.costo)}              style={{ width: '120px', textAlign: 'right' }} />
-        <Column header="Ingreso"     body={(l) => formatCurrency(l.precio)}             style={{ width: '120px', textAlign: 'right' }} />
-        <Column header="GM"          style={{ width: '160px', textAlign: 'right' }}
-          body={(l) => (
-            <span className={gmColor(l.gmPct || 0)}>
-              {formatCurrency(l.gm)} ({l.gmPct ?? 0}%)
-            </span>
-          )}
-        />
+        <Column header="Perfil"        body={(l) => `${l.perfil.nombre} ${l.perfil.nivel}`} />
+        <Column header="Horas"         body={(l) => `${l.horas}h`}                        style={{ width: '80px' }} />
+        <Column header="Costo/h"       body={(l) => formatCurrency(l.costoHora)}           style={{ width: '110px', textAlign: 'right' }} />
+        <Column header="Total Costo"   body={(l) => formatCurrency(l.costo)}               style={{ width: '130px', textAlign: 'right' }} />
+        <Column header="Precio/h"      body={(l) => formatCurrency(l.precioHora)}          style={{ width: '110px', textAlign: 'right' }} />
+        <Column header="Total Precio"  body={(l) => formatCurrency(l.precio)}              style={{ width: '130px', textAlign: 'right' }} />
       </DataTable>
     </div>
   )
