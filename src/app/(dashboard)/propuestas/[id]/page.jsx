@@ -331,7 +331,7 @@ export default function PropuestaDetallePage({ params }) {
                 {/* Resumen GM */}
                 <div className="p-3 border-round" style={{ background: 'var(--surface-50)', border: '1px solid var(--surface-border)' }}>
                   <div className="flex justify-content-between align-items-center mb-2">
-                    <span className="text-sm font-semibold">Margen Bruto (GM)</span>
+                    <span className="text-sm font-semibold">Margen</span>
                     <span className={`text-lg font-bold ${(casoResumen?.gmPct || 0) >= 40 ? 'text-green-600' : (casoResumen?.gmPct || 0) >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
                       {formatCurrency(casoResumen?.gm)} <span className="text-sm">({casoResumen?.gmPct}%)</span>
                     </span>

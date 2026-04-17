@@ -17,18 +17,20 @@ import axios from 'axios'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
-const TIPO_OPTIONS = [
-  { label: 'Todos',      value: null },
-  { label: 'Proyectos',  value: 'proyecto' },
-  { label: 'Propuestas', value: 'propuesta' },
-]
+const ESTADO_SEVERITY = {
+  Prefactibilidad:       'warning',
+  Elaboracion_Propuesta: 'info',
+  Adjudicado:            'success',
+  Rechazado:             'danger',
+  Cerrado:               'secondary',
+}
 
-function gmColor(pct) {
+function margenColor(pct) {
   if (pct >= 40) return 'text-green-600'
   if (pct >= 20) return 'text-yellow-600'
   return 'text-red-600'
 }
-function gmSeverity(pct) {
+function margenSeverity(pct) {
   if (pct >= 40) return 'success'
   if (pct >= 20) return 'warning'
   return 'danger'
@@ -60,26 +62,33 @@ export default function CasosNegocioPage() {
   const { puede } = usePermisos()
 
   const [casos,        setCasos]        = useState([])
+  const [estados,      setEstados]      = useState([])
+  const [empresas,     setEmpresas]     = useState([])
   const [loading,      setLoading]      = useState(true)
   const [fechaDesde,   setFechaDesde]   = useState(null)
   const [fechaHasta,   setFechaHasta]   = useState(null)
-  const [tipoFiltro,   setTipoFiltro]   = useState(null)
+  const [empresaFiltro, setEmpresaFiltro] = useState(null)
+  const [estadoFiltro,  setEstadoFiltro]  = useState(null)
   const [expandedRows, setExpandedRows] = useState(null)
-  const [selectedRows, setSelectedRows] = useState([])   // rows selected in table
+  const [selectedRows, setSelectedRows] = useState([])
 
-  useEffect(() => { loadData() }, [fechaDesde, fechaHasta, tipoFiltro])
+  useEffect(() => { loadData() }, [fechaDesde, fechaHasta, empresaFiltro, estadoFiltro])
 
   const loadData = async () => {
     setLoading(true)
-    setSelectedRows([])  // clear selection on reload
+    setSelectedRows([])
     try {
       const params = new URLSearchParams()
-      if (fechaDesde) params.set('from', fechaDesde.toISOString().slice(0, 10))
-      if (fechaHasta) params.set('to',   fechaHasta.toISOString().slice(0, 10))
-      if (tipoFiltro) params.set('tipo', tipoFiltro)
+      if (fechaDesde)    params.set('from',       fechaDesde.toISOString().slice(0, 10))
+      if (fechaHasta)    params.set('to',         fechaHasta.toISOString().slice(0, 10))
+      if (empresaFiltro) params.set('empresa_id', empresaFiltro)
+      if (estadoFiltro)  params.set('estado_id',  estadoFiltro)
 
       const res = await axios.get('/api/v1/casos-negocio?' + params.toString())
-      setCasos(res.data.data.casos)
+      const { casos, estados, empresas } = res.data.data
+      setCasos(casos)
+      if (estados?.length)  setEstados(estados)
+      if (empresas?.length) setEmpresas(empresas)
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los casos de negocio', life: 4000 })
     } finally {
@@ -87,29 +96,36 @@ export default function CasosNegocioPage() {
     }
   }
 
-  // Source for KPIs and charts: selected rows or all rows
+  const limpiarFiltros = () => {
+    setFechaDesde(null)
+    setFechaHasta(null)
+    setEmpresaFiltro(null)
+    setEstadoFiltro(null)
+  }
+
+  // Fuente reactiva: selección o todos
   const fuente = selectedRows.length > 0 ? selectedRows : casos
 
-  // KPIs computed from fuente
   const kpi = useMemo(() => {
-    const totalCaso   = fuente.length
-    const totalHoras  = fuente.reduce((s, c) => s + c.resumen.totalHoras,  0)
-    const totalCosto  = fuente.reduce((s, c) => s + c.resumen.totalCosto,  0)
-    const totalPrecio = fuente.reduce((s, c) => s + c.resumen.totalPrecio, 0)
-    const gm          = totalPrecio - totalCosto
-    const gmPct       = totalPrecio > 0 ? Math.round((gm / totalPrecio) * 100) : 0
-    return { totalCaso, totalHoras, totalCosto, totalPrecio, gm, gmPct }
+    const totalCaso    = fuente.length
+    const totalHoras   = fuente.reduce((s, c) => s + c.resumen.totalHoras,    0)
+    const totalCosto   = fuente.reduce((s, c) => s + c.resumen.totalCosto,    0)
+    const totalPrecio  = fuente.reduce((s, c) => s + c.resumen.totalPrecio,   0)
+    const totalFact    = fuente.reduce((s, c) => s + c.financiero.facturado,  0)
+    const totalPagado  = fuente.reduce((s, c) => s + c.financiero.pagado,     0)
+    const saldoCobrar  = totalFact - totalPagado
+    const gm           = totalPrecio - totalCosto
+    const gmPct        = totalPrecio > 0 ? Math.round((gm / totalPrecio) * 100) : 0
+    return { totalCaso, totalHoras, totalCosto, totalPrecio, gm, gmPct, totalFact, totalPagado, saldoCobrar }
   }, [fuente])
 
-  // Breakdown por perfil computed from fuente
   const porPerfil = useMemo(() => calcPorPerfil(fuente), [fuente])
 
-  // Chart data
   const chartData = useMemo(() => ({
     labels: porPerfil.map((p) => p.perfil),
     datasets: [
-      { label: 'Ingreso', data: porPerfil.map((p) => p.precio), backgroundColor: '#3b82f6' },
-      { label: 'Costo',   data: porPerfil.map((p) => p.costo),  backgroundColor: '#f59e0b' },
+      { label: 'Ingreso Est.', data: porPerfil.map((p) => p.precio), backgroundColor: '#3b82f6' },
+      { label: 'Costo Est.',   data: porPerfil.map((p) => p.costo),  backgroundColor: '#f59e0b' },
     ],
   }), [porPerfil])
 
@@ -120,17 +136,16 @@ export default function CasosNegocioPage() {
     scales: { x: { ticks: { callback: (v) => '$' + v.toLocaleString() } } },
   }), [])
 
-  // Row expansion: detail by profile
   const rowExpansionTemplate = (caso) => (
     <div className="p-3 surface-50 border-round">
       <p className="font-semibold text-sm mb-2">Detalle por perfil</p>
       <DataTable value={caso.lineas} size="small">
-        <Column header="Perfil"        body={(l) => `${l.perfil.nombre} ${l.perfil.nivel}`} />
-        <Column header="Horas"         body={(l) => `${l.horas}h`}                        style={{ width: '80px' }} />
-        <Column header="Costo/h"       body={(l) => formatCurrency(l.costoHora)}           style={{ width: '110px', textAlign: 'right' }} />
-        <Column header="Total Costo"   body={(l) => formatCurrency(l.costo)}               style={{ width: '130px', textAlign: 'right' }} />
-        <Column header="Precio/h"      body={(l) => formatCurrency(l.precioHora)}          style={{ width: '110px', textAlign: 'right' }} />
-        <Column header="Total Precio"  body={(l) => formatCurrency(l.precio)}              style={{ width: '130px', textAlign: 'right' }} />
+        <Column header="Perfil"       body={(l) => `${l.perfil.nombre} ${l.perfil.nivel}`} />
+        <Column header="Horas"        body={(l) => `${l.horas}h`}                        style={{ width: '80px' }} />
+        <Column header="Costo/h"      body={(l) => formatCurrency(l.costoHora)}           style={{ width: '110px', textAlign: 'right' }} />
+        <Column header="Total Costo"  body={(l) => formatCurrency(l.costo)}               style={{ width: '130px', textAlign: 'right' }} />
+        <Column header="Precio/h"     body={(l) => formatCurrency(l.precioHora)}          style={{ width: '110px', textAlign: 'right' }} />
+        <Column header="Total Precio" body={(l) => formatCurrency(l.precio)}              style={{ width: '130px', textAlign: 'right' }} />
       </DataTable>
     </div>
   )
@@ -145,6 +160,15 @@ export default function CasosNegocioPage() {
 
   const haySeleccion = selectedRows.length > 0
 
+  const estadoOptions = [
+    { label: 'Todos los estados', value: null },
+    ...estados.map((e) => ({ label: e.nombre.replace('_', ' '), value: e.id })),
+  ]
+  const empresaOptions = [
+    { label: 'Todas las empresas', value: null },
+    ...empresas.map((e) => ({ label: e.nombre, value: e.id })),
+  ]
+
   return (
     <div className="p-4">
       <Toast ref={toast} />
@@ -153,36 +177,39 @@ export default function CasosNegocioPage() {
       <div className="mb-4">
         <h1 className="text-2xl font-bold m-0">Casos de Negocio</h1>
         <p className="text-color-secondary text-sm mt-1 mb-0">
-          Análisis de rentabilidad por proyecto y propuesta
+          Rentabilidad y estado de cobro · Solo proyectos activos
         </p>
       </div>
 
-      {/* ── Tabla (primero) ───────────────────────────────────────────────── */}
+      {/* ── Tabla ─────────────────────────────────────────────────────────── */}
       <Card className="mb-4">
-        {/* Filtros + indicador de selección */}
+        {/* Filtros */}
         <div className="flex flex-wrap gap-3 mb-3 align-items-end justify-content-between">
           <div className="flex flex-wrap gap-3 align-items-end">
             <div className="flex flex-column gap-1">
+              <label className="text-xs text-color-secondary">Empresa</label>
+              <Dropdown value={empresaFiltro} options={empresaOptions} optionLabel="label" optionValue="value"
+                onChange={(e) => setEmpresaFiltro(e.value)} style={{ width: '170px' }} />
+            </div>
+            <div className="flex flex-column gap-1">
+              <label className="text-xs text-color-secondary">Estado</label>
+              <Dropdown value={estadoFiltro} options={estadoOptions} optionLabel="label" optionValue="value"
+                onChange={(e) => setEstadoFiltro(e.value)} style={{ width: '170px' }} />
+            </div>
+            <div className="flex flex-column gap-1">
               <label className="text-xs text-color-secondary">Desde</label>
               <Calendar value={fechaDesde} onChange={(e) => setFechaDesde(e.value)} dateFormat="dd/mm/yy"
-                showButtonBar placeholder="Fecha inicio" style={{ width: '150px' }} />
+                showButtonBar placeholder="Fecha inicio" style={{ width: '140px' }} />
             </div>
             <div className="flex flex-column gap-1">
               <label className="text-xs text-color-secondary">Hasta</label>
               <Calendar value={fechaHasta} onChange={(e) => setFechaHasta(e.value)} dateFormat="dd/mm/yy"
-                showButtonBar placeholder="Fecha fin" style={{ width: '150px' }} />
-            </div>
-            <div className="flex flex-column gap-1">
-              <label className="text-xs text-color-secondary">Tipo</label>
-              <Dropdown value={tipoFiltro} options={TIPO_OPTIONS} optionLabel="label" optionValue="value"
-                onChange={(e) => setTipoFiltro(e.value)} style={{ width: '150px' }} />
+                showButtonBar placeholder="Fecha fin" style={{ width: '140px' }} />
             </div>
             <Button icon="pi pi-refresh" severity="secondary" outlined size="small"
-              onClick={() => { setFechaDesde(null); setFechaHasta(null); setTipoFiltro(null) }}
-              tooltip="Limpiar filtros" tooltipOptions={{ position: 'top' }} />
+              onClick={limpiarFiltros} tooltip="Limpiar filtros" tooltipOptions={{ position: 'top' }} />
           </div>
 
-          {/* Indicador de selección */}
           {haySeleccion ? (
             <div className="flex align-items-center gap-2">
               <Tag value={`${selectedRows.length} de ${casos.length} seleccionados`} severity="info" />
@@ -192,7 +219,7 @@ export default function CasosNegocioPage() {
           ) : (
             <span className="text-xs text-color-secondary">
               <i className="pi pi-info-circle mr-1" />
-              Selecciona filas para filtrar los KPIs y gráficas
+              Selecciona filas para filtrar KPIs y gráficas
             </span>
           )}
         </div>
@@ -207,69 +234,77 @@ export default function CasosNegocioPage() {
           onRowToggle={(e) => setExpandedRows(e.data)}
           rowExpansionTemplate={rowExpansionTemplate}
           dataKey="id"
-          emptyMessage="No hay casos de negocio registrados"
+          emptyMessage="No hay proyectos con caso de negocio registrado"
           stripedRows
           paginator
           rows={15}
-          rowClassName={(row) => selectedRows.some((r) => r.id === row.id && r.tipo === row.tipo) ? 'bg-blue-50' : ''}
+          rowClassName={(row) => selectedRows.some((r) => r.id === row.id) ? 'bg-blue-50' : ''}
         >
           <Column selectionMode="multiple" style={{ width: '3rem' }} />
           <Column expander style={{ width: '3rem' }} />
-          <Column header="Tipo" style={{ width: '110px' }} body={(r) => (
-            <Tag value={r.tipo === 'proyecto' ? 'Proyecto' : 'Propuesta'}
-              severity={r.tipo === 'proyecto' ? 'success' : 'info'} />
-          )} />
-          <Column header="Nombre" body={(r) => (
+          <Column header="Empresa" body={(r) => <span className="font-medium">{r.empresa?.nombre}</span>} style={{ minWidth: '130px' }} />
+          <Column header="Proyecto" body={(r) => (
             <Button label={r.nombre} link className="p-0 text-left text-sm"
-              onClick={() => router.push(`/${r.tipo === 'proyecto' ? 'proyectos' : 'propuestas'}/${r.id}`)} />
+              onClick={() => router.push(`/proyectos/${r.id}`)} />
           )} style={{ minWidth: '180px' }} />
-          <Column header="Empresa" body={(r) => r.empresa?.nombre} />
-          <Column header="Estado" style={{ width: '130px' }} body={(r) => (
-            <Tag value={r.estado?.nombre} severity={r.estado?.color || 'secondary'} />
+          <Column header="Estado" style={{ width: '140px' }} body={(r) => (
+            <Tag value={r.estado?.nombre?.replace('_', ' ')} severity={ESTADO_SEVERITY[r.estado?.nombre] || 'secondary'} />
           )} />
-          <Column header="Fecha" body={(r) => formatDate(r.fecha)} style={{ width: '100px' }} />
-          <Column header="Horas" body={(r) => `${r.resumen.totalHoras}h`} style={{ width: '70px', textAlign: 'right' }} />
-          <Column header="Ingreso" body={(r) => formatCurrency(r.resumen.totalPrecio)}
-            style={{ width: '130px', textAlign: 'right' }} sortable sortField="resumen.totalPrecio" />
-          <Column header="GM" style={{ width: '80px', textAlign: 'right' }} body={(r) => (
-            <span className={`font-bold ${gmColor(r.resumen.gmPct)}`}>{r.resumen.gmPct}%</span>
+          <Column header="Fecha" body={(r) => formatDate(r.fecha)} style={{ width: '95px' }} />
+          <Column header="Horas" body={(r) => `${r.resumen.totalHoras}h`} style={{ width: '65px', textAlign: 'right' }} />
+          <Column header="Ingreso Est." body={(r) => formatCurrency(r.resumen.totalPrecio)}
+            style={{ width: '120px', textAlign: 'right' }} sortable />
+          <Column header="Facturado" body={(r) => formatCurrency(r.financiero.facturado)}
+            style={{ width: '110px', textAlign: 'right' }} />
+          <Column header="Cobrado" body={(r) => formatCurrency(r.financiero.pagado)}
+            style={{ width: '110px', textAlign: 'right' }} />
+          <Column header="Saldo" style={{ width: '110px', textAlign: 'right' }} body={(r) => (
+            <span className={r.financiero.saldo > 0 ? 'font-bold text-red-600' : 'text-green-600'}>
+              {formatCurrency(r.financiero.saldo)}
+            </span>
+          )} />
+          <Column header="%" style={{ width: '70px', textAlign: 'right' }} body={(r) => (
+            <span className={`font-bold ${margenColor(r.resumen.gmPct)}`}>{r.resumen.gmPct}%</span>
           )} />
         </DataTable>
       </Card>
 
-      {/* ── KPI Cards (abajo, reactivos a selección) ─────────────────────── */}
+      {/* ── KPI Cards ────────────────────────────────────────────────────── */}
       <div className="mb-4">
         {haySeleccion && (
           <p className="text-xs text-color-secondary mb-2">
             <i className="pi pi-filter-fill mr-1 text-primary" />
-            Totales de <strong>{selectedRows.length}</strong> caso(s) seleccionado(s)
+            Totales de <strong>{selectedRows.length}</strong> proyecto(s) seleccionado(s)
           </p>
         )}
-        <div className="grid">
+        {/* Fila 1: estimados */}
+        <div className="grid mb-3">
           <div className="col-12 md:col-3">
             <Card className="text-center">
-              <div className="text-color-secondary text-sm mb-1">Total Casos</div>
+              <div className="text-color-secondary text-sm mb-1">Proyectos</div>
               <div className="text-3xl font-bold text-primary">{kpi.totalCaso}</div>
               {haySeleccion && <div className="text-xs text-color-secondary mt-1">de {casos.length} totales</div>}
             </Card>
           </div>
           <div className="col-12 md:col-3">
             <Card className="text-center">
-              <div className="text-color-secondary text-sm mb-1">Ingresos Estimados</div>
-              <div className="text-2xl font-bold text-blue-600">{formatCurrency(kpi.totalPrecio)}</div>
+              <div className="text-color-secondary text-sm mb-1">Ingreso Estimado</div>
+              <div className="text-xl font-bold text-blue-600">{formatCurrency(kpi.totalPrecio)}</div>
+              <div className="text-xs text-color-secondary mt-1">{kpi.totalHoras}h planificadas</div>
             </Card>
           </div>
           <div className="col-12 md:col-3">
             <Card className="text-center">
-              <div className="text-color-secondary text-sm mb-1">Costos Estimados</div>
-              <div className="text-2xl font-bold text-orange-500">{formatCurrency(kpi.totalCosto)}</div>
+              <div className="text-color-secondary text-sm mb-1">Costo Estimado</div>
+              <div className="text-xl font-bold text-orange-500">{formatCurrency(kpi.totalCosto)}</div>
             </Card>
           </div>
           <div className="col-12 md:col-3">
             <Card className="text-center">
-              <div className="text-color-secondary text-sm mb-1">Margen Bruto</div>
-              <div className={`text-2xl font-bold ${gmColor(kpi.gmPct)}`}>
-                {formatCurrency(kpi.gm)} <span className="text-base">({kpi.gmPct}%)</span>
+              <div className="text-color-secondary text-sm mb-1">Margen</div>
+              <div className={`text-xl font-bold ${margenColor(kpi.gmPct)}`}>
+                {kpi.gmPct}%
+                <span className="text-sm text-color-secondary ml-2">({formatCurrency(kpi.gm)})</span>
               </div>
               <ProgressBar value={kpi.gmPct} showValue={false} style={{ height: '6px', marginTop: '6px' }}
                 color={kpi.gmPct >= 40 ? 'var(--green-500)' : kpi.gmPct >= 20 ? 'var(--yellow-500)' : 'var(--red-500)'}
@@ -277,32 +312,75 @@ export default function CasosNegocioPage() {
             </Card>
           </div>
         </div>
+
+        {/* Fila 2: facturación y cobro */}
+        <div className="grid">
+          <div className="col-12 md:col-4">
+            <Card className="text-center">
+              <div className="text-color-secondary text-sm mb-1">Total Facturado</div>
+              <div className="text-xl font-bold text-blue-700">{formatCurrency(kpi.totalFact)}</div>
+              {kpi.totalPrecio > 0 && (
+                <div className="text-xs text-color-secondary mt-1">
+                  {Math.round((kpi.totalFact / kpi.totalPrecio) * 100)}% del estimado
+                </div>
+              )}
+            </Card>
+          </div>
+          <div className="col-12 md:col-4">
+            <Card className="text-center">
+              <div className="text-color-secondary text-sm mb-1">Total Cobrado</div>
+              <div className="text-xl font-bold text-green-600">{formatCurrency(kpi.totalPagado)}</div>
+              {kpi.totalFact > 0 && (
+                <>
+                  <div className="text-xs text-color-secondary mt-1">
+                    {Math.round((kpi.totalPagado / kpi.totalFact) * 100)}% de lo facturado
+                  </div>
+                  <ProgressBar value={Math.round((kpi.totalPagado / kpi.totalFact) * 100)} showValue={false}
+                    style={{ height: '5px', marginTop: '6px' }} color="var(--green-500)" />
+                </>
+              )}
+            </Card>
+          </div>
+          <div className="col-12 md:col-4">
+            <Card className="text-center" style={{ border: kpi.saldoCobrar > 0 ? '1px solid var(--red-300)' : undefined }}>
+              <div className="text-color-secondary text-sm mb-1">Saldo por Cobrar</div>
+              <div className={`text-xl font-bold ${kpi.saldoCobrar > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {formatCurrency(kpi.saldoCobrar)}
+              </div>
+              {kpi.saldoCobrar > 0 && (
+                <div className="text-xs text-red-400 mt-1">
+                  <i className="pi pi-exclamation-triangle mr-1" />
+                  Pendiente de cobro
+                </div>
+              )}
+              {kpi.saldoCobrar === 0 && kpi.totalFact > 0 && (
+                <div className="text-xs text-green-500 mt-1">
+                  <i className="pi pi-check-circle mr-1" />
+                  Todo cobrado
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
       </div>
 
-      {/* ── Gráficas y tabla por perfil (reactivos a selección) ──────────── */}
+      {/* ── Gráficas y tabla por perfil ──────────────────────────────────── */}
       <div className="grid">
-        {/* Gráfica de barras horizontal */}
         <div className="col-12 lg:col-7">
           <Card>
             <h3 className="m-0 mb-3 font-semibold text-sm">
               <i className="pi pi-chart-bar mr-2" />
-              Ingresos vs Costos por Perfil
+              Ingreso vs Costo por Perfil
               {haySeleccion && <Tag value="Selección" severity="info" className="ml-2" style={{ fontSize: '0.7rem' }} />}
             </h3>
             {porPerfil.length === 0 ? (
               <p className="text-color-secondary text-sm m-0">Sin datos para mostrar</p>
             ) : (
-              <Chart
-                type="bar"
-                data={chartData}
-                options={chartOptions}
-                style={{ maxHeight: '320px' }}
-              />
+              <Chart type="bar" data={chartData} options={chartOptions} style={{ maxHeight: '320px' }} />
             )}
           </Card>
         </div>
 
-        {/* Tabla de resumen por perfil */}
         <div className="col-12 lg:col-5">
           <Card>
             <h3 className="m-0 mb-3 font-semibold text-sm">
@@ -321,7 +399,7 @@ export default function CasosNegocioPage() {
                       <div className="flex align-items-center gap-2">
                         <span className="text-xs text-color-secondary">{p.horas}h</span>
                         <span className="font-semibold">{formatCurrency(p.precio)}</span>
-                        <Tag value={`${p.gmPct}%`} severity={gmSeverity(p.gmPct)} />
+                        <Tag value={`${p.gmPct}%`} severity={margenSeverity(p.gmPct)} />
                       </div>
                     </div>
                   ))}
@@ -330,8 +408,8 @@ export default function CasosNegocioPage() {
                   <span>Total</span>
                   <div className="flex align-items-center gap-2">
                     <span className="text-xs text-color-secondary">{kpi.totalHoras}h</span>
-                    <span className={gmColor(kpi.gmPct)}>{formatCurrency(kpi.totalPrecio)}</span>
-                    <Tag value={`${kpi.gmPct}%`} severity={gmSeverity(kpi.gmPct)} />
+                    <span className={margenColor(kpi.gmPct)}>{formatCurrency(kpi.totalPrecio)}</span>
+                    <Tag value={`${kpi.gmPct}%`} severity={margenSeverity(kpi.gmPct)} />
                   </div>
                 </div>
               </>

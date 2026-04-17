@@ -6,42 +6,38 @@ import { tienePermiso, PERMISOS } from '@/lib/permisos'
 
 /**
  * GET /api/v1/casos-negocio
- * Params opcionales:
- *   ?from=YYYY-MM-DD  filtro fecha inicio del proyecto/propuesta
- *   ?to=YYYY-MM-DD    filtro fecha fin
- *   ?tipo=proyecto|propuesta  (omitir = ambos)
- *
- * Responde con:
- *  - proyectos[]: cada proyecto con sus líneas de caso de negocio + totales
- *  - propuestas[]: propuestas con caso de negocio (no aprobadas)
- *  - resumenGlobal: totales agregados
- *  - porPerfil[]: ingresos/costos/GM agrupados por perfilConsultor
- *  - porMes[]: ingresos agrupados por mes (últimos 12 meses por fechaCreacion)
+ * Solo proyectos con al menos 1 línea de caso de negocio.
+ * Params:
+ *   ?from=YYYY-MM-DD   filtro fecha inicio
+ *   ?to=YYYY-MM-DD     filtro fecha fin
+ *   ?empresa_id=N      filtro por empresa
+ *   ?estado_id=N       filtro por estado del proyecto
  */
 export async function GET(request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   if (!tienePermiso(session, PERMISOS.CASOS_NEGOCIO.VER)) {
-    return NextResponse.json({ success: false, message: 'No tiene permiso para ver los casos de negocio' }, { status: 403 })
+    return NextResponse.json({ success: false, message: 'Sin permiso' }, { status: 403 })
   }
 
   const { searchParams } = request.nextUrl
-  const from  = searchParams.get('from')
-  const to    = searchParams.get('to')
-  const tipo  = searchParams.get('tipo') // 'proyecto' | 'propuesta' | null
+  const from      = searchParams.get('from')
+  const to        = searchParams.get('to')
+  const empresaId = searchParams.get('empresa_id')
+  const estadoId  = searchParams.get('estado_id')
 
-  const dateFilter = {}
-  if (from) dateFilter.gte = new Date(from)
-  if (to)   dateFilter.lte = new Date(to + 'T23:59:59')
+  const where = { casoNegocio: { some: {} } }
+  if (from || to) {
+    where.fechaCreacion = {}
+    if (from) where.fechaCreacion.gte = new Date(from)
+    if (to)   where.fechaCreacion.lte = new Date(to + 'T23:59:59')
+  }
+  if (empresaId) where.empresaId = parseInt(empresaId)
+  if (estadoId)  where.estadoId  = parseInt(estadoId)
 
-  // ── Proyectos con caso de negocio ─────────────────────────────────────────
-  let proyectos = []
-  if (!tipo || tipo === 'proyecto') {
-    const rawProyectos = await prisma.proyecto.findMany({
-      where: {
-        casoNegocio: { some: {} }, // solo proyectos que tienen al menos 1 línea
-        ...(Object.keys(dateFilter).length > 0 ? { fechaCreacion: dateFilter } : {}),
-      },
+  const [rawProyectos, estados, empresas] = await Promise.all([
+    prisma.proyecto.findMany({
+      where,
       include: {
         empresa: { select: { id: true, nombre: true } },
         estado:  { select: { id: true, nombre: true, color: true } },
@@ -50,103 +46,72 @@ export async function GET(request) {
           include: { perfilConsultor: true },
           orderBy: { perfilConsultor: { nombre: 'asc' } },
         },
-      },
-      orderBy: { fechaCreacion: 'desc' },
-    })
-
-    proyectos = rawProyectos.map((p) => {
-      const lineas = p.casoNegocio.map((l) => ({
-        perfilConsultorId: l.perfilConsultorId,
-        perfil: { nombre: l.perfilConsultor.nombre, nivel: l.perfilConsultor.nivel },
-        horas:      Number(l.horas),
-        costoHora:  Number(l.costoHora),
-        precioHora: Number(l.precioHora),
-        costo:      Number(l.horas) * Number(l.costoHora),
-        precio:     Number(l.horas) * Number(l.precioHora),
-        gm:         Number(l.horas) * (Number(l.precioHora) - Number(l.costoHora)),
-      }))
-      const totalCosto  = lineas.reduce((s, l) => s + l.costo, 0)
-      const totalPrecio = lineas.reduce((s, l) => s + l.precio, 0)
-      const gm          = totalPrecio - totalCosto
-      const gmPct       = totalPrecio > 0 ? Math.round((gm / totalPrecio) * 100) : 0
-      return {
-        tipo: 'proyecto',
-        id: p.id,
-        nombre: p.detalle,
-        empresa: p.empresa,
-        estado: p.estado,
-        fecha: p.fechaCreacion,
-        propuestaOrigen: p.propuesta,
-        lineas,
-        resumen: { totalHoras: lineas.reduce((s, l) => s + l.horas, 0), totalCosto, totalPrecio, gm, gmPct },
-      }
-    })
-  }
-
-  // ── Propuestas con caso de negocio (excluye Aprobadas que ya tienen proyecto) ─
-  let propuestas = []
-  if (!tipo || tipo === 'propuesta') {
-    const rawPropuestas = await prisma.propuesta.findMany({
-      where: {
-        casoNegocio: { some: {} },
-        estado: { notIn: ['Aprobada'] }, // Aprobadas ya están como proyectos
-        ...(Object.keys(dateFilter).length > 0 ? { fechaCreacion: dateFilter } : {}),
-      },
-      include: {
-        empresa:  { select: { id: true, nombre: true } },
-        casoNegocio: {
-          include: { perfil: true },
-          orderBy: { perfil: { nombre: 'asc' } },
+        facturas: {
+          select: { valor: true, pagos: { select: { valor: true } } },
         },
       },
       orderBy: { fechaCreacion: 'desc' },
-    })
+    }),
+    prisma.estado.findMany({ orderBy: { id: 'asc' } }),
+    prisma.empresa.findMany({
+      where: { proyectos: { some: { casoNegocio: { some: {} } } } },
+      select: { id: true, nombre: true },
+      orderBy: { nombre: 'asc' },
+    }),
+  ])
 
-    propuestas = rawPropuestas.map((p) => {
-      const lineas = p.casoNegocio.map((l) => ({
-        perfilConsultorId: l.perfilId,
-        perfil: { nombre: l.perfil.nombre, nivel: l.perfil.nivel },
-        horas:      Number(l.horas),
-        costoHora:  Number(l.perfil.costoHora),
-        precioHora: Number(l.perfil.precioHora),
-        costo:      Number(l.horas) * Number(l.perfil.costoHora),
-        precio:     Number(l.horas) * Number(l.perfil.precioHora),
-        gm:         Number(l.horas) * (Number(l.perfil.precioHora) - Number(l.perfil.costoHora)),
-      }))
-      const totalCosto  = lineas.reduce((s, l) => s + l.costo, 0)
-      const totalPrecio = lineas.reduce((s, l) => s + l.precio, 0)
-      const gm          = totalPrecio - totalCosto
-      const gmPct       = totalPrecio > 0 ? Math.round((gm / totalPrecio) * 100) : 0
-      return {
-        tipo: 'propuesta',
-        id: p.id,
-        nombre: p.titulo,
-        empresa: p.empresa,
-        estado: { nombre: p.estado, color: 'info' },
-        fecha: p.fechaCreacion,
-        propuestaOrigen: null,
-        lineas,
-        resumen: { totalHoras: lineas.reduce((s, l) => s + l.horas, 0), totalCosto, totalPrecio, gm, gmPct },
-      }
-    })
-  }
+  const casos = rawProyectos.map((p) => {
+    const lineas = p.casoNegocio.map((l) => ({
+      perfilConsultorId: l.perfilConsultorId,
+      perfil: { nombre: l.perfilConsultor.nombre, nivel: l.perfilConsultor.nivel },
+      horas:      Number(l.horas),
+      costoHora:  Number(l.costoHora),
+      precioHora: Number(l.precioHora),
+      costo:      Number(l.horas) * Number(l.costoHora),
+      precio:     Number(l.horas) * Number(l.precioHora),
+      gm:         Number(l.horas) * (Number(l.precioHora) - Number(l.costoHora)),
+    }))
 
-  const todos = [...proyectos, ...propuestas]
+    const totalCosto  = lineas.reduce((s, l) => s + l.costo, 0)
+    const totalPrecio = lineas.reduce((s, l) => s + l.precio, 0)
+    const gm          = totalPrecio - totalCosto
+    const gmPct       = totalPrecio > 0 ? Math.round((gm / totalPrecio) * 100) : 0
 
-  // ── Resumen global ─────────────────────────────────────────────────────────
-  const resumenGlobal = {
-    totalCaso:   todos.length,
-    totalHoras:  todos.reduce((s, c) => s + c.resumen.totalHoras, 0),
-    totalCosto:  todos.reduce((s, c) => s + c.resumen.totalCosto, 0),
-    totalPrecio: todos.reduce((s, c) => s + c.resumen.totalPrecio, 0),
-    get gm()    { return this.totalPrecio - this.totalCosto },
-    get gmPct() { return this.totalPrecio > 0 ? Math.round((this.gm / this.totalPrecio) * 100) : 0 },
-  }
+    const facturado = p.facturas.reduce((s, f) => s + Number(f.valor), 0)
+    const pagado    = p.facturas.reduce((s, f) => s + f.pagos.reduce((sp, pg) => sp + Number(pg.valor), 0), 0)
+    const saldo     = facturado - pagado
 
-  // ── Breakdown por perfil ───────────────────────────────────────────────────
+    return {
+      id: p.id,
+      nombre: p.detalle,
+      empresa: p.empresa,
+      estado: p.estado,
+      fecha: p.fechaCreacion,
+      propuestaOrigen: p.propuesta,
+      lineas,
+      resumen: {
+        totalHoras: lineas.reduce((s, l) => s + l.horas, 0),
+        totalCosto,
+        totalPrecio,
+        gm,
+        gmPct,
+      },
+      financiero: { facturado, pagado, saldo },
+    }
+  })
+
+  // Resumen global
+  const totalPrecio  = casos.reduce((s, c) => s + c.resumen.totalPrecio, 0)
+  const totalCosto   = casos.reduce((s, c) => s + c.resumen.totalCosto,  0)
+  const totalFact    = casos.reduce((s, c) => s + c.financiero.facturado, 0)
+  const totalPagado  = casos.reduce((s, c) => s + c.financiero.pagado,    0)
+  const gm           = totalPrecio - totalCosto
+  const gmPct        = totalPrecio > 0 ? Math.round((gm / totalPrecio) * 100) : 0
+
+  // Breakdown por perfil
   const perfilMap = {}
-  todos.forEach((caso) => {
-    caso.lineas.forEach((l) => {
+  casos.forEach((c) => {
+    c.lineas.forEach((l) => {
       const key = `${l.perfil.nombre} ${l.perfil.nivel}`
       if (!perfilMap[key]) perfilMap[key] = { perfil: key, horas: 0, costo: 0, precio: 0 }
       perfilMap[key].horas  += l.horas
@@ -161,16 +126,21 @@ export async function GET(request) {
   return NextResponse.json({
     success: true,
     data: {
-      casos: todos,
+      casos,
       resumenGlobal: {
-        totalCaso:   resumenGlobal.totalCaso,
-        totalHoras:  resumenGlobal.totalHoras,
-        totalCosto:  resumenGlobal.totalCosto,
-        totalPrecio: resumenGlobal.totalPrecio,
-        gm:          resumenGlobal.gm,
-        gmPct:       resumenGlobal.gmPct,
+        totalCaso:   casos.length,
+        totalHoras:  casos.reduce((s, c) => s + c.resumen.totalHoras, 0),
+        totalCosto,
+        totalPrecio,
+        gm,
+        gmPct,
+        totalFact,
+        totalPagado,
+        saldoPorCobrar: totalFact - totalPagado,
       },
       porPerfil,
+      estados,
+      empresas,
     },
     message: '',
   })

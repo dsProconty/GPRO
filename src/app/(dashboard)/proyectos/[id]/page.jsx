@@ -622,7 +622,7 @@ export default function ProyectoDetallePage({ params }) {
                 <div className="flex align-items-center gap-3">
                   {casoNegocio.lineas.length > 0 && (
                     <span className={`text-2xl font-bold ${(casoNegocio.resumen.gmPct || 0) >= 40 ? 'text-green-600' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
-                      GM {casoNegocio.resumen.gmPct}%
+                      {casoNegocio.resumen.gmPct}%
                     </span>
                   )}
                   {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) && (
@@ -650,7 +650,7 @@ export default function ProyectoDetallePage({ params }) {
                     </div>
                     <div className="col-12 md:col-4">
                       <div className={`p-3 border-round text-center ${(casoNegocio.resumen.gmPct || 0) >= 40 ? 'bg-green-50' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'bg-yellow-50' : 'bg-red-50'}`}>
-                        <div className="text-xs text-color-secondary mb-1">Margen bruto (GM)</div>
+                        <div className="text-xs text-color-secondary mb-1">Margen</div>
                         <div className={`text-lg font-bold ${(casoNegocio.resumen.gmPct || 0) >= 40 ? 'text-green-600' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
                           {formatCurrency(casoNegocio.resumen.gm, moneda)}
                         </div>
