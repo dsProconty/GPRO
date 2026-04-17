@@ -26,7 +26,7 @@ export async function GET(request) {
   const empresaId = searchParams.get('empresa_id')
   const estadoId  = searchParams.get('estado_id')
 
-  const where = { casoNegocio: { some: {} } }
+  const where = {}
   if (from || to) {
     where.fechaCreacion = {}
     if (from) where.fechaCreacion.gte = new Date(from)
@@ -54,7 +54,7 @@ export async function GET(request) {
     }),
     prisma.estado.findMany({ orderBy: { id: 'asc' } }),
     prisma.empresa.findMany({
-      where: { proyectos: { some: { casoNegocio: { some: {} } } } },
+      where: { proyectos: { some: {} } },
       select: { id: true, nombre: true },
       orderBy: { nombre: 'asc' },
     }),
