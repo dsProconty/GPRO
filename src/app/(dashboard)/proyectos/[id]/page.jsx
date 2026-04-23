@@ -435,10 +435,18 @@ export default function ProyectoDetallePage({ params }) {
         <div className="col-12 lg:col-8">
           <Card className="mb-3">
             <div className="mb-3">
-              <h2 className="text-2xl font-bold m-0 mb-2">{proyecto.detalle}</h2>
+              <div className="flex align-items-center gap-2 mb-1">
+                <h2 className="text-2xl font-bold m-0">{proyecto.detalle}</h2>
+                {proyecto.codigo && (
+                  <span className="text-sm text-color-secondary" style={{ fontFamily: 'monospace', background: 'var(--surface-100)', padding: '2px 8px', borderRadius: '4px' }}>{proyecto.codigo}</span>
+                )}
+              </div>
               <div className="flex gap-2 align-items-center flex-wrap">
                 <Tag value={estadoCfg.label} severity={estadoCfg.severity} />
                 <span className="text-color-secondary"><i className="pi pi-building mr-1" />{proyecto.empresa?.nombre}</span>
+                {proyecto.aplicativo && (
+                  <span className="text-color-secondary"><i className="pi pi-tag mr-1" />{proyecto.aplicativo}</span>
+                )}
                 <span className="text-color-secondary"><i className="pi pi-clock mr-1" />{calcTiempoVida(proyecto.fechaCreacion, proyecto.fechaCierre)}</span>
               </div>
             </div>

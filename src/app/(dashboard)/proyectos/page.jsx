@@ -287,13 +287,17 @@ export default function ProyectosPage() {
         stripedRows
         scrollable
       >
-        <Column field="id" header="ID" sortable style={{ width: '70px' }} />
-        <Column header="Proyecto" body={detalleTemplate} sortable sortField="detalle" style={{ minWidth: '200px' }} />
+        <Column field="id" header="ID" sortable style={{ width: '60px' }} />
+        <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable style={{ width: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
+        <Column header="Proyecto" body={detalleTemplate} sortable sortField="detalle" style={{ minWidth: '180px' }} />
         <Column header="Cliente" body={(row) => row.empresa?.nombre} sortable sortField="empresa.nombre" />
+        <Column field="aplicativo" header="Aplicativo" body={(row) => row.aplicativo || '—'} style={{ width: '120px' }} />
         <Column header="Valor" body={valorTemplate} sortable sortField="valor" style={{ textAlign: 'right' }} />
         <Column header="Facturado" body={facturadoTemplate} style={{ textAlign: 'right' }} />
         <Column header="Pagado" body={pagadoTemplate} style={{ textAlign: 'right' }} />
         <Column header="Saldo" body={saldoTemplate} style={{ textAlign: 'right' }} />
+        <Column header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable sortField="fechaCreacion" style={{ width: '115px' }} />
+        <Column header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable sortField="fechaCierre" style={{ width: '115px' }} />
         <Column header="Tiempo de vida" body={tiempoVidaTemplate} style={{ width: '130px' }} />
         <Column header="Estado" body={estadoTemplate} style={{ width: '140px' }} />
         <Column header="Acciones" body={accionesTemplate} style={{ width: '120px' }} />

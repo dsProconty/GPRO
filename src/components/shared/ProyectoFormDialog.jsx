@@ -22,6 +22,7 @@ export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, 
     fechaCreacion: null,
     fechaCierre: null,
     estadoId: null,
+    aplicativo: '',
     projectOnline: '',
     clienteIds: [],
     responsableIds: [],
@@ -43,6 +44,7 @@ export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, 
           fechaCreacion: proyecto.fechaCreacion ? new Date(proyecto.fechaCreacion) : null,
           fechaCierre: proyecto.fechaCierre ? new Date(proyecto.fechaCierre) : null,
           estadoId: proyecto.estadoId || null,
+          aplicativo: proyecto.aplicativo || '',
           projectOnline: proyecto.projectOnline || '',
           clienteIds: proyecto.clienteIds || [],
           responsableIds: proyecto.responsableIds || [],
@@ -131,6 +133,15 @@ export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, 
       >
         <div className="flex flex-column gap-3 pt-2">
 
+          {/* Código (solo lectura en edición) */}
+          {proyecto?.codigo && (
+            <div className="flex align-items-center gap-2 p-2 surface-100 border-round">
+              <i className="pi pi-hashtag text-color-secondary" />
+              <span className="text-sm text-color-secondary">Código:</span>
+              <span className="font-bold" style={{ fontFamily: 'monospace' }}>{proyecto.codigo}</span>
+            </div>
+          )}
+
           {/* Detalle */}
           <div className="field mb-0">
             <label className="font-semibold block mb-1">Detalle / Nombre <span className="text-red-500">*</span></label>
@@ -176,6 +187,17 @@ export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, 
                 {errors.estadoId && <small className="p-error">{errors.estadoId}</small>}
               </div>
             </div>
+          </div>
+
+          {/* Aplicativo */}
+          <div className="field mb-0">
+            <label className="font-semibold block mb-1">Aplicativo</label>
+            <InputText
+              value={form.aplicativo}
+              onChange={(e) => setForm({ ...form, aplicativo: e.target.value })}
+              className="w-full"
+              placeholder="ej: CRV, Typing, Tips (opcional)"
+            />
           </div>
 
           {/* Contactos/PMs del proyecto */}

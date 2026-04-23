@@ -63,7 +63,7 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'No tiene permiso para crear proyectos' }, { status: 403 })
   }
 
-  const { detalle, empresaId, valor, fechaCreacion, fechaCierre, estadoId, projectOnline, clienteIds = [], responsableIds = [] } = await request.json()
+  const { detalle, empresaId, valor, fechaCreacion, fechaCierre, estadoId, aplicativo, projectOnline, clienteIds = [], responsableIds = [] } = await request.json()
 
   const errors = {}
   if (!detalle?.trim()) errors.detalle = ['El detalle es requerido']
@@ -75,15 +75,22 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'Error de validación', errors }, { status: 422 })
   }
 
+  // Auto-generar código único PRO-YYYY-NNN
+  const anio = new Date().getFullYear()
+  const countAnio = await prisma.proyecto.count({ where: { codigo: { startsWith: `PRO-${anio}-` } } })
+  const codigo = `PRO-${anio}-${String(countAnio + 1).padStart(3, '0')}`
+
   try {
     const proyecto = await prisma.proyecto.create({
       data: {
+        codigo,
         detalle: detalle.trim(),
         empresaId: parseInt(empresaId),
         valor: valor ? parseFloat(valor) : 0,
         fechaCreacion: new Date(fechaCreacion),
         fechaCierre: fechaCierre ? new Date(fechaCierre) : null,
         estadoId: parseInt(estadoId),
+        aplicativo: aplicativo?.trim() || null,
         projectOnline: projectOnline?.trim() || null,
         clientes: {
           create: clienteIds.map((id) => ({ clienteId: parseInt(id) })),

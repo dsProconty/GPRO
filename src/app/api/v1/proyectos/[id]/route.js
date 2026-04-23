@@ -69,7 +69,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, message: 'No tiene permiso para editar proyectos en este estado' }, { status: 403 })
   }
 
-  const { detalle, empresaId, valor, fechaCreacion, fechaCierre, estadoId, projectOnline, clienteIds = [], responsableIds = [] } = await request.json()
+  const { detalle, empresaId, valor, fechaCreacion, fechaCierre, estadoId, aplicativo, projectOnline, clienteIds = [], responsableIds = [] } = await request.json()
 
   const errors = {}
   if (!detalle?.trim()) errors.detalle = ['El detalle es requerido']
@@ -95,6 +95,7 @@ export async function PUT(request, { params }) {
         fechaCreacion: new Date(fechaCreacion),
         fechaCierre: fechaCierre ? new Date(fechaCierre) : null,
         estadoId: parseInt(estadoId),
+        aplicativo: aplicativo?.trim() || null,
         projectOnline: projectOnline?.trim() || null,
         clientes: {
           create: clienteIds.map((cid) => ({ clienteId: parseInt(cid) })),
