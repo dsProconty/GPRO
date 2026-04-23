@@ -320,6 +320,11 @@ export default function PropuestaDetallePage({ params }) {
             <div className="grid text-sm">
               <div className="col-6"><span className="text-color-secondary">Fecha de inicio:</span> <strong>{formatDate(propuesta.fechaCreacion)}</strong></div>
               <div className="col-6"><span className="text-color-secondary">Fecha de envío:</span> <strong>{formatDate(propuesta.fechaEnvio)}</strong></div>
+              {propuesta.aplicativo && (
+                <div className="col-12 mt-1">
+                  <span className="text-color-secondary">Aplicativo:</span> <strong>{propuesta.aplicativo}</strong>
+                </div>
+              )}
               {propuesta.descripcion && (
                 <div className="col-12 mt-2">
                   <span className="text-color-secondary">Descripción:</span>
@@ -572,6 +577,12 @@ export default function PropuestaDetallePage({ params }) {
           <Card>
             <h3 className="m-0 mb-3 font-semibold">Resumen</h3>
             <div className="flex flex-column gap-3 text-sm">
+              {propuesta.codigo && (
+                <div>
+                  <div className="text-color-secondary mb-1">Código</div>
+                  <code className="font-bold" style={{ fontSize: '0.9rem' }}>{propuesta.codigo}</code>
+                </div>
+              )}
               <div>
                 <div className="text-color-secondary mb-1">Estado actual</div>
                 <Tag value={cfg.label} severity={cfg.severity} style={{ fontSize: '0.9rem' }} />
