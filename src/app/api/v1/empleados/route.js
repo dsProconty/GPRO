@@ -32,13 +32,13 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'Sin permiso' }, { status: 403 })
   }
 
-  const { nombre, apellido, email, costoHora, perfilBaseId, activo } = await request.json()
+  const { nombre, apellido, email, costoHora, salarioMensual, perfilBaseId, activo } = await request.json()
 
   const errors = {}
-  if (!nombre?.trim())               errors.nombre    = ['Requerido']
-  if (!apellido?.trim())             errors.apellido  = ['Requerido']
+  if (!nombre?.trim())   errors.nombre   = ['Requerido']
+  if (!apellido?.trim()) errors.apellido = ['Requerido']
   if (costoHora === undefined || costoHora === null || costoHora < 0)
-                                     errors.costoHora = ['Debe ser 0 o mayor']
+                         errors.costoHora = ['Debe ser 0 o mayor']
 
   if (Object.keys(errors).length) {
     return NextResponse.json({ success: false, message: 'Datos inválidos', errors }, { status: 422 })
@@ -46,12 +46,13 @@ export async function POST(request) {
 
   const empleado = await prisma.empleado.create({
     data: {
-      nombre:      nombre.trim(),
-      apellido:    apellido.trim(),
-      email:       email?.trim() || null,
-      costoHora:   Number(costoHora),
-      perfilBaseId: perfilBaseId ? parseInt(perfilBaseId) : null,
-      activo:      activo !== undefined ? Boolean(activo) : true,
+      nombre:         nombre.trim(),
+      apellido:       apellido.trim(),
+      email:          email?.trim() || null,
+      costoHora:      Number(costoHora),
+      salarioMensual: salarioMensual != null ? Number(salarioMensual) : null,
+      perfilBaseId:   perfilBaseId ? parseInt(perfilBaseId) : null,
+      activo:         activo !== undefined ? Boolean(activo) : true,
     },
     include: { perfilBase: { select: { id: true, nombre: true, nivel: true } } },
   })

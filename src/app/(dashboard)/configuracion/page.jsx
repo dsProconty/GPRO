@@ -19,7 +19,6 @@ import { InputNumber } from 'primereact/inputnumber'
 import { InputSwitch } from 'primereact/inputswitch'
 import { configuracionService, SEVERITY_COLORS } from '@/services/configuracionService'
 import { perfilConsultorService, NIVEL_OPTIONS } from '@/services/perfilConsultorService'
-import { formatCurrency } from '@/utils/format'
 
 const MONEDA_OPTIONS = [
   { label: 'USD — Dólar estadounidense',  value: 'USD' },
@@ -188,6 +187,8 @@ function EstadoPropuestaDialog({ visible, onHide, onSave, estadoLabel }) {
 }
 
 // ─── Dialog crear/editar perfil de consultor ─────────────────────────────────
+// Nota: el precio al cliente ya no se gestiona aquí — se define en Tarifarios (por empresa).
+// El costoHora aquí es un valor de respaldo si el empleado no tiene costo definido.
 function PerfilConsultorDialog({ visible, onHide, onSave, perfil }) {
   const isEdit = !!perfil
   const [form, setForm] = useState({ nombre: '', nivel: 'Senior', costoHora: null, precioHora: null, activo: true })
@@ -206,8 +207,6 @@ function PerfilConsultorDialog({ visible, onHide, onSave, perfil }) {
 
   const handleSave = async () => {
     if (!form.nombre.trim()) { setError('El nombre del rol es requerido'); return }
-    if (!form.costoHora || form.costoHora <= 0) { setError('El costo/hora debe ser mayor a 0'); return }
-    if (!form.precioHora || form.precioHora <= 0) { setError('El precio/hora debe ser mayor a 0'); return }
     setSaving(true)
     try {
       if (isEdit) {
@@ -223,10 +222,6 @@ function PerfilConsultorDialog({ visible, onHide, onSave, perfil }) {
     }
   }
 
-  const margen = form.costoHora && form.precioHora
-    ? Math.round(((form.precioHora - form.costoHora) / form.precioHora) * 100)
-    : null
-
   const footer = (
     <div className="flex justify-content-end gap-2">
       <Button label="Cancelar" icon="pi pi-times" severity="secondary" outlined onClick={onHide} disabled={saving} />
@@ -235,7 +230,7 @@ function PerfilConsultorDialog({ visible, onHide, onSave, perfil }) {
   )
 
   return (
-    <Dialog visible={visible} onHide={onHide} header={isEdit ? 'Editar Perfil' : 'Nuevo Perfil de Consultor'} style={{ width: '440px' }} footer={footer} modal>
+    <Dialog visible={visible} onHide={onHide} header={isEdit ? 'Editar Perfil' : 'Nuevo Perfil de Consultor'} style={{ width: '420px' }} footer={footer} modal>
       <div className="flex flex-column gap-3 mt-2">
         {error && <div className="p-2 border-round text-red-600 text-sm surface-100">{error}</div>}
         <div className="grid">
@@ -252,25 +247,6 @@ function PerfilConsultorDialog({ visible, onHide, onSave, perfil }) {
             </div>
           </div>
         </div>
-        <div className="grid">
-          <div className="col-6">
-            <div className="flex flex-column gap-1">
-              <label className="text-sm font-medium">Costo/hora (interno) <span className="text-red-500">*</span></label>
-              <InputNumber value={form.costoHora} onValueChange={(e) => setForm((p) => ({ ...p, costoHora: e.value }))} mode="currency" currency="USD" locale="es-EC" minFractionDigits={2} />
-            </div>
-          </div>
-          <div className="col-6">
-            <div className="flex flex-column gap-1">
-              <label className="text-sm font-medium">Precio/hora (cliente) <span className="text-red-500">*</span></label>
-              <InputNumber value={form.precioHora} onValueChange={(e) => setForm((p) => ({ ...p, precioHora: e.value }))} mode="currency" currency="USD" locale="es-EC" minFractionDigits={2} />
-            </div>
-          </div>
-        </div>
-        {margen !== null && (
-          <div className={`p-2 border-round text-sm text-center font-semibold ${margen >= 40 ? 'bg-green-50 text-green-700' : margen >= 20 ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'}`}>
-            Margen estimado: {margen}%
-          </div>
-        )}
         {isEdit && (
           <div className="flex align-items-center gap-2">
             <InputSwitch checked={form.activo} onChange={(e) => setForm((p) => ({ ...p, activo: e.value }))} />
@@ -528,8 +504,11 @@ export default function ConfiguracionPage() {
       <Card className="mt-4">
         <div className="flex align-items-center justify-content-between mb-3">
           <div>
-            <h3 className="m-0 font-semibold"><i className="pi pi-users mr-2" />Perfiles de Consultor</h3>
-            <p className="text-color-secondary text-xs mt-1 mb-0">Roles con tarifas de costo e ingreso para los casos de negocio</p>
+            <h3 className="m-0 font-semibold"><i className="pi pi-id-card mr-2" />Perfiles de Consultor</h3>
+            <p className="text-color-secondary text-xs mt-1 mb-0">
+              Roles (Full Stack Senior, QA, PM…). El precio al cliente se gestiona en
+              <strong> Tarifarios</strong> y el costo por consultor en <strong>Empleados</strong>.
+            </p>
           </div>
           <Button label="Nuevo perfil" icon="pi pi-plus" size="small" onClick={() => setPfDialog({ visible: true, perfil: null })} />
         </div>
@@ -541,16 +520,10 @@ export default function ConfiguracionPage() {
               severity={r.nivel === 'Senior' ? 'success' : r.nivel === 'Semi Senior' ? 'info' : 'secondary'}
               style={{ fontSize: '0.75rem' }}
             />
-          )} style={{ width: '120px' }} />
-          <Column header="Costo/h" body={(r) => <span className="text-color-secondary">{formatCurrency(Number(r.costoHora))}</span>} style={{ width: '110px', textAlign: 'right' }} />
-          <Column header="Precio/h" body={(r) => <span className="font-semibold">{formatCurrency(Number(r.precioHora))}</span>} style={{ width: '110px', textAlign: 'right' }} />
-          <Column header="Margen" body={(r) => {
-            const m = Math.round(((Number(r.precioHora) - Number(r.costoHora)) / Number(r.precioHora)) * 100)
-            return <span className={`font-semibold ${m >= 40 ? 'text-green-600' : m >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>{m}%</span>
-          }} style={{ width: '80px', textAlign: 'right' }} />
+          )} style={{ width: '130px' }} />
           <Column header="Activo" body={(r) => (
             <InputSwitch checked={r.activo} onChange={() => toggleActivoPerfil(r)} />
-          )} style={{ width: '70px' }} />
+          )} style={{ width: '80px' }} />
           <Column header="Acciones" style={{ width: '90px' }} body={(r) => (
             <div className="flex gap-1">
               <Button icon="pi pi-pencil" rounded text severity="info" size="small" tooltip="Editar" tooltipOptions={{ position: 'top' }}

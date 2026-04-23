@@ -414,9 +414,10 @@ model Empleado {
   nombre       String           @db.VarChar(100)
   apellido     String           @db.VarChar(100)
   email        String?          @db.VarChar(200)
-  costoHora    Decimal          @map("costo_hora") @db.Decimal(10, 2)
-  perfilBaseId Int?             @map("id_perfil_base")
-  activo       Boolean          @default(true)
+  costoHora      Decimal          @map("costo_hora") @db.Decimal(10, 2)
+  salarioMensual Decimal?        @map("salario_mensual") @db.Decimal(10, 2)
+  perfilBaseId   Int?            @map("id_perfil_base")
+  activo         Boolean         @default(true)
   createdAt    DateTime         @default(now()) @map("created_at")
   updatedAt    DateTime         @updatedAt @map("updated_at")
 

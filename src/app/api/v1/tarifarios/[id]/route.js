@@ -21,7 +21,7 @@ export async function GET(request, { params }) {
       lineas: {
         include: {
           perfil:   { select: { id: true, nombre: true, nivel: true } },
-          empleado: { select: { id: true, nombre: true, apellido: true } },
+          empleado: { select: { id: true, nombre: true, apellido: true, costoHora: true } },
         },
         orderBy: { perfil: { nombre: 'asc' } },
       },

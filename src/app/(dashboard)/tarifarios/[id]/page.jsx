@@ -19,6 +19,17 @@ import axios from 'axios'
 
 const EMPTY_LINEA = { perfilId: null, empleadoId: null, precioHora: 0 }
 
+function margenPct(costo, precio) {
+  if (!costo || !precio || precio === 0) return null
+  return Math.round(((precio - costo) / precio) * 100)
+}
+
+function MargenBadge({ pct }) {
+  if (pct === null) return <span className="text-color-secondary">—</span>
+  const cls = pct >= 40 ? 'text-green-600' : pct >= 20 ? 'text-yellow-600' : 'text-red-600'
+  return <span className={`font-semibold ${cls}`}>{pct}%</span>
+}
+
 export default function TarifarioDetallePage() {
   const { id } = useParams()
   const router = useRouter()
@@ -71,9 +82,9 @@ export default function TarifarioDetallePage() {
 
   const handleSaveLinea = async () => {
     const e = {}
-    if (!form.perfilId)             e.perfilId   = 'Requerido'
-    if (!form.empleadoId)           e.empleadoId = 'Requerido'
-    if (form.precioHora < 0)        e.precioHora = 'Debe ser 0 o mayor'
+    if (!form.perfilId)      e.perfilId   = 'Requerido'
+    if (!form.empleadoId)    e.empleadoId = 'Requerido'
+    if (form.precioHora < 0) e.precioHora = 'Debe ser 0 o mayor'
     if (Object.keys(e).length) { setErrors(e); return }
 
     try {
@@ -113,8 +124,22 @@ export default function TarifarioDetallePage() {
     })
   }
 
-  const perfilesOpts  = perfiles.map((p) => ({ label: `${p.nombre} ${p.nivel}`, value: p.id }))
-  const empleadosOpts = empleados.map((e) => ({ label: `${e.nombre} ${e.apellido}`, value: e.id }))
+  // Para el dialog: empleados enriquecidos con costoHora visible
+  const empleadosOpts = empleados.map((e) => ({
+    label: `${e.nombre} ${e.apellido}`,
+    sublabel: `Costo/h: $${Number(e.costoHora).toFixed(2)}`,
+    value: e.id,
+  }))
+
+  const empleadoSeleccionado = form.empleadoId
+    ? empleados.find((e) => e.id === form.empleadoId)
+    : null
+
+  const margenPreview = empleadoSeleccionado
+    ? margenPct(Number(empleadoSeleccionado.costoHora), form.precioHora)
+    : null
+
+  const perfilesOpts = perfiles.map((p) => ({ label: `${p.nombre} ${p.nivel}`, value: p.id }))
 
   if (loading) {
     return <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}><ProgressSpinner /></div>
@@ -161,12 +186,58 @@ export default function TarifarioDetallePage() {
         value={tarifario.lineas || []}
         emptyMessage="Sin líneas — agrega la primera con el botón de arriba"
         stripedRows
+        size="small"
       >
-        <Column header="Perfil" body={(r) => r.perfil ? `${r.perfil.nombre} ${r.perfil.nivel}` : '—'} sortable sortField="perfil.nombre" />
-        <Column header="Empleado" body={(r) => r.empleado ? `${r.empleado.nombre} ${r.empleado.apellido}` : '—'} />
-        <Column header="Precio/hora (cliente)" body={(r) => `$${Number(r.precioHora).toFixed(2)}`} style={{ textAlign: 'right', width: '180px' }} />
+        <Column
+          header="Perfil / Rol"
+          body={(r) => (
+            <div>
+              <div className="font-semibold">{r.perfil ? r.perfil.nombre : '—'}</div>
+              {r.perfil && (
+                <Tag
+                  value={r.perfil.nivel}
+                  severity={r.perfil.nivel === 'Senior' ? 'success' : r.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'}
+                  style={{ fontSize: '0.7rem' }}
+                  className="mt-1"
+                />
+              )}
+            </div>
+          )}
+        />
+        <Column
+          header="Consultor"
+          body={(r) => r.empleado
+            ? `${r.empleado.nombre} ${r.empleado.apellido}`
+            : <span className="text-color-secondary">—</span>
+          }
+        />
+        <Column
+          header="Costo/h (interno)"
+          style={{ textAlign: 'right', width: '140px' }}
+          body={(r) => {
+            const costo = r.empleado?.costoHora != null ? Number(r.empleado.costoHora) : null
+            return costo != null
+              ? <span className="text-color-secondary">${costo.toFixed(2)}</span>
+              : <span className="text-color-secondary">—</span>
+          }}
+        />
+        <Column
+          header="Precio/h (cliente)"
+          style={{ textAlign: 'right', width: '150px' }}
+          body={(r) => <span className="font-semibold">${Number(r.precioHora).toFixed(2)}</span>}
+        />
+        <Column
+          header="Margen"
+          style={{ textAlign: 'right', width: '90px' }}
+          body={(r) => {
+            const costo = r.empleado?.costoHora != null ? Number(r.empleado.costoHora) : null
+            const precio = Number(r.precioHora)
+            const pct = margenPct(costo, precio)
+            return <MargenBadge pct={pct} />
+          }}
+        />
         {puede(PERMISOS.TARIFARIOS.EDITAR) && (
-          <Column header="Acciones" style={{ width: '110px' }} body={(r) => (
+          <Column header="Acciones" style={{ width: '100px' }} body={(r) => (
             <div className="flex gap-1">
               <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => openEditLinea(r)} />
               <Button icon="pi pi-trash" rounded text severity="danger" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => handleDeleteLinea(r)} />
@@ -180,7 +251,7 @@ export default function TarifarioDetallePage() {
         header={editingLinea ? 'Editar línea' : 'Nueva línea'}
         visible={dialogOpen}
         onHide={() => setDialogOpen(false)}
-        style={{ width: '440px' }}
+        style={{ width: '460px' }}
         footer={
           <div className="flex justify-content-end gap-2">
             <Button label="Cancelar" outlined severity="secondary" onClick={() => setDialogOpen(false)} disabled={saving} />
@@ -190,29 +261,61 @@ export default function TarifarioDetallePage() {
       >
         <div className="grid">
           <div className="col-12">
-            <label className="block font-medium mb-1">Perfil *</label>
-            <Dropdown className={`w-full${errors.perfilId ? ' p-invalid' : ''}`}
-              value={form.perfilId} options={perfilesOpts}
+            <label className="block font-medium mb-1">Perfil / Rol *</label>
+            <Dropdown
+              className={`w-full${errors.perfilId ? ' p-invalid' : ''}`}
+              value={form.perfilId}
+              options={perfilesOpts}
               onChange={(e) => { setForm((p) => ({ ...p, perfilId: e.value })); setErrors((p) => ({ ...p, perfilId: null })) }}
-              placeholder="Seleccionar perfil" filter />
+              placeholder="Seleccionar perfil"
+              filter
+            />
             {errors.perfilId && <small className="p-error">{errors.perfilId}</small>}
           </div>
+
           <div className="col-12">
-            <label className="block font-medium mb-1">Empleado *</label>
-            <Dropdown className={`w-full${errors.empleadoId ? ' p-invalid' : ''}`}
-              value={form.empleadoId} options={empleadosOpts}
+            <label className="block font-medium mb-1">Consultor asignado *</label>
+            <Dropdown
+              className={`w-full${errors.empleadoId ? ' p-invalid' : ''}`}
+              value={form.empleadoId}
+              options={empleadosOpts}
               onChange={(e) => { setForm((p) => ({ ...p, empleadoId: e.value })); setErrors((p) => ({ ...p, empleadoId: null })) }}
-              placeholder="Seleccionar empleado" filter />
+              placeholder="Seleccionar consultor"
+              filter
+              itemTemplate={(opt) => (
+                <div>
+                  <div className="font-medium">{opt.label}</div>
+                  <div className="text-xs text-color-secondary">{opt.sublabel}</div>
+                </div>
+              )}
+            />
             {errors.empleadoId && <small className="p-error">{errors.empleadoId}</small>}
           </div>
+
           <div className="col-12">
             <label className="block font-medium mb-1">Precio/hora (cobrado al cliente) *</label>
-            <InputNumber className={`w-full${errors.precioHora ? ' p-invalid' : ''}`}
+            <InputNumber
+              className={`w-full${errors.precioHora ? ' p-invalid' : ''}`}
               value={form.precioHora}
               onValueChange={(e) => { setForm((p) => ({ ...p, precioHora: e.value ?? 0 })); setErrors((p) => ({ ...p, precioHora: null })) }}
-              mode="currency" currency="USD" locale="en-US" minFractionDigits={2} />
+              mode="currency" currency="USD" locale="en-US" minFractionDigits={2}
+            />
             {errors.precioHora && <small className="p-error">{errors.precioHora}</small>}
           </div>
+
+          {/* Preview de margen */}
+          {empleadoSeleccionado && form.precioHora > 0 && (
+            <div className="col-12">
+              <div className={`p-2 border-round text-sm text-center font-semibold ${
+                margenPreview >= 40 ? 'bg-green-50 text-green-700'
+                : margenPreview >= 20 ? 'bg-yellow-50 text-yellow-700'
+                : 'bg-red-50 text-red-700'
+              }`}>
+                Costo interno: ${Number(empleadoSeleccionado.costoHora).toFixed(2)}/h
+                {margenPreview !== null && ` · Margen: ${margenPreview}%`}
+              </div>
+            </div>
+          )}
         </div>
       </Dialog>
     </div>
