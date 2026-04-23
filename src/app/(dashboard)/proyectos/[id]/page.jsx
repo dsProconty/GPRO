@@ -16,6 +16,7 @@ import { proyectoService } from '@/services/proyectoService'
 import { facturaService } from '@/services/facturaService'
 import { pagoService } from '@/services/pagoService'
 import { observacionService } from '@/services/observacionService'
+import { empleadoService } from '@/services/empleadoService'
 import { formatCurrency, formatDate, calcTiempoVida } from '@/utils/format'
 import * as XLSX from 'xlsx'
 import FacturaFormDialog from '@/components/shared/FacturaFormDialog'
@@ -77,10 +78,11 @@ export default function ProyectoDetallePage({ params }) {
   const [moneda, setMoneda] = useState('USD')
   const [casoNegocio, setCasoNegocio] = useState(null)  // { lineas, resumen } del proyecto
   const [perfilesConsultor, setPerfilesConsultor] = useState([])
+  const [empleados, setEmpleados] = useState([])
   const [addLineaVisible, setAddLineaVisible] = useState(false)
-  const [editingLinea, setEditingLinea] = useState(null)  // { perfilId, horas } al editar
+  const [editingLinea, setEditingLinea] = useState(null)  // linea al editar
   const [savingLinea, setSavingLinea] = useState(false)
-  const [lineaForm, setLineaForm] = useState({ perfilId: null, horas: null })
+  const [lineaForm, setLineaForm] = useState({ perfilId: null, horas: null, empleadoId: null, precioHora: null })
 
   useEffect(() => {
     loadAll()
@@ -89,7 +91,7 @@ export default function ProyectoDetallePage({ params }) {
   const loadAll = async () => {
     setLoadingProyecto(true)
     try {
-      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes, cfgRes, perfilesRes] = await Promise.all([
+      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes, cfgRes, perfilesRes, emplRes] = await Promise.all([
         proyectoService.getById(id),
         facturaService.getAll({ proyecto_id: id }),
         observacionService.getAll({ proyecto_id: id }),
@@ -99,6 +101,7 @@ export default function ProyectoDetallePage({ params }) {
         recordatorioService.getAll({ proyecto_id: id }),
         configuracionService.getAll(),
         axios.get('/api/v1/perfiles-consultor?activo=true'),
+        empleadoService.getAll({ activo: true }),
       ])
       setProyecto(proyRes.data)
       setFacturas(factRes.data)
@@ -109,6 +112,7 @@ export default function ProyectoDetallePage({ params }) {
       setRecordatorios(recRes.data)
       if (cfgRes.data.data?.empresa?.moneda) setMoneda(cfgRes.data.data.empresa.moneda)
       setPerfilesConsultor(perfilesRes.data.data || [])
+      setEmpleados(emplRes.data.data || [])
       // Historial de estado (no bloquea si falla)
       axios.get(`/api/v1/proyectos/${id}/estado-logs`)
         .then((r) => setEstadoLogs(r.data.data || []))
@@ -321,7 +325,12 @@ export default function ProyectoDetallePage({ params }) {
   // === Caso de negocio del proyecto ===
   const openAddLinea = (linea = null) => {
     setEditingLinea(linea)
-    setLineaForm({ perfilId: linea?.perfilConsultorId ?? null, horas: linea?.horas ?? null })
+    setLineaForm({
+      perfilId:   linea?.perfilConsultorId ?? null,
+      horas:      linea?.horas ?? null,
+      empleadoId: linea?.empleadoId ?? null,
+      precioHora: linea?.precioHora ?? null,
+    })
     setAddLineaVisible(true)
   }
 
@@ -332,7 +341,12 @@ export default function ProyectoDetallePage({ params }) {
     }
     setSavingLinea(true)
     try {
-      await axios.post(`/api/v1/proyectos/${id}/caso-negocio`, { perfilId: lineaForm.perfilId, horas: lineaForm.horas })
+      await axios.post(`/api/v1/proyectos/${id}/caso-negocio`, {
+        perfilId:   lineaForm.perfilId,
+        horas:      lineaForm.horas,
+        empleadoId: lineaForm.empleadoId || null,
+        precioHora: lineaForm.precioHora ?? null,
+      })
       toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Línea guardada', life: 3000 })
       setAddLineaVisible(false)
       loadCasoNegocio()
@@ -679,43 +693,59 @@ export default function ProyectoDetallePage({ params }) {
 
                   {/* Detalle por perfil */}
                   <div className="mt-3" style={{ overflowX: 'auto' }}>
-                    <div className="grid m-0 px-2 py-1 surface-100 text-xs font-semibold text-color-secondary border-round-top" style={{ minWidth: '600px' }}>
-                      <div className="col-3">Perfil</div>
-                      <div className="col-1 text-right">Horas</div>
-                      <div className="col-2 text-right">Costo/h</div>
-                      <div className="col-2 text-right">Total Costo</div>
-                      <div className="col-2 text-right">Precio/h</div>
-                      <div className="col-1 text-right">Total Precio</div>
-                      {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) ? <div className="col-1" /> : <div className="col-1" />}
+                    {/* Cabecera */}
+                    <div className="flex px-2 py-1 surface-100 text-xs font-semibold text-color-secondary border-round-top" style={{ minWidth: '720px', gap: '8px' }}>
+                      <div style={{ flex: '0 0 170px' }}>Perfil / Consultor</div>
+                      <div style={{ flex: '0 0 55px', textAlign: 'right' }}>Horas</div>
+                      <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Costo/h</div>
+                      <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Total Costo</div>
+                      <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Precio/h</div>
+                      <div style={{ flex: '1 1 auto', textAlign: 'right' }}>Total Precio</div>
+                      <div style={{ flex: '0 0 70px' }} />
                     </div>
+
                     {casoNegocio.lineas.map((l, idx) => (
-                      <div key={l.perfilConsultorId} className={`grid m-0 px-2 py-2 text-sm align-items-center ${idx % 2 === 1 ? 'surface-50' : ''}`} style={{ borderTop: '1px solid var(--surface-border)', minWidth: '600px' }}>
-                        <div className="col-3">
-                          <span className="font-medium">{l.perfil.nombre}</span>
-                          <Tag value={l.perfil.nivel} severity={l.perfil.nivel === 'Senior' ? 'success' : l.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'} className="ml-2" style={{ fontSize: '0.7rem' }} />
-                        </div>
-                        <div className="col-1 text-right text-color-secondary">{l.horas}h</div>
-                        <div className="col-2 text-right text-color-secondary">{formatCurrency(l.costoHora, moneda)}</div>
-                        <div className="col-2 text-right text-color-secondary">{formatCurrency(l.costo, moneda)}</div>
-                        <div className="col-2 text-right text-color-secondary">{formatCurrency(l.precioHora, moneda)}</div>
-                        <div className="col-1 text-right font-semibold">{formatCurrency(l.precio, moneda)}</div>
-                        {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) ? (
-                          <div className="col-1 flex gap-1 justify-content-end">
-                            <Button icon="pi pi-pencil" rounded text severity="info" size="small" onClick={() => openAddLinea(l)} tooltip="Editar horas" tooltipOptions={{ position: 'top' }} />
-                            <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => handleDeleteLinea(l.perfilConsultorId)} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} />
+                      <div
+                        key={l.perfilConsultorId}
+                        className={`flex px-2 py-2 text-sm align-items-center ${idx % 2 === 1 ? 'surface-50' : ''}`}
+                        style={{ borderTop: '1px solid var(--surface-border)', minWidth: '720px', gap: '8px' }}
+                      >
+                        {/* Perfil + consultor */}
+                        <div style={{ flex: '0 0 170px' }}>
+                          <div className="font-medium">{l.perfil.nombre}</div>
+                          <div className="text-xs mt-1 flex align-items-center gap-1">
+                            <Tag value={l.perfil.nivel} severity={l.perfil.nivel === 'Senior' ? 'success' : l.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'} style={{ fontSize: '0.65rem' }} />
+                            {l.empleado
+                              ? <span className="text-color-secondary"><i className="pi pi-user ml-1 mr-1" />{l.empleado.nombre} {l.empleado.apellido}</span>
+                              : <span className="text-color-secondary" style={{ fontStyle: 'italic' }}>Sin consultor</span>
+                            }
                           </div>
-                        ) : <div className="col-1" />}
+                        </div>
+                        <div style={{ flex: '0 0 55px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{l.horas}h</div>
+                        <div style={{ flex: '0 0 90px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{formatCurrency(l.costoHora, moneda)}</div>
+                        <div style={{ flex: '0 0 90px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{formatCurrency(l.costo, moneda)}</div>
+                        <div style={{ flex: '0 0 90px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{formatCurrency(l.precioHora, moneda)}</div>
+                        <div style={{ flex: '1 1 auto', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(l.precio, moneda)}</div>
+                        <div style={{ flex: '0 0 70px', textAlign: 'right' }}>
+                          {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) && (
+                            <div className="flex gap-1 justify-content-end">
+                              <Button icon="pi pi-pencil" rounded text severity="info" size="small" onClick={() => openAddLinea(l)} tooltip="Editar" tooltipOptions={{ position: 'top' }} />
+                              <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => handleDeleteLinea(l.perfilConsultorId)} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
+
                     {/* Fila TOTAL */}
-                    <div className="grid m-0 px-2 py-2 text-sm font-bold surface-100 border-round-bottom" style={{ borderTop: '2px solid var(--surface-border)', minWidth: '600px' }}>
-                      <div className="col-3">TOTAL</div>
-                      <div className="col-1 text-right">{casoNegocio.resumen.totalHoras}h</div>
-                      <div className="col-2" />
-                      <div className="col-2 text-right">{formatCurrency(casoNegocio.resumen.totalCosto, moneda)}</div>
-                      <div className="col-2" />
-                      <div className="col-1 text-right text-green-700">{formatCurrency(casoNegocio.resumen.totalPrecio, moneda)}</div>
-                      {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) && <div className="col-1" />}
+                    <div className="flex px-2 py-2 text-sm font-bold surface-100 border-round-bottom" style={{ borderTop: '2px solid var(--surface-border)', minWidth: '720px', gap: '8px' }}>
+                      <div style={{ flex: '0 0 170px' }}>TOTAL</div>
+                      <div style={{ flex: '0 0 55px', textAlign: 'right' }}>{casoNegocio.resumen.totalHoras}h</div>
+                      <div style={{ flex: '0 0 90px' }} />
+                      <div style={{ flex: '0 0 90px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{formatCurrency(casoNegocio.resumen.totalCosto, moneda)}</div>
+                      <div style={{ flex: '0 0 90px' }} />
+                      <div style={{ flex: '1 1 auto', textAlign: 'right', color: 'var(--green-700)' }}>{formatCurrency(casoNegocio.resumen.totalPrecio, moneda)}</div>
+                      <div style={{ flex: '0 0 70px' }} />
                     </div>
                   </div>
                 </>
@@ -845,50 +875,125 @@ export default function ProyectoDetallePage({ params }) {
       <RecordatorioFormDialog visible={recDialogVisible} onHide={() => setRecDialogVisible(false)} onSave={handleSaveRecordatorio} recordatorio={selectedRecordatorio} proyectoId={id} />
 
       {/* Dialog: agregar/editar línea de caso de negocio */}
-      <Dialog
-        header={editingLinea ? 'Editar horas de perfil' : 'Agregar perfil al caso de negocio'}
-        visible={addLineaVisible}
-        onHide={() => setAddLineaVisible(false)}
-        style={{ width: '400px' }}
-        footer={
-          <div className="flex justify-content-end gap-2">
-            <Button label="Cancelar" severity="secondary" outlined onClick={() => setAddLineaVisible(false)} disabled={savingLinea} />
-            <Button label={savingLinea ? 'Guardando…' : 'Guardar'} icon="pi pi-check" onClick={handleSaveLinea} disabled={savingLinea} loading={savingLinea} />
-          </div>
-        }
-      >
-        <div className="flex flex-column gap-3 pt-2">
-          <div className="flex flex-column gap-1">
-            <label className="text-sm font-semibold">Perfil *</label>
-            <Dropdown
-              value={lineaForm.perfilId}
-              options={perfilesConsultor}
-              optionLabel={(p) => `${p.nombre} ${p.nivel}`}
-              optionValue="id"
-              onChange={(e) => setLineaForm((f) => ({ ...f, perfilId: e.value }))}
-              placeholder="Seleccionar perfil"
-              disabled={!!editingLinea}
-              filter
-              className="w-full"
-            />
-            {editingLinea && (
-              <small className="text-color-secondary">El perfil no se puede cambiar. Elimina la línea y agrega una nueva si necesitas cambiar el perfil.</small>
-            )}
-          </div>
-          <div className="flex flex-column gap-1">
-            <label className="text-sm font-semibold">Horas *</label>
-            <InputNumber
-              value={lineaForm.horas}
-              onValueChange={(e) => setLineaForm((f) => ({ ...f, horas: e.value }))}
-              min={1}
-              max={99999}
-              placeholder="Ej: 160"
-              suffix="h"
-              className="w-full"
-            />
-          </div>
-        </div>
-      </Dialog>
+      {(() => {
+        const perfilSel = perfilesConsultor.find((p) => p.id === lineaForm.perfilId)
+        const empleadoSel = empleados.find((e) => e.id === lineaForm.empleadoId)
+        const costoHoraEf = empleadoSel ? Number(empleadoSel.costoHora) : (perfilSel ? Number(perfilSel.costoHora) : null)
+        const precioHoraEf = lineaForm.precioHora ?? (perfilSel ? Number(perfilSel.precioHora) : null)
+        const previewCosto  = costoHoraEf  !== null && lineaForm.horas ? lineaForm.horas * costoHoraEf  : null
+        const previewPrecio = precioHoraEf !== null && lineaForm.horas ? lineaForm.horas * precioHoraEf : null
+        return (
+          <Dialog
+            header={editingLinea ? 'Editar línea del caso de negocio' : 'Agregar perfil al caso de negocio'}
+            visible={addLineaVisible}
+            onHide={() => setAddLineaVisible(false)}
+            style={{ width: '460px' }}
+            footer={
+              <div className="flex justify-content-end gap-2">
+                <Button label="Cancelar" severity="secondary" outlined onClick={() => setAddLineaVisible(false)} disabled={savingLinea} />
+                <Button label="Guardar" icon="pi pi-check" onClick={handleSaveLinea} disabled={savingLinea} loading={savingLinea} />
+              </div>
+            }
+          >
+            <div className="flex flex-column gap-3 pt-2">
+              {/* Perfil */}
+              <div className="flex flex-column gap-1">
+                <label className="text-sm font-semibold">Perfil <span className="text-red-500">*</span></label>
+                <Dropdown
+                  value={lineaForm.perfilId}
+                  options={perfilesConsultor}
+                  optionLabel={(p) => `${p.nombre} · ${p.nivel}`}
+                  optionValue="id"
+                  onChange={(e) => setLineaForm((f) => ({ ...f, perfilId: e.value, empleadoId: null, precioHora: null }))}
+                  placeholder="Seleccionar perfil"
+                  disabled={!!editingLinea}
+                  filter
+                  className="w-full"
+                />
+                {editingLinea && (
+                  <small className="text-color-secondary">El perfil no se puede cambiar — elimina y agrega una nueva línea si necesitas cambiarlo.</small>
+                )}
+              </div>
+
+              {/* Empleado / Consultor */}
+              <div className="flex flex-column gap-1">
+                <label className="text-sm font-semibold">
+                  Consultor asignado
+                  <span className="text-color-secondary text-xs ml-2">(opcional)</span>
+                </label>
+                <Dropdown
+                  value={lineaForm.empleadoId}
+                  options={[
+                    { label: '— Sin asignar —', value: null },
+                    ...empleados.map((e) => ({
+                      label: `${e.nombre} ${e.apellido}${e.perfilBase ? ' · ' + e.perfilBase.nombre : ''}`,
+                      value: e.id,
+                    })),
+                  ]}
+                  onChange={(e) => setLineaForm((f) => ({ ...f, empleadoId: e.value }))}
+                  placeholder="Sin consultor"
+                  filter
+                  className="w-full"
+                />
+                {empleadoSel && (
+                  <small className="text-color-secondary">Costo: {formatCurrency(empleadoSel.costoHora, moneda)}/h</small>
+                )}
+              </div>
+
+              {/* Horas */}
+              <div className="flex flex-column gap-1">
+                <label className="text-sm font-semibold">Horas <span className="text-red-500">*</span></label>
+                <InputNumber
+                  value={lineaForm.horas}
+                  onValueChange={(e) => setLineaForm((f) => ({ ...f, horas: e.value }))}
+                  min={1}
+                  max={99999}
+                  placeholder="Ej: 160"
+                  suffix="h"
+                  className="w-full"
+                />
+              </div>
+
+              {/* Precio/hora override */}
+              <div className="flex flex-column gap-1">
+                <label className="text-sm font-semibold">
+                  Precio/hora
+                  {perfilSel && (
+                    <span className="text-color-secondary text-xs ml-2">(tarifa base: {formatCurrency(perfilSel.precioHora, moneda)}/h)</span>
+                  )}
+                </label>
+                <InputNumber
+                  value={lineaForm.precioHora}
+                  onValueChange={(e) => setLineaForm((f) => ({ ...f, precioHora: e.value }))}
+                  mode="currency"
+                  currency="USD"
+                  locale="es-EC"
+                  minFractionDigits={2}
+                  placeholder={perfilSel ? `${formatCurrency(perfilSel.precioHora, moneda)} (del perfil)` : 'Precio/hora'}
+                  className="w-full"
+                />
+                {lineaForm.precioHora !== null && lineaForm.precioHora !== undefined && (
+                  <small className="text-primary"><i className="pi pi-info-circle mr-1" />Precio personalizado</small>
+                )}
+              </div>
+
+              {/* Preview */}
+              {previewCosto !== null && (
+                <div className="grid text-sm surface-50 border-round p-2 m-0">
+                  <div className="col-6">
+                    <div className="text-color-secondary text-xs mb-1">Costo estimado</div>
+                    <strong className="text-color-secondary">{formatCurrency(previewCosto, moneda)}</strong>
+                  </div>
+                  <div className="col-6">
+                    <div className="text-color-secondary text-xs mb-1">Ingreso estimado</div>
+                    <strong>{formatCurrency(previewPrecio, moneda)}</strong>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Dialog>
+        )
+      })()}
     </div>
   )
 }

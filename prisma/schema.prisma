@@ -55,16 +55,18 @@ model PerfilUsuario {
 
 // ─── EMPRESA ─────────────────────────────────────────────────────────────────
 model Empresa {
-  id        Int      @id @default(autoincrement()) @map("id_empresa")
-  nombre    String   @db.VarChar(150)
-  ciudad    String?  @db.VarChar(100)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id          Int      @id @default(autoincrement()) @map("id_empresa")
+  nombre      String   @db.VarChar(150)
+  ciudad      String?  @db.VarChar(100)
+  tarifarioId Int?     @map("id_tarifario")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relaciones
   clientes   Cliente[]
   proyectos  Proyecto[]
   propuestas Propuesta[]
+  tarifario  Tarifario? @relation(fields: [tarifarioId], references: [id])
 
   @@map("empresas")
 }
@@ -302,6 +304,8 @@ model PerfilConsultor {
 
   lineasCaso         CasoNegocioLinea[]
   lineasProyecto     ProyectoCasoNegocioLinea[]
+  empleados          Empleado[]
+  tarifarioLineas    TarifarioLinea[]
 
   @@map("perfiles_consultor")
 }
@@ -315,11 +319,13 @@ model ProyectoCasoNegocioLinea {
   horas             Decimal         @db.Decimal(10, 2)
   costoHora         Decimal         @map("costo_hora")  @db.Decimal(10, 2)
   precioHora        Decimal         @map("precio_hora") @db.Decimal(10, 2)
+  empleadoId        Int?            @map("id_empleado")
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
 
   proyecto          Proyecto        @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   perfilConsultor   PerfilConsultor @relation(fields: [perfilConsultorId], references: [id])
+  empleado          Empleado?       @relation(fields: [empleadoId], references: [id])
 
   @@id([proyectoId, perfilConsultorId])
   @@map("proyecto_caso_negocio")
@@ -357,12 +363,15 @@ model Propuesta {
 // Opcional por propuesta. costo/precio/GM se calculan en tiempo real.
 // RN-CN04: bloqueado (solo lectura) cuando propuesta está Aprobada o Rechazada.
 model CasoNegocioLinea {
-  propuestaId Int     @map("id_propuesta")
-  perfilId    Int     @map("id_perfil")
-  horas       Decimal @db.Decimal(10, 2)
+  propuestaId Int      @map("id_propuesta")
+  perfilId    Int      @map("id_perfil")
+  horas       Decimal  @db.Decimal(10, 2)
+  empleadoId  Int?     @map("id_empleado")
+  precioHora  Decimal? @map("precio_hora") @db.Decimal(10, 2)
 
-  propuesta Propuesta      @relation(fields: [propuestaId], references: [id], onDelete: Cascade)
+  propuesta Propuesta       @relation(fields: [propuestaId], references: [id], onDelete: Cascade)
   perfil    PerfilConsultor @relation(fields: [perfilId], references: [id])
+  empleado  Empleado?       @relation(fields: [empleadoId], references: [id])
 
   @@id([propuestaId, perfilId])
   @@map("caso_negocio_lineas")
@@ -395,4 +404,63 @@ model PropuestaEstadoLog {
   user           User      @relation(fields: [userId], references: [id])
 
   @@map("propuesta_estado_logs")
+}
+
+// ─── EMPLEADO / RECURSO ───────────────────────────────────────────────────────
+// Consultores de Proconty. Entidad separada de los usuarios del sistema.
+// Pueden existir como recurso sin tener acceso a GPRO.
+model Empleado {
+  id           Int              @id @default(autoincrement())
+  nombre       String           @db.VarChar(100)
+  apellido     String           @db.VarChar(100)
+  email        String?          @db.VarChar(200)
+  costoHora    Decimal          @map("costo_hora") @db.Decimal(10, 2)
+  perfilBaseId Int?             @map("id_perfil_base")
+  activo       Boolean          @default(true)
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  perfilBase                PerfilConsultor?          @relation(fields: [perfilBaseId], references: [id])
+  tarifarioLineas           TarifarioLinea[]
+  casoNegocioLineas         CasoNegocioLinea[]
+  proyectoCasoNegocioLineas ProyectoCasoNegocioLinea[]
+
+  @@map("empleados")
+}
+
+// ─── TARIFARIO ────────────────────────────────────────────────────────────────
+// Lista de precios nombrada (ej: "Deloitte 2026"). Reutilizable entre empresas.
+// Cada empresa puede tener un tarifario activo asignado.
+model Tarifario {
+  id          Int              @id @default(autoincrement())
+  nombre      String           @db.VarChar(150)
+  descripcion String?          @db.Text
+  activo      Boolean          @default(true)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  lineas   TarifarioLinea[]
+  empresas Empresa[]
+
+  @@map("tarifarios")
+}
+
+// ─── TARIFARIO LÍNEA ──────────────────────────────────────────────────────────
+// Una línea de un tarifario: perfil + empleado + precio cliente.
+// El precio aquí es el que se cobra al cliente (distinto del costoHora del empleado).
+model TarifarioLinea {
+  id          Int      @id @default(autoincrement())
+  tarifarioId Int      @map("id_tarifario")
+  perfilId    Int      @map("id_perfil")
+  empleadoId  Int      @map("id_empleado")
+  precioHora  Decimal  @map("precio_hora") @db.Decimal(10, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tarifario Tarifario       @relation(fields: [tarifarioId], references: [id], onDelete: Cascade)
+  perfil    PerfilConsultor @relation(fields: [perfilId], references: [id])
+  empleado  Empleado        @relation(fields: [empleadoId], references: [id])
+
+  @@unique([tarifarioId, perfilId, empleadoId])
+  @@map("tarifario_lineas")
 }

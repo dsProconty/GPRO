@@ -16,14 +16,16 @@ function calcResumen(lineas) {
 function serializeLineas(lineas) {
   return lineas.map((l) => ({
     perfilConsultorId: l.perfilConsultorId,
-    perfil: l.perfilConsultor,
-    horas:      Number(l.horas),
-    costoHora:  Number(l.costoHora),
-    precioHora: Number(l.precioHora),
-    costo:      Number(l.horas) * Number(l.costoHora),
-    precio:     Number(l.horas) * Number(l.precioHora),
-    gm:         Number(l.horas) * (Number(l.precioHora) - Number(l.costoHora)),
-    gmPct:      Number(l.precioHora) > 0
+    empleadoId:  l.empleadoId,
+    perfil:      l.perfilConsultor,
+    empleado:    l.empleado,
+    horas:       Number(l.horas),
+    costoHora:   Number(l.costoHora),
+    precioHora:  Number(l.precioHora),
+    costo:       Number(l.horas) * Number(l.costoHora),
+    precio:      Number(l.horas) * Number(l.precioHora),
+    gm:          Number(l.horas) * (Number(l.precioHora) - Number(l.costoHora)),
+    gmPct:       Number(l.precioHora) > 0
       ? Math.round(((Number(l.precioHora) - Number(l.costoHora)) / Number(l.precioHora)) * 100)
       : 0,
   }))
@@ -39,7 +41,10 @@ export async function GET(request, { params }) {
 
   const lineas = await prisma.proyectoCasoNegocioLinea.findMany({
     where: { proyectoId },
-    include: { perfilConsultor: true },
+    include: {
+      perfilConsultor: true,
+      empleado: { select: { id: true, nombre: true, apellido: true } },
+    },
     orderBy: { perfilConsultor: { nombre: 'asc' } },
   })
 
@@ -62,22 +67,35 @@ export async function POST(request, { params }) {
   const proyectoId = parseInt(params.id)
   if (isNaN(proyectoId)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
 
-  const { perfilId, horas } = await request.json()
+  const { perfilId, horas, empleadoId, precioHora } = await request.json()
   if (!perfilId) return NextResponse.json({ success: false, message: 'perfilId es requerido' }, { status: 422 })
   if (!horas || Number(horas) <= 0) return NextResponse.json({ success: false, message: 'horas debe ser mayor a 0' }, { status: 422 })
 
   const perfil = await prisma.perfilConsultor.findFirst({ where: { id: parseInt(perfilId), activo: true } })
   if (!perfil) return NextResponse.json({ success: false, message: 'Perfil no encontrado o inactivo' }, { status: 422 })
 
+  // precioHora override si se envía, si no usa el del perfil
+  const precio = precioHora !== undefined && precioHora !== null ? Number(precioHora) : Number(perfil.precioHora)
+
+  // costoHora: usa el del empleado asignado si existe, si no el del perfil
+  let costo = Number(perfil.costoHora)
+  if (empleadoId) {
+    const emp = await prisma.empleado.findUnique({ where: { id: Number(empleadoId) } })
+    if (emp) costo = Number(emp.costoHora)
+  }
+
   await prisma.proyectoCasoNegocioLinea.upsert({
     where: { proyectoId_perfilConsultorId: { proyectoId, perfilConsultorId: perfil.id } },
-    update: { horas: parseFloat(horas), costoHora: perfil.costoHora, precioHora: perfil.precioHora },
-    create: { proyectoId, perfilConsultorId: perfil.id, horas: parseFloat(horas), costoHora: perfil.costoHora, precioHora: perfil.precioHora },
+    update: { horas: parseFloat(horas), costoHora: costo, precioHora: precio, empleadoId: empleadoId ? Number(empleadoId) : null },
+    create: { proyectoId, perfilConsultorId: perfil.id, horas: parseFloat(horas), costoHora: costo, precioHora: precio, empleadoId: empleadoId ? Number(empleadoId) : null },
   })
 
   const lineas = await prisma.proyectoCasoNegocioLinea.findMany({
     where: { proyectoId },
-    include: { perfilConsultor: true },
+    include: {
+      perfilConsultor: true,
+      empleado: { select: { id: true, nombre: true, apellido: true } },
+    },
     orderBy: { perfilConsultor: { nombre: 'asc' } },
   })
 
@@ -106,7 +124,10 @@ export async function DELETE(request, { params }) {
 
   const lineas = await prisma.proyectoCasoNegocioLinea.findMany({
     where: { proyectoId },
-    include: { perfilConsultor: true },
+    include: {
+      perfilConsultor: true,
+      empleado: { select: { id: true, nombre: true, apellido: true } },
+    },
     orderBy: { perfilConsultor: { nombre: 'asc' } },
   })
 

@@ -24,8 +24,10 @@ const menuItemsBase = [
     label: 'Configuración',
     items: [
       { label: 'Clientes',        icon: 'pi pi-building',    path: '/clientes',      permiso: 'clientes.ver' },
+      { label: 'Empleados',       icon: 'pi pi-id-card',     path: '/empleados',     permiso: 'empleados.ver' },
+      { label: 'Tarifarios',      icon: 'pi pi-dollar',      path: '/tarifarios',    permiso: 'tarifarios.ver' },
       { label: 'Usuarios',        icon: 'pi pi-users',       path: '/usuarios',      adminOnly: true },
-      { label: 'Perfiles',        icon: 'pi pi-id-card',     path: '/perfiles',      adminOnly: true },
+      { label: 'Perfiles',        icon: 'pi pi-shield',      path: '/perfiles',      adminOnly: true },
       { label: 'Personalización', icon: 'pi pi-sliders-h',   path: '/configuracion', adminOnly: true },
     ],
   },

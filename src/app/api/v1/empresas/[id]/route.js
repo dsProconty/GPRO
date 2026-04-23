@@ -17,7 +17,10 @@ export async function GET(request, { params }) {
 
   const empresa = await prisma.empresa.findUnique({
     where: { id },
-    include: { _count: { select: { clientes: true } } },
+    include: {
+      _count: { select: { clientes: true } },
+      tarifario: { select: { id: true, nombre: true, activo: true } },
+    },
   })
 
   if (!empresa) {
@@ -41,7 +44,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
   }
 
-  const { nombre, ciudad } = await request.json()
+  const { nombre, ciudad, tarifarioId } = await request.json()
 
   if (!nombre || nombre.trim() === '') {
     return NextResponse.json(
@@ -53,7 +56,12 @@ export async function PUT(request, { params }) {
   try {
     const empresa = await prisma.empresa.update({
       where: { id },
-      data: { nombre: nombre.trim(), ciudad: ciudad?.trim() || null },
+      data: {
+        nombre:      nombre.trim(),
+        ciudad:      ciudad?.trim() || null,
+        tarifarioId: tarifarioId !== undefined ? (tarifarioId ? parseInt(tarifarioId) : null) : undefined,
+      },
+      include: { tarifario: { select: { id: true, nombre: true, activo: true } } },
     })
     return NextResponse.json({ success: true, data: empresa, message: 'Empresa actualizada exitosamente' })
   } catch (error) {

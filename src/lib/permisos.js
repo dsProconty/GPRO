@@ -61,6 +61,18 @@ export const PERMISOS = {
     VER:    'casosNegocio.ver',
     EDITAR: 'casosNegocio.editar',
   },
+  EMPLEADOS: {
+    VER:      'empleados.ver',
+    CREAR:    'empleados.crear',
+    EDITAR:   'empleados.editar',
+    ELIMINAR: 'empleados.eliminar',
+  },
+  TARIFARIOS: {
+    VER:      'tarifarios.ver',
+    CREAR:    'tarifarios.crear',
+    EDITAR:   'tarifarios.editar',
+    ELIMINAR: 'tarifarios.eliminar',
+  },
 }
 
 // Lista plana de todos los permisos posibles (útil para UI de selección)

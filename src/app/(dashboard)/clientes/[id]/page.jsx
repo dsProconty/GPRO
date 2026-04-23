@@ -10,10 +10,12 @@ import { Toast } from 'primereact/toast'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { ProgressSpinner } from 'primereact/progressspinner'
 import { Tag } from 'primereact/tag'
+import { Dropdown } from 'primereact/dropdown'
 import EmpresaFormDialog from '@/components/shared/EmpresaFormDialog'
 import ClienteFormDialog from '@/components/shared/ClienteFormDialog'
 import { empresaService } from '@/services/empresaService'
 import { clienteService } from '@/services/clienteService'
+import { tarifarioService } from '@/services/tarifarioService'
 
 export default function ClienteDetallePage({ params }) {
   const toast = useRef(null)
@@ -27,6 +29,9 @@ export default function ClienteDetallePage({ params }) {
   const [editDialogVisible, setEditDialogVisible] = useState(false)
   const [contactoDialogVisible, setContactoDialogVisible] = useState(false)
   const [selectedContacto, setSelectedContacto] = useState(null)
+  const [tarifarios, setTarifarios] = useState([])
+  const [tarifarioSeleccionado, setTarifarioSeleccionado] = useState(null)
+  const [savingTarifario, setSavingTarifario] = useState(false)
 
   useEffect(() => {
     loadAll()
@@ -35,16 +40,32 @@ export default function ClienteDetallePage({ params }) {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [clienteRes, contactosRes] = await Promise.all([
+      const [clienteRes, contactosRes, tarifRes] = await Promise.all([
         empresaService.getById(id),
         clienteService.getAll({ empresa_id: id }),
+        tarifarioService.getAll({ activo: true }),
       ])
       setCliente(clienteRes.data)
       setContactos(contactosRes.data)
+      setTarifarios(tarifRes.data.data || [])
+      setTarifarioSeleccionado(clienteRes.data?.tarifarioId || null)
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar el cliente', life: 4000 })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGuardarTarifario = async () => {
+    setSavingTarifario(true)
+    try {
+      await empresaService.update(id, { nombre: cliente.nombre, ciudad: cliente.ciudad, tarifarioId: tarifarioSeleccionado })
+      toast.current?.show({ severity: 'success', summary: 'Guardado', detail: 'Tarifario actualizado', life: 3000 })
+      loadAll()
+    } catch (err) {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'Error al guardar', life: 4000 })
+    } finally {
+      setSavingTarifario(false)
     }
   }
 
@@ -146,6 +167,39 @@ export default function ClienteDetallePage({ params }) {
           </div>
           <Button label="Editar" icon="pi pi-pencil" severity="secondary" outlined onClick={() => setEditDialogVisible(true)} />
         </div>
+      </Card>
+
+      {/* Tarifario activo */}
+      <Card className="mb-4">
+        <div className="flex justify-content-between align-items-center">
+          <div>
+            <h3 className="text-lg font-bold m-0"><i className="pi pi-dollar mr-2 text-primary" />Tarifario activo</h3>
+            <p className="text-color-secondary text-sm mt-1 mb-0">Lista de precios asociada a este cliente</p>
+          </div>
+          <div className="flex align-items-center gap-2">
+            <Dropdown
+              value={tarifarioSeleccionado}
+              options={tarifarios.map((t) => ({ label: t.nombre, value: t.id }))}
+              onChange={(e) => setTarifarioSeleccionado(e.value)}
+              placeholder="Sin tarifario"
+              showClear
+              style={{ minWidth: '220px' }}
+            />
+            <Button
+              label="Guardar"
+              icon="pi pi-save"
+              loading={savingTarifario}
+              onClick={handleGuardarTarifario}
+              disabled={tarifarioSeleccionado === (cliente?.tarifarioId || null)}
+            />
+          </div>
+        </div>
+        {cliente?.tarifario && (
+          <div className="mt-2 flex align-items-center gap-2 text-sm text-color-secondary">
+            <i className="pi pi-check-circle text-green-500" />
+            <span>Tarifario actual: <strong>{cliente.tarifario.nombre}</strong></span>
+          </div>
+        )}
       </Card>
 
       {/* Contactos / PMs */}

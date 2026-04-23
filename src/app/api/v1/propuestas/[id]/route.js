@@ -125,10 +125,13 @@ export async function PATCH(request, { params }) {
 
   // ── Caso especial: APROBADA → crear Proyecto en transacción ──────────────
   if (estadoNuevo === 'Aprobada') {
-    // Cargar líneas del caso de negocio con tarifas actuales del perfil
+    // Cargar líneas del caso de negocio con perfil y empleado asignado
     const lineasCaso = await prisma.casoNegocioLinea.findMany({
       where: { propuestaId: id },
-      include: { perfil: true },
+      include: {
+        perfil: true,
+        empleado: true,
+      },
     })
 
     // Auto-generar codigo PRO-YYYY-NNN para el nuevo proyecto
@@ -157,8 +160,9 @@ export async function PATCH(request, { params }) {
               create: lineasCaso.map((l) => ({
                 perfilConsultorId: l.perfilId,
                 horas:      l.horas,
-                costoHora:  l.perfil.costoHora,
-                precioHora: l.perfil.precioHora,
+                costoHora:  l.empleado ? l.empleado.costoHora : l.perfil.costoHora,
+                precioHora: l.precioHora ?? l.perfil.precioHora,
+                empleadoId: l.empleadoId ?? null,
               })),
             },
           }),
