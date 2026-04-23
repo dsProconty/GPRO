@@ -339,6 +339,8 @@ model Propuesta {
   fechaEnvio     DateTime? @map("fecha_envio")    @db.Date
   estado         String    @default("Factibilidad") @db.VarChar(30)
   proyectoId     Int?      @unique @map("id_proyecto")
+  codigo         String?   @unique @db.VarChar(20)
+  aplicativo     String?   @db.VarChar(100)
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 

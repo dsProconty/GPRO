@@ -17,6 +17,7 @@ const EMPTY = {
   empresaId: null,
   valorEstimado: null,
   fechaCreacion: new Date(),
+  aplicativo: '',
   responsableIds: [],
 }
 
@@ -35,6 +36,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
           empresaId: propuesta.empresaId || null,
           valorEstimado: propuesta.valorEstimado ?? null,
           fechaCreacion: propuesta.fechaCreacion ? new Date(propuesta.fechaCreacion) : new Date(),
+          aplicativo: propuesta.aplicativo || '',
           responsableIds: propuesta.responsables?.map((r) => r.userId) || [],
         })
       } else {
@@ -71,6 +73,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
         fechaCreacion: form.fechaCreacion instanceof Date
           ? form.fechaCreacion.toISOString().slice(0, 10)
           : form.fechaCreacion,
+        aplicativo: form.aplicativo?.trim() || null,
         responsableIds: form.responsableIds,
       }
       if (isEdit) {
@@ -108,6 +111,14 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
     >
       <div className="flex flex-column gap-3 mt-2">
         {errors._global && <div className="p-2 surface-100 border-round text-red-600 text-sm">{errors._global}</div>}
+
+        {propuesta?.codigo && (
+          <div className="flex align-items-center gap-2 p-2 surface-100 border-round">
+            <i className="pi pi-hashtag text-color-secondary" />
+            <span className="text-sm text-color-secondary">Código:</span>
+            <span className="font-bold" style={{ fontFamily: 'monospace' }}>{propuesta.codigo}</span>
+          </div>
+        )}
 
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Título <span className="text-red-500">*</span></label>
@@ -165,6 +176,11 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
             placeholder="Seleccionar responsables"
             display="chip"
           />
+        </div>
+
+        <div className="flex flex-column gap-1">
+          <label className="text-sm font-medium">Aplicativo</label>
+          <InputText value={form.aplicativo} onChange={set('aplicativo')} placeholder="ej: CRV, Typing, Tips (opcional)" />
         </div>
 
         <div className="flex flex-column gap-1">

@@ -47,7 +47,7 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'No tiene permiso para crear propuestas' }, { status: 403 })
   }
 
-  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, responsableIds = [] } = await request.json()
+  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, aplicativo, responsableIds = [] } = await request.json()
 
   const errors = {}
   if (!titulo?.trim()) errors.titulo = ['El título es requerido']
@@ -58,13 +58,19 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'Error de validación', errors }, { status: 422 })
   }
 
+  const anio = new Date().getFullYear()
+  const countAnio = await prisma.propuesta.count({ where: { codigo: { startsWith: `PROP-${anio}-` } } })
+  const codigo = `PROP-${anio}-${String(countAnio + 1).padStart(3, '0')}`
+
   const propuesta = await prisma.propuesta.create({
     data: {
+      codigo,
       titulo: titulo.trim(),
       descripcion: descripcion?.trim() || null,
       empresaId: parseInt(empresaId),
       valorEstimado: valorEstimado ? parseFloat(valorEstimado) : null,
       fechaCreacion: new Date(fechaCreacion),
+      aplicativo: aplicativo?.trim() || null,
       estado: 'Factibilidad',
       responsables: {
         create: responsableIds.map((uid) => ({ userId: parseInt(uid) })),

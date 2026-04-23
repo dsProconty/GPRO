@@ -621,6 +621,7 @@ export default function ProyectoDetallePage({ params }) {
                   <h3 className="m-0 font-semibold"><i className="pi pi-chart-line mr-2 text-green-600" />Caso de Negocio</h3>
                   <p className="text-color-secondary text-xs mt-1 mb-0">
                     Recursos y rentabilidad del proyecto
+                    {proyecto.aplicativo && <span className="ml-2 font-medium text-primary"><i className="pi pi-tag mr-1" />{proyecto.aplicativo}</span>}
                     {proyecto.propuesta && (
                       <Button label="Ver propuesta origen" link className="p-0 ml-2 text-xs"
                         onClick={() => router.push('/propuestas/' + proyecto.propuesta.id)} />

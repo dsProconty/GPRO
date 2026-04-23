@@ -146,12 +146,13 @@ export default function PropuestasPage() {
         emptyMessage="No hay propuestas registradas"
         stripedRows
       >
-        <Column field="id" header="ID" style={{ width: '60px' }} sortable />
+        <Column field="codigo" header="Código" body={(r) => r.codigo || '—'} sortable style={{ width: '130px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
         <Column header="Título" sortable sortField="titulo" style={{ minWidth: '200px' }} body={(r) => (
           <Button label={r.titulo} link className="p-0 text-left" style={{ fontWeight: 500 }}
             onClick={() => router.push('/propuestas/' + r.id)} />
         )} />
         <Column header="Empresa" body={(r) => r.empresa?.nombre} sortable sortField="empresa.nombre" />
+        <Column field="aplicativo" header="Aplicativo" body={(r) => r.aplicativo || '—'} style={{ width: '120px' }} />
         <Column header="Valor est." style={{ textAlign: 'right', width: '130px' }}
           body={(r) => r.valorEstimado ? formatCurrency(r.valorEstimado) : '—'} />
         <Column header="Estado" style={{ width: '180px' }} body={(r) => {

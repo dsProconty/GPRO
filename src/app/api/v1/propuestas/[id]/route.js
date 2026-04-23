@@ -58,7 +58,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, message: 'No se puede editar una propuesta en estado terminal' }, { status: 422 })
   }
 
-  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, responsableIds = [] } = await request.json()
+  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, aplicativo, responsableIds = [] } = await request.json()
 
   const errors = {}
   if (!titulo?.trim()) errors.titulo = ['El título es requerido']
@@ -80,6 +80,7 @@ export async function PUT(request, { params }) {
       empresaId: parseInt(empresaId),
       valorEstimado: valorEstimado != null ? parseFloat(valorEstimado) : null,
       fechaCreacion: new Date(fechaCreacion),
+      aplicativo: aplicativo?.trim() || null,
       responsables: {
         create: responsableIds.map((uid) => ({ userId: parseInt(uid) })),
       },
@@ -130,17 +131,24 @@ export async function PATCH(request, { params }) {
       include: { perfil: true },
     })
 
+    // Auto-generar codigo PRO-YYYY-NNN para el nuevo proyecto
+    const anioProyecto = new Date().getFullYear()
+    const countProyecto = await prisma.proyecto.count({ where: { codigo: { startsWith: `PRO-${anioProyecto}-` } } })
+    const codigoProyecto = `PRO-${anioProyecto}-${String(countProyecto + 1).padStart(3, '0')}`
+
     let proyectoCreado = null
     let propuestaActualizada = null
 
     await prisma.$transaction(async (tx) => {
       proyectoCreado = await tx.proyecto.create({
         data: {
+          codigo: codigoProyecto,
           detalle: propuesta.titulo,
           empresaId: propuesta.empresaId,
           valor: propuesta.valorEstimado ?? 0,
           fechaCreacion: new Date(),
           estadoId: 3, // Adjudicado
+          aplicativo: propuesta.aplicativo || null,
           responsables: {
             create: propuesta.responsables.map((r) => ({ userId: r.userId })),
           },

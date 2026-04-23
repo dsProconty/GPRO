@@ -287,7 +287,6 @@ export default function ProyectosPage() {
         stripedRows
         scrollable
       >
-        <Column field="id" header="ID" sortable style={{ width: '60px' }} />
         <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable style={{ width: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
         <Column header="Proyecto" body={detalleTemplate} sortable sortField="detalle" style={{ minWidth: '180px' }} />
         <Column header="Cliente" body={(row) => row.empresa?.nombre} sortable sortField="empresa.nombre" />
