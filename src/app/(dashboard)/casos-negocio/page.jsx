@@ -249,7 +249,9 @@ export default function CasosNegocioPage() {
         >
           <Column selectionMode="multiple" style={{ width: '3rem' }} />
           <Column expander style={{ width: '3rem' }} />
+          <Column header="Código" body={(r) => r.codigo || '—'} style={{ width: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
           <Column header="Empresa" body={(r) => <span className="font-medium">{r.empresa?.nombre}</span>} style={{ minWidth: '130px' }} />
+          <Column header="Aplicativo" body={(r) => r.aplicativo || '—'} style={{ width: '110px' }} />
           <Column header="Proyecto" body={(r) => (
             <Button label={r.nombre} link className="p-0 text-left text-sm"
               onClick={() => router.push(`/proyectos/${r.id}`)} />

@@ -83,6 +83,8 @@ export async function GET(request) {
 
     return {
       id: p.id,
+      codigo: p.codigo,
+      aplicativo: p.aplicativo,
       nombre: p.detalle,
       empresa: p.empresa,
       estado: p.estado,
