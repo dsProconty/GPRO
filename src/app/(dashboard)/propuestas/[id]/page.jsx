@@ -270,366 +270,350 @@ export default function PropuestaDetallePage({ params }) {
     <div className="p-4">
       <Toast ref={toast} />
 
-      {/* Breadcrumb */}
-      <div className="flex justify-content-between align-items-center mb-4">
-        <div className="flex align-items-center gap-2">
+      {/* ── Header ── */}
+      <div className="flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div className="flex align-items-center gap-2 flex-wrap">
           <Button label="Propuestas" icon="pi pi-arrow-left" severity="secondary" text onClick={() => router.push('/propuestas')} />
           <i className="pi pi-angle-right text-color-secondary" />
-          <span className="text-900 font-semibold">{propuesta.titulo}</span>
+          <span className="text-900 font-bold text-xl">{propuesta.titulo}</span>
+          {propuesta.codigo && (
+            <span style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 600, color: '#64748b', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '3px 9px', borderRadius: '20px', letterSpacing: '0.3px' }}>
+              {propuesta.codigo}
+            </span>
+          )}
         </div>
         {!esTerminal && puede(PERMISOS.PROPUESTAS.EDITAR) && (
-          <Button label="Editar" icon="pi pi-pencil" severity="info" outlined onClick={() => setEditDialogVisible(true)} />
+          <Button label="Editar" icon="pi pi-pencil" severity="secondary" outlined onClick={() => setEditDialogVisible(true)} />
         )}
       </div>
 
-      <div className="grid">
-        {/* Col principal */}
-        <div className="col-12 lg:col-8">
+      {/* ── KPI Cards ── */}
+      <div className="grid mb-3">
+        <div className="col-12 md:col-3">
+          <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
+            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>🏢</div>
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Empresa</div>
+              <div className="font-bold text-sm">{propuesta.empresa?.nombre || '—'}</div>
+            </div>
+          </div>
+        </div>
+        <div className="col-12 md:col-3">
+          <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
+            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>📅</div>
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Fecha de inicio</div>
+              <div className="font-bold text-sm">{formatDate(propuesta.fechaCreacion)}</div>
+            </div>
+          </div>
+        </div>
+        <div className="col-12 md:col-3">
+          <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
+            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>🖥️</div>
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Aplicativo</div>
+              <div className="font-bold text-sm">{propuesta.aplicativo || '—'}</div>
+            </div>
+          </div>
+        </div>
+        <div className="col-12 md:col-3">
+          <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
+            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>💰</div>
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Valor estimado</div>
+              <div className="font-bold text-sm" style={{ color: '#15803d' }}>{propuesta.valorEstimado ? formatCurrency(propuesta.valorEstimado) : '—'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          {/* Info + Estado */}
+      {/* ── Pipeline de estado ── */}
+      {(() => {
+        const STEPS = ['Factibilidad', 'Haciendo', 'Enviada']
+        const isFork = ['Aprobada', 'Rechazada'].includes(propuesta.estado)
+        const pipeIdx = isFork ? 3 : STEPS.indexOf(propuesta.estado)
+        const getLabel = (key) => propuestaConfig[key]?.label || key
+
+        return (
           <Card className="mb-3">
-            <div className="flex align-items-start justify-content-between mb-3">
-              <div>
-                <h2 className="text-2xl font-bold m-0 mb-2">{propuesta.titulo}</h2>
-                <div className="flex align-items-center gap-2 flex-wrap">
-                  <Tag value={cfg.label} severity={cfg.severity} style={{ fontSize: '0.95rem', padding: '4px 12px' }} />
-                  <span className="text-color-secondary text-sm"><i className="pi pi-building mr-1" />{propuesta.empresa?.nombre}</span>
+            {/* Stepper */}
+            <div className="flex align-items-start justify-content-center mb-4" style={{ gap: 0 }}>
+              {STEPS.map((key, idx) => {
+                const done = pipeIdx > idx
+                const curr = pipeIdx === idx
+                const circleStyle = done
+                  ? { background: '#22C55E', color: '#fff', border: '2px solid #22C55E' }
+                  : curr
+                    ? { background: '#F97316', color: '#fff', border: '2px solid #F97316', boxShadow: '0 0 0 4px rgba(249,115,22,.18)' }
+                    : { background: '#fff', color: '#94a3b8', border: '2px solid #CBD5E1' }
+                return (
+                  <div key={key} className="flex align-items-center" style={{ flex: idx < STEPS.length - 1 ? 1 : '0 0 auto' }}>
+                    <div className="flex flex-column align-items-center" style={{ minWidth: '72px' }}>
+                      <div style={{ width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px', ...circleStyle }}>
+                        {done ? '✓' : curr ? '●' : idx + 1}
+                      </div>
+                      <div style={{ fontSize: '11px', fontWeight: curr ? 700 : 400, color: curr ? '#F97316' : done ? '#16A34A' : '#94a3b8', textAlign: 'center', marginTop: '6px', maxWidth: '72px', lineHeight: '1.3' }}>
+                        {getLabel(key)}
+                      </div>
+                      {curr && <div style={{ fontSize: '9.5px', color: '#94a3b8', marginTop: '2px' }}>Estado actual</div>}
+                    </div>
+                    {/* Connector */}
+                    <div style={{ flex: 1, height: '2px', margin: curr ? '-30px 4px 0' : '-22px 4px 0', backgroundImage: done ? 'none' : 'repeating-linear-gradient(90deg,#CBD5E1 0,#CBD5E1 5px,transparent 5px,transparent 11px)', background: done ? '#22C55E' : undefined }} />
+                  </div>
+                )
+              })}
+
+              {/* Fork: Aprobada | Rechazada */}
+              <div style={{ flex: '0 0 160px', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '10px', paddingTop: 0, position: 'relative' }}>
+                <div style={{ position: 'absolute', top: '16px', left: 0, right: '50%', height: '2px', backgroundImage: 'repeating-linear-gradient(90deg,#CBD5E1 0,#CBD5E1 5px,transparent 5px,transparent 11px)' }} />
+                {/* Aprobada */}
+                <div className="flex flex-column align-items-center">
+                  <div style={{ width: '2px', height: '14px', background: '#CBD5E1', marginBottom: '2px' }} />
+                  <div style={{ width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px', background: propuesta.estado === 'Aprobada' ? '#DCFCE7' : '#fff', color: propuesta.estado === 'Aprobada' ? '#15803D' : '#94a3b8', border: propuesta.estado === 'Aprobada' ? '2px solid #BBF7D0' : '2px solid #CBD5E1' }}>✓</div>
+                  <div style={{ fontSize: '11px', color: propuesta.estado === 'Aprobada' ? '#16A34A' : '#94a3b8', textAlign: 'center', marginTop: '6px', maxWidth: '65px', lineHeight: '1.3' }}>{getLabel('Aprobada')}</div>
+                </div>
+                {/* Rechazada */}
+                <div className="flex flex-column align-items-center">
+                  <div style={{ width: '2px', height: '14px', background: '#CBD5E1', marginBottom: '2px' }} />
+                  <div style={{ width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px', background: propuesta.estado === 'Rechazada' ? '#FEF2F2' : '#fff', color: propuesta.estado === 'Rechazada' ? '#DC2626' : '#94a3b8', border: propuesta.estado === 'Rechazada' ? '2px solid #FECACA' : '2px solid #CBD5E1' }}>✕</div>
+                  <div style={{ fontSize: '11px', color: propuesta.estado === 'Rechazada' ? '#DC2626' : '#94a3b8', textAlign: 'center', marginTop: '6px', maxWidth: '65px', lineHeight: '1.3' }}>{getLabel('Rechazada')}</div>
                 </div>
               </div>
             </div>
 
-            {/* Botones de transición */}
+            {/* Action buttons */}
             {transicionesUI.length > 0 && puede(PERMISOS.PROPUESTAS.CAMBIAR_ESTADO) && (
-              <div className="flex flex-wrap gap-2 mb-3 p-3 surface-50 border-round">
-                <span className="text-sm font-semibold text-color-secondary align-self-center mr-1">Cambiar a:</span>
+              <div className="flex justify-content-center gap-2 flex-wrap pt-3" style={{ borderTop: '1px solid var(--surface-border)' }}>
                 {transicionesUI.map((t) => (
-                  <Button
-                    key={t.estado}
-                    label={t.label}
-                    icon={'pi ' + t.icon}
-                    severity={t.severity}
-                    outlined={t.estado !== 'Aprobada' && t.estado !== 'Rechazada'}
-                    size="small"
-                    onClick={() => abrirCambioEstado(t.estado)}
-                  />
+                  <Button key={t.estado} label={t.label} icon={'pi ' + t.icon}
+                    severity={t.estado === 'Aprobada' ? 'success' : t.estado === 'Rechazada' ? 'danger' : 'secondary'}
+                    outlined size="small" onClick={() => abrirCambioEstado(t.estado)} />
                 ))}
               </div>
             )}
-
-            {/* Info general */}
-            <div className="grid text-sm">
-              <div className="col-6"><span className="text-color-secondary">Fecha de inicio:</span> <strong>{formatDate(propuesta.fechaCreacion)}</strong></div>
-              <div className="col-6"><span className="text-color-secondary">Fecha de envío:</span> <strong>{formatDate(propuesta.fechaEnvio)}</strong></div>
-              {propuesta.aplicativo && (
-                <div className="col-12 mt-1">
-                  <span className="text-color-secondary">Aplicativo:</span> <strong>{propuesta.aplicativo}</strong>
-                </div>
-              )}
-              {propuesta.descripcion && (
-                <div className="col-12 mt-2">
-                  <span className="text-color-secondary">Descripción:</span>
-                  <p className="mt-1 mb-0" style={{ whiteSpace: 'pre-wrap' }}>{propuesta.descripcion}</p>
-                </div>
-              )}
-            </div>
           </Card>
+        )
+      })()}
 
-          {/* Responsables */}
-          <Card className="mb-3">
-            <p className="font-semibold mb-2 m-0"><i className="pi pi-users mr-2" />Responsables Proconty</p>
-            {propuesta.responsables?.length === 0
-              ? <p className="text-color-secondary text-sm m-0">Sin responsables asignados</p>
-              : propuesta.responsables.map((r) => (
-                  <div key={r.userId} className="text-sm mb-1">
-                    <i className="pi pi-user mr-1 text-color-secondary" />{r.user?.name}
-                  </div>
-                ))
-            }
-          </Card>
-
-          {/* ── Caso de Negocio ── */}
-          <Card className="mb-3">
-            <div className="flex align-items-center justify-content-between mb-3">
-              <div>
-                <h3 className="m-0 font-semibold"><i className="pi pi-calculator mr-2" />Caso de Negocio</h3>
-                <p className="text-color-secondary text-xs mt-1 mb-0">
-                  Horas por perfil · consultor asignado · costos e ingresos estimados
-                  {casoTarifario && <span className="ml-2 text-primary"><i className="pi pi-dollar mr-1" />Tarifario: {casoTarifario.nombre}</span>}
-                </p>
-              </div>
-              {!esTerminal && (
-                <div className="flex gap-2">
-                  {casoTarifario && (
-                    <Button
-                      label="Cargar tarifario"
-                      icon="pi pi-download"
-                      size="small"
-                      severity="secondary"
-                      outlined
-                      loading={cargandoTarifario}
-                      onClick={handleCargarTarifario}
-                      tooltip={`Precarga líneas desde "${casoTarifario.nombre}"`}
-                      tooltipOptions={{ position: 'top' }}
-                    />
-                  )}
-                  <Button
-                    label="Agregar perfil"
-                    icon="pi pi-plus"
-                    size="small"
-                    outlined
-                    onClick={abrirNuevaLinea}
-                  />
-                </div>
-              )}
-            </div>
-
-            {casoLineas.length === 0 ? (
-              <div className="p-3 surface-50 border-round text-center text-color-secondary text-sm">
-                <i className="pi pi-info-circle mr-2" />
-                Sin líneas registradas.
-                {casoTarifario && !esTerminal && (
-                  <span> Usa <strong>Cargar tarifario</strong> para precargar las líneas de <em>{casoTarifario.nombre}</em>.</span>
-                )}
-              </div>
-            ) : (
-              <>
-                {/* Tabla de líneas */}
-                <div className="border-round overflow-hidden mb-3" style={{ border: '1px solid var(--surface-border)', overflowX: 'auto' }}>
-                  {/* Cabecera */}
-                  <div className="flex px-3 py-2 surface-100 text-xs font-semibold text-color-secondary" style={{ minWidth: '700px', gap: '8px' }}>
-                    <div style={{ flex: '0 0 180px' }}>Perfil / Consultor</div>
-                    <div style={{ flex: '0 0 55px', textAlign: 'right' }}>Horas</div>
-                    <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Costo/h</div>
-                    <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Precio/h</div>
-                    <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Total Costo</div>
-                    <div style={{ flex: '1 1 auto', textAlign: 'right' }}>Total Precio</div>
-                    <div style={{ flex: '0 0 70px' }} />
-                  </div>
-
-                  {casoLineas.map((l, idx) => (
-                    <div
-                      key={l.perfilId}
-                      className={`flex px-3 py-2 align-items-center ${idx % 2 === 1 ? 'surface-50' : ''}`}
-                      style={{ borderTop: '1px solid var(--surface-border)', minWidth: '700px', gap: '8px' }}
-                    >
-                      {/* Perfil + Empleado */}
-                      <div style={{ flex: '0 0 180px' }}>
-                        <div className="font-semibold text-sm">{l.perfil.nombre}</div>
-                        <div className="text-xs mt-1 flex align-items-center gap-1">
-                          <Tag value={l.perfil.nivel} severity={l.perfil.nivel === 'Senior' ? 'success' : l.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'} style={{ fontSize: '0.65rem' }} />
-                          {l.empleado
-                            ? <span className="text-color-secondary"><i className="pi pi-user ml-1 mr-1" />{l.empleado.nombre} {l.empleado.apellido}</span>
-                            : <span className="text-color-secondary" style={{ fontStyle: 'italic' }}>Sin consultor</span>
-                          }
-                        </div>
-                      </div>
-
-                      <div style={{ flex: '0 0 55px', textAlign: 'right', fontSize: '0.85rem' }}>{l.horas}h</div>
-                      <div style={{ flex: '0 0 90px', textAlign: 'right', fontSize: '0.85rem', color: 'var(--text-color-secondary)' }}>{formatCurrency(l.costoHora)}</div>
-                      <div style={{ flex: '0 0 90px', textAlign: 'right', fontSize: '0.85rem' }}>
-                        <span className={l.precioHora !== null ? 'text-primary font-medium' : 'text-color-secondary'}>
-                          {formatCurrency(l.precioHora)}
-                        </span>
-                      </div>
-                      <div style={{ flex: '0 0 90px', textAlign: 'right', fontSize: '0.85rem', color: 'var(--text-color-secondary)' }}>{formatCurrency(l.costo)}</div>
-                      <div style={{ flex: '1 1 auto', textAlign: 'right', fontSize: '0.85rem', fontWeight: 600 }}>{formatCurrency(l.precio)}</div>
-
-                      {/* Acciones */}
-                      <div style={{ flex: '0 0 70px', textAlign: 'right' }}>
-                        {!esTerminal && (
-                          <div className="flex gap-1 justify-content-end">
-                            <Button
-                              icon="pi pi-pencil"
-                              rounded text severity="info" size="small"
-                              tooltip="Editar"
-                              tooltipOptions={{ position: 'top' }}
-                              onClick={() => abrirEditarLinea(l)}
-                            />
-                            <Button
-                              icon="pi pi-trash"
-                              rounded text severity="danger" size="small"
-                              tooltip="Eliminar"
-                              tooltipOptions={{ position: 'top' }}
-                              onClick={() => handleDeleteLinea(l.perfilId)}
-                            />
-                          </div>
-                        )}
-                      </div>
+      {/* ── 2 col: Responsables | Descripción ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+        <Card>
+          <div className="flex align-items-center gap-2 mb-3">
+            <span style={{ fontSize: '15px' }}>👥</span>
+            <h3 className="m-0 font-semibold text-base">Responsables</h3>
+          </div>
+          <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', color: '#94a3b8', marginBottom: '10px' }}>Equipo Proconty</div>
+          {propuesta.responsables?.length === 0
+            ? <p className="text-color-secondary text-sm">Sin responsables asignados</p>
+            : propuesta.responsables.map((r) => {
+                const initials = r.user?.name?.split(' ').map(w => w[0]).slice(0, 2).join('') || '?'
+                return (
+                  <div key={r.userId} className="flex align-items-center gap-2 mb-3">
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg,#4F8EF7,#3B5BDB)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, flexShrink: 0 }}>
+                      {initials}
                     </div>
-                  ))}
-
-                  {/* Fila totales */}
-                  <div className="flex px-3 py-2 font-semibold surface-100" style={{ borderTop: '2px solid var(--surface-border)', minWidth: '700px', gap: '8px' }}>
-                    <div style={{ flex: '0 0 180px', fontSize: '0.85rem' }}>TOTAL</div>
-                    <div style={{ flex: '0 0 55px', textAlign: 'right', fontSize: '0.85rem' }}>{casoResumen?.totalHoras}h</div>
-                    <div style={{ flex: '0 0 90px' }} />
-                    <div style={{ flex: '0 0 90px' }} />
-                    <div style={{ flex: '0 0 90px', textAlign: 'right', fontSize: '0.85rem', color: 'var(--text-color-secondary)' }}>{formatCurrency(casoResumen?.totalCosto)}</div>
-                    <div style={{ flex: '1 1 auto', textAlign: 'right', fontSize: '0.85rem', color: 'var(--green-700)' }}>{formatCurrency(casoResumen?.totalPrecio)}</div>
-                    <div style={{ flex: '0 0 70px' }} />
-                  </div>
-                </div>
-
-                {/* Resumen GM */}
-                <div className="p-3 border-round" style={{ background: 'var(--surface-50)', border: '1px solid var(--surface-border)' }}>
-                  <div className="flex justify-content-between align-items-center mb-2">
-                    <span className="text-sm font-semibold">Margen bruto</span>
-                    <span className={`text-lg font-bold ${(casoResumen?.gmPct || 0) >= 40 ? 'text-green-600' : (casoResumen?.gmPct || 0) >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
-                      {formatCurrency(casoResumen?.gm)} <span className="text-sm">({casoResumen?.gmPct}%)</span>
-                    </span>
-                  </div>
-                  <ProgressBar value={casoResumen?.gmPct || 0} showValue={false} style={{ height: '6px' }}
-                    color={(casoResumen?.gmPct || 0) >= 40 ? 'var(--green-500)' : (casoResumen?.gmPct || 0) >= 20 ? 'var(--yellow-500)' : 'var(--red-500)'}
-                  />
-                  {!esTerminal && (
-                    <div className="flex justify-content-end mt-2">
-                      <Button
-                        label={`Usar ${formatCurrency(casoResumen?.totalPrecio)} como Valor Estimado`}
-                        icon="pi pi-arrow-up"
-                        size="small"
-                        severity="success"
-                        outlined
-                        onClick={handleAplicarValor}
-                      />
+                    <div>
+                      <div className="font-semibold text-sm">{r.user?.name}</div>
+                      {r.user?.email && <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '1px' }}>{r.user.email}</div>}
                     </div>
-                  )}
-                </div>
-              </>
-            )}
-          </Card>
+                  </div>
+                )
+              })
+          }
+        </Card>
 
-          {/* Proyecto vinculado */}
-          {propuesta.proyecto && (
-            <Card className="mb-3">
-              <div className="flex align-items-center justify-content-between">
-                <div>
-                  <p className="font-semibold m-0 mb-1"><i className="pi pi-briefcase mr-2 text-green-600" />Proyecto generado</p>
-                  <p className="text-color-secondary text-sm m-0">{propuesta.proyecto.detalle}</p>
-                </div>
-                <Button
-                  label="Ver Proyecto"
-                  icon="pi pi-arrow-right"
-                  severity="success"
-                  outlined
-                  size="small"
-                  onClick={() => router.push('/proyectos/' + propuesta.proyecto.id)}
-                />
-              </div>
-            </Card>
+        <Card>
+          <div className="flex align-items-center gap-2 mb-3">
+            <span style={{ fontSize: '15px' }}>📄</span>
+            <h3 className="m-0 font-semibold text-base">Descripción</h3>
+          </div>
+          {propuesta.descripcion
+            ? <p className="m-0 text-sm text-color-secondary" style={{ lineHeight: '1.65', whiteSpace: 'pre-wrap' }}>{propuesta.descripcion}</p>
+            : <p className="m-0 text-sm text-color-secondary" style={{ fontStyle: 'italic' }}>Sin descripción registrada.</p>
+          }
+          {propuesta.fechaEnvio && (
+            <div className="mt-3 pt-3 text-sm" style={{ borderTop: '1px solid var(--surface-border)' }}>
+              <span className="text-color-secondary">Fecha de envío: </span><strong>{formatDate(propuesta.fechaEnvio)}</strong>
+            </div>
           )}
+        </Card>
+      </div>
 
-          {/* Trazabilidad de estado */}
-          <Card>
-            <div className="mb-3">
-              <h3 className="m-0 font-semibold"><i className="pi pi-history mr-2" />Trazabilidad de Estado</h3>
-              <p className="text-color-secondary text-xs mt-1 mb-0">Registro inmutable de todos los cambios de estado</p>
+      {/* ── Caso de Negocio ── */}
+      <Card className="mb-3" style={{ padding: 0 }}>
+        <div className="flex align-items-center justify-content-between p-3" style={{ borderBottom: '1px solid var(--surface-border)' }}>
+          <div className="flex align-items-center gap-2 flex-wrap">
+            <span style={{ fontSize: '15px' }}>📊</span>
+            <h3 className="m-0 font-semibold">Caso de Negocio</h3>
+            {casoTarifario && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '20px', background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1D4ED8', fontSize: '10.5px', fontWeight: 600 }}>
+                💲 {casoTarifario.nombre}
+              </span>
+            )}
+          </div>
+          {!esTerminal && (
+            <div className="flex gap-2">
+              {casoTarifario && (
+                <Button label="Cargar tarifario" icon="pi pi-download" size="small" severity="secondary" outlined loading={cargandoTarifario} onClick={handleCargarTarifario} />
+              )}
+              <Button label="Agregar perfil" icon="pi pi-plus" size="small" onClick={abrirNuevaLinea} />
+            </div>
+          )}
+        </div>
+
+        {casoLineas.length === 0 ? (
+          <div className="p-3 text-center text-color-secondary text-sm">
+            <i className="pi pi-info-circle mr-2" />
+            Sin líneas registradas.
+            {casoTarifario && !esTerminal && <span> Usa <strong>Cargar tarifario</strong> para precargar las líneas de <em>{casoTarifario.nombre}</em>.</span>}
+          </div>
+        ) : (
+          <>
+            <div style={{ overflowX: 'auto' }}>
+              {/* Header tabla */}
+              <div className="flex px-3 py-2 text-xs font-semibold" style={{ minWidth: '700px', gap: '8px', background: '#f8f9fa', borderBottom: '1px solid var(--surface-border)', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <div style={{ flex: '0 0 180px' }}>Perfil / Consultor</div>
+                <div style={{ flex: '0 0 55px', textAlign: 'right' }}>Horas</div>
+                <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Costo/h</div>
+                <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Precio/h</div>
+                <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Total Costo</div>
+                <div style={{ flex: '1 1 auto', textAlign: 'right' }}>Total Precio</div>
+                <div style={{ flex: '0 0 70px' }} />
+              </div>
+
+              {casoLineas.map((l, idx) => (
+                <div key={l.perfilId}
+                  className="flex px-3 align-items-center"
+                  style={{ borderBottom: '1px solid #f1f5f9', minWidth: '700px', gap: '8px', padding: '13px 12px', background: idx % 2 === 1 ? '#fafbfc' : '#fff' }}
+                >
+                  <div style={{ flex: '0 0 180px' }}>
+                    <div className="font-semibold text-sm">{l.perfil.nombre}</div>
+                    <div className="text-xs mt-1 flex align-items-center gap-1">
+                      <Tag value={l.perfil.nivel} severity={l.perfil.nivel === 'Senior' ? 'success' : l.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'} style={{ fontSize: '0.65rem' }} />
+                      {l.empleado
+                        ? <span style={{ fontSize: '11px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '3px' }}>👤 {l.empleado.nombre} {l.empleado.apellido}</span>
+                        : <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>Sin consultor</span>}
+                    </div>
+                  </div>
+                  <div style={{ flex: '0 0 55px', textAlign: 'right', fontSize: '0.85rem' }}>{l.horas}h</div>
+                  <div style={{ flex: '0 0 90px', textAlign: 'right', fontSize: '0.85rem', color: '#94a3b8' }}>{formatCurrency(l.costoHora)}</div>
+                  <div style={{ flex: '0 0 90px', textAlign: 'right', fontSize: '0.85rem' }}>
+                    <span style={{ color: '#3B82F6', fontWeight: 600 }}>{formatCurrency(l.precioHora)}</span>
+                  </div>
+                  <div style={{ flex: '0 0 90px', textAlign: 'right', fontSize: '0.85rem', color: '#64748b' }}>{formatCurrency(l.costo)}</div>
+                  <div style={{ flex: '1 1 auto', textAlign: 'right', fontSize: '0.85rem', fontWeight: 700 }}>{formatCurrency(l.precio)}</div>
+                  <div style={{ flex: '0 0 70px', textAlign: 'right' }}>
+                    {!esTerminal && (
+                      <div className="flex gap-1 justify-content-end">
+                        <Button icon="pi pi-pencil" rounded text severity="info" size="small" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => abrirEditarLinea(l)} />
+                        <Button icon="pi pi-trash" rounded text severity="danger" size="small" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => handleDeleteLinea(l.perfilId)} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Fila TOTAL */}
+              <div className="flex px-3 font-semibold" style={{ borderTop: '2px solid var(--surface-border)', minWidth: '700px', gap: '8px', padding: '10px 12px', background: '#f8f9fa' }}>
+                <div style={{ flex: '0 0 180px', fontSize: '0.85rem' }}>TOTAL</div>
+                <div style={{ flex: '0 0 55px', textAlign: 'right', fontSize: '0.85rem' }}>{casoResumen?.totalHoras}h</div>
+                <div style={{ flex: '0 0 90px' }} />
+                <div style={{ flex: '0 0 90px' }} />
+                <div style={{ flex: '0 0 90px', textAlign: 'right', fontSize: '0.85rem', color: '#64748b' }}>{formatCurrency(casoResumen?.totalCosto)}</div>
+                <div style={{ flex: '1 1 auto', textAlign: 'right', fontSize: '0.85rem', color: '#15803d', fontWeight: 700 }}>{formatCurrency(casoResumen?.totalPrecio)}</div>
+                <div style={{ flex: '0 0 70px' }} />
+              </div>
             </div>
 
-            {(!propuesta.logs || propuesta.logs.length === 0) ? (
-              <p className="text-color-secondary text-sm m-0">Sin historial de cambios.</p>
-            ) : (
-              <div className="flex flex-column gap-0">
-                {propuesta.logs.map((log, idx) => {
-                  const cfgNuevo = propuestaConfig[log.estadoNuevo] || { color: '#6b7280', label: log.estadoNuevo, icon: 'pi-circle', severity: 'secondary' }
-                  const cfgAnterior = log.estadoAnterior ? (propuestaConfig[log.estadoAnterior] || { label: log.estadoAnterior, color: '#6b7280' }) : null
-                  const isLast = idx === propuesta.logs.length - 1
-                  return (
-                    <div key={log.id} className="flex gap-3">
-                      <div className="flex flex-column align-items-center" style={{ width: '28px', flexShrink: 0 }}>
-                        <div
-                          className="flex align-items-center justify-content-center border-circle flex-shrink-0"
-                          style={{ width: '28px', height: '28px', background: cfgNuevo.color + '20', border: '2px solid ' + cfgNuevo.color }}
-                        >
-                          <i className={'pi ' + cfgNuevo.icon} style={{ fontSize: '11px', color: cfgNuevo.color }} />
-                        </div>
-                        {!isLast && (
-                          <div style={{ width: '2px', flex: 1, minHeight: '20px', background: 'var(--surface-border)' }} />
-                        )}
-                      </div>
-                      <div className="pb-3 flex-1">
-                        <div className="flex align-items-center gap-2 flex-wrap mb-1">
-                          {cfgAnterior && (
-                            <>
-                              <span className="text-sm font-medium" style={{ color: cfgAnterior.color }}>{cfgAnterior.label}</span>
-                              <i className="pi pi-arrow-right text-color-secondary" style={{ fontSize: '10px' }} />
-                            </>
-                          )}
-                          <span className="text-sm font-bold" style={{ color: cfgNuevo.color }}>{cfgNuevo.label}</span>
-                        </div>
-                        <div className="flex align-items-center gap-2 text-xs text-color-secondary mb-1">
-                          <i className="pi pi-user" /><span>{log.user?.name}</span>
-                          <i className="pi pi-clock" /><span>{new Date(log.createdAt).toLocaleString('es-EC')}</span>
-                        </div>
-                        {log.nota && (
-                          <div className="p-2 surface-50 border-round text-sm" style={{ whiteSpace: 'pre-wrap' }}>{log.nota}</div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
+            {/* Margen bruto */}
+            <div className="flex align-items-center gap-3 px-3" style={{ borderTop: '1px solid var(--surface-border)', padding: '13px 16px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap' }}>Margen bruto</span>
+              <div style={{ flex: 1, background: '#f1f3f4', borderRadius: '20px', height: '8px', overflow: 'hidden' }}>
+                <div style={{ width: `${casoResumen?.gmPct || 0}%`, height: '100%', borderRadius: '20px', background: 'linear-gradient(90deg,#16A34A,#22C55E)' }} />
+              </div>
+              <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#15803d', whiteSpace: 'nowrap' }}>
+                {formatCurrency(casoResumen?.gm)} <span style={{ fontSize: '12px' }}>({casoResumen?.gmPct}%)</span>
+              </span>
+            </div>
+
+            {!esTerminal && (
+              <div className="flex justify-content-end px-3 pb-3">
+                <Button label={`↑ Usar ${formatCurrency(casoResumen?.totalPrecio)} como Valor Estimado`} icon="pi pi-arrow-up" size="small" severity="success" outlined onClick={handleAplicarValor} />
               </div>
             )}
-          </Card>
-        </div>
+          </>
+        )}
+      </Card>
 
-        {/* Col lateral: resumen */}
-        <div className="col-12 lg:col-4">
-          <Card>
-            <h3 className="m-0 mb-3 font-semibold">Resumen</h3>
-            <div className="flex flex-column gap-3 text-sm">
-              {propuesta.codigo && (
-                <div>
-                  <div className="text-color-secondary mb-1">Código</div>
-                  <code className="font-bold" style={{ fontSize: '0.9rem' }}>{propuesta.codigo}</code>
-                </div>
-              )}
-              <div>
-                <div className="text-color-secondary mb-1">Estado actual</div>
-                <Tag value={cfg.label} severity={cfg.severity} style={{ fontSize: '0.9rem' }} />
-              </div>
-              <div>
-                <div className="text-color-secondary mb-1">Empresa</div>
-                <strong>{propuesta.empresa?.nombre}</strong>
-              </div>
-              <div>
-                <div className="text-color-secondary mb-1">Valor estimado</div>
-                <strong className="text-xl">{propuesta.valorEstimado ? formatCurrency(propuesta.valorEstimado) : '—'}</strong>
-              </div>
-              <hr className="my-1" />
-              <div>
-                <div className="text-color-secondary mb-1">Fecha de inicio</div>
-                <strong>{formatDate(propuesta.fechaCreacion)}</strong>
-              </div>
-              {propuesta.fechaEnvio && (
-                <div>
-                  <div className="text-color-secondary mb-1">Fecha de envío</div>
-                  <strong>{formatDate(propuesta.fechaEnvio)}</strong>
-                </div>
-              )}
-              <div>
-                <div className="text-color-secondary mb-1">Cambios de estado</div>
-                <strong>{propuesta.logs?.length ?? 0}</strong>
-              </div>
-              {propuesta.proyecto && (
-                <>
-                  <hr className="my-1" />
-                  <div>
-                    <div className="text-color-secondary mb-1 text-green-700 font-semibold">
-                      <i className="pi pi-check-circle mr-1" />Proyecto creado
-                    </div>
-                    <Button
-                      label={propuesta.proyecto.detalle}
-                      link
-                      className="p-0 text-sm"
-                      onClick={() => router.push('/proyectos/' + propuesta.proyecto.id)}
-                    />
-                  </div>
-                </>
-              )}
+      {/* Proyecto vinculado */}
+      {propuesta.proyecto && (
+        <Card className="mb-3">
+          <div className="flex align-items-center justify-content-between">
+            <div>
+              <p className="font-semibold m-0 mb-1"><i className="pi pi-briefcase mr-2 text-green-600" />Proyecto generado</p>
+              <p className="text-color-secondary text-sm m-0">{propuesta.proyecto.detalle}</p>
             </div>
-          </Card>
+            <Button label="Ver Proyecto" icon="pi pi-arrow-right" severity="success" outlined size="small" onClick={() => router.push('/proyectos/' + propuesta.proyecto.id)} />
+          </div>
+        </Card>
+      )}
+
+      {/* ── Trazabilidad de Estado ── */}
+      <Card>
+        <div className="flex align-items-center gap-2 mb-1">
+          <span style={{ fontSize: '15px' }}>🕐</span>
+          <h3 className="m-0 font-semibold">Trazabilidad de Estado</h3>
         </div>
-      </div>
+        <p style={{ fontSize: '11px', color: '#94a3b8', margin: '0 0 16px' }}>Registro inmutable de todos los cambios de estado</p>
+
+        {(!propuesta.logs || propuesta.logs.length === 0) ? (
+          <p className="text-color-secondary text-sm m-0">Sin historial de cambios.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {propuesta.logs.map((log, idx) => {
+              const cfgNuevo   = propuestaConfig[log.estadoNuevo]    || { color: '#6b7280', label: log.estadoNuevo    }
+              const cfgAnterior = log.estadoAnterior ? (propuestaConfig[log.estadoAnterior] || { label: log.estadoAnterior, color: '#6b7280' }) : null
+              const isLast = idx === propuesta.logs.length - 1
+              const DOT_STYLES = {
+                Factibilidad: { bg: '#FFF7ED', color: '#F97316', border: '#FED7AA' },
+                Haciendo:     { bg: '#EFF6FF', color: '#3B82F6', border: '#BFDBFE' },
+                Enviada:      { bg: '#F8FAFC', color: '#64748B', border: '#CBD5E1' },
+                Aprobada:     { bg: '#DCFCE7', color: '#16A34A', border: '#BBF7D0' },
+                Rechazada:    { bg: '#FEF2F2', color: '#DC2626', border: '#FECACA' },
+              }
+              const ds = DOT_STYLES[log.estadoNuevo] || { bg: '#F1F5F9', color: '#64748B', border: '#CBD5E1' }
+              return (
+                <div key={log.id} style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '36px', flexShrink: 0 }}>
+                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: ds.bg, color: ds.color, border: `2px solid ${ds.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '11px', flexShrink: 0 }}>
+                      {log.estadoNuevo?.[0] || '?'}
+                    </div>
+                    {!isLast && <div style={{ width: '2px', flex: 1, minHeight: '20px', background: '#e2e8f0', margin: '4px 0' }} />}
+                  </div>
+                  <div style={{ flex: 1, paddingBottom: isLast ? 0 : '22px', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', paddingTop: '5px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
+                        {cfgAnterior && (
+                          <>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '20px', fontSize: '10.5px', fontWeight: 600, background: cfgAnterior.color + '20', color: cfgAnterior.color }}>{cfgAnterior.label}</span>
+                            <span style={{ fontSize: '11px', color: '#94a3b8' }}>→</span>
+                          </>
+                        )}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '20px', fontSize: '10.5px', fontWeight: 600, background: cfgNuevo.color + '20', color: cfgNuevo.color }}>{cfgNuevo.label}</span>
+                      </div>
+                      <span style={{ fontSize: '11px', color: '#94a3b8', flexShrink: 0, marginTop: '1px' }}>{new Date(log.createdAt).toLocaleString('es-EC')}</span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '5px' }}>
+                      👤 {log.user?.name}{!cfgAnterior && <em> · Propuesta creada</em>}
+                    </div>
+                    {log.nota && <div style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic', marginTop: '2px' }}>{log.nota}</div>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </Card>
 
       {/* ── Dialogs ── */}
       <PropuestaFormDialog
@@ -653,8 +637,6 @@ export default function PropuestaDetallePage({ params }) {
         saving={estadoDialog.saving}
         propuestaConfig={propuestaConfig}
       />
-
-      {/* Dialog: agregar / editar línea del caso de negocio */}
       <Dialog
         visible={casoDialog.visible}
         onHide={() => setCasoDialog(DIALOG_VACIO)}
@@ -664,73 +646,34 @@ export default function PropuestaDetallePage({ params }) {
         modal
       >
         <div className="flex flex-column gap-3 mt-2">
-          {/* Perfil */}
           <div className="flex flex-column gap-1">
             <label className="text-sm font-medium">Perfil <span className="text-red-500">*</span></label>
-            <Dropdown
-              value={casoDialog.perfilId}
-              options={perfilesOptions}
+            <Dropdown value={casoDialog.perfilId} options={perfilesOptions}
               onChange={(e) => setCasoDialog((p) => ({ ...p, perfilId: e.value, empleadoId: null, precioHora: null }))}
-              placeholder="Seleccionar perfil"
-              filter
-              disabled={casoDialog.editando}
-            />
+              placeholder="Seleccionar perfil" filter disabled={casoDialog.editando} />
           </div>
-
-          {/* Empleado / Consultor */}
           <div className="flex flex-column gap-1">
-            <label className="text-sm font-medium">
-              Consultor asignado
-              <span className="text-color-secondary text-xs ml-2">(opcional)</span>
-            </label>
-            <Dropdown
-              value={casoDialog.empleadoId}
-              options={[{ label: '— Sin asignar —', value: null }, ...empleadosOptions]}
-              onChange={(e) => setCasoDialog((p) => ({ ...p, empleadoId: e.value }))}
-              placeholder="Sin consultor"
-              filter
-            />
-            {empleadoSel && (
-              <small className="text-color-secondary">Costo: {formatCurrency(empleadoSel.costoHora)}/h</small>
-            )}
+            <label className="text-sm font-medium">Consultor asignado <span className="text-color-secondary text-xs ml-1">(opcional)</span></label>
+            <Dropdown value={casoDialog.empleadoId} options={[{ label: '— Sin asignar —', value: null }, ...empleadosOptions]}
+              onChange={(e) => setCasoDialog((p) => ({ ...p, empleadoId: e.value }))} placeholder="Sin consultor" filter />
+            {empleadoSel && <small className="text-color-secondary">Costo: {formatCurrency(empleadoSel.costoHora)}/h</small>}
           </div>
-
-          {/* Horas */}
           <div className="flex flex-column gap-1">
             <label className="text-sm font-medium">Horas <span className="text-red-500">*</span></label>
-            <InputNumber
-              value={casoDialog.horas}
-              onValueChange={(e) => setCasoDialog((p) => ({ ...p, horas: e.value }))}
-              minFractionDigits={0}
-              maxFractionDigits={2}
-              min={0.25}
-              placeholder="0.00"
-            />
+            <InputNumber value={casoDialog.horas} onValueChange={(e) => setCasoDialog((p) => ({ ...p, horas: e.value }))} minFractionDigits={0} maxFractionDigits={2} min={0.25} placeholder="0.00" />
           </div>
-
-          {/* Precio/hora override */}
           <div className="flex flex-column gap-1">
             <label className="text-sm font-medium">
               Precio/hora
-              {perfilSel && (
-                <span className="text-color-secondary text-xs ml-2">(tarifa base: {formatCurrency(perfilSel.precioHora)}/h)</span>
-              )}
+              {perfilSel && <span className="text-color-secondary text-xs ml-2">(tarifa base: {formatCurrency(perfilSel.precioHora)}/h)</span>}
             </label>
-            <InputNumber
-              value={casoDialog.precioHora}
-              onValueChange={(e) => setCasoDialog((p) => ({ ...p, precioHora: e.value }))}
-              mode="currency"
-              currency="USD"
-              locale="es-EC"
-              minFractionDigits={2}
-              placeholder={perfilSel ? `${formatCurrency(perfilSel.precioHora)} (del perfil)` : 'Precio/hora'}
-            />
+            <InputNumber value={casoDialog.precioHora} onValueChange={(e) => setCasoDialog((p) => ({ ...p, precioHora: e.value }))}
+              mode="currency" currency="USD" locale="es-EC" minFractionDigits={2}
+              placeholder={perfilSel ? `${formatCurrency(perfilSel.precioHora)} (del perfil)` : 'Precio/hora'} />
             {casoDialog.precioHora !== null && casoDialog.precioHora !== undefined && (
-              <small className="text-primary"><i className="pi pi-info-circle mr-1" />Precio personalizado (sobreescribe la tarifa del perfil)</small>
+              <small className="text-primary"><i className="pi pi-info-circle mr-1" />Precio personalizado</small>
             )}
           </div>
-
-          {/* Preview */}
           {previewCosto !== null && (
             <div className="grid text-sm surface-50 border-round p-2 m-0">
               <div className="col-6">
