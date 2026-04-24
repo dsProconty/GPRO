@@ -458,40 +458,31 @@ export default function ProyectoDetallePage({ params }) {
         </div>
         <div className="flex gap-2">
           {puede(PERMISOS.PROYECTOS.PDF) && (
-            <Button label="PDF" icon="pi pi-file-pdf" severity="danger" outlined onClick={() => window.open(`/api/v1/proyectos/${id}/pdf`, '_blank')} />
+            <Button label="PDF" icon="pi pi-file-pdf" severity="secondary" outlined onClick={() => window.open(`/api/v1/proyectos/${id}/pdf`, '_blank')} />
           )}
+          <Button label="Excel" icon="pi pi-file-excel" severity="secondary" outlined onClick={exportarFacturas} disabled={facturas.length === 0} />
           {(puede(PERMISOS.PROYECTOS.EDITAR) && puedeEditarProyecto(proyecto?.estadoId)) && (
-            <Button label="Editar" icon="pi pi-pencil" severity="info" outlined onClick={() => setEditDialogVisible(true)} />
+            <Button label="Editar" icon="pi pi-pencil" severity="secondary" outlined onClick={() => setEditDialogVisible(true)} />
           )}
         </div>
       </div>
 
       {/* ── KPI Cards ── */}
-      <div className="grid mb-3">
-        <div className="col-12 md:col-3">
-          <div className="surface-card border-round p-3 shadow-1">
-            <div className="flex align-items-center gap-2 mb-2"><i className="pi pi-building text-primary" /><span className="text-color-secondary text-sm">Empresa</span></div>
-            <div className="font-bold text-lg">{proyecto.empresa?.nombre || '—'}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '10px', marginBottom: '14px' }}>
+        {[
+          { icon: '🏢', bg: '#EFF6FF', label: 'Empresa', value: proyecto.empresa?.nombre || '—', valueColor: '#1e293b' },
+          { icon: '📅', bg: '#F1F5F9', label: 'Fecha inicio', value: formatDate(proyecto.fechaCreacion), valueColor: '#1e293b' },
+          { icon: '🖥️', bg: '#F5F3FF', label: 'Aplicativo', value: proyecto.aplicativo || '—', valueColor: '#1e293b' },
+          { icon: '💰', bg: '#F0FDF4', label: 'Valor contrato', value: formatCurrency(proyecto.valor, moneda), valueColor: '#15803D' },
+        ].map((k) => (
+          <div key={k.label} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 1px 2px rgba(0,0,0,.04)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: k.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>{k.icon}</div>
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '3px' }}>{k.label}</div>
+              <div style={{ fontSize: '14.5px', fontWeight: 700, color: k.valueColor }}>{k.value}</div>
+            </div>
           </div>
-        </div>
-        <div className="col-12 md:col-3">
-          <div className="surface-card border-round p-3 shadow-1">
-            <div className="flex align-items-center gap-2 mb-2"><i className="pi pi-calendar text-primary" /><span className="text-color-secondary text-sm">Fecha inicio</span></div>
-            <div className="font-bold text-lg">{formatDate(proyecto.fechaCreacion)}</div>
-          </div>
-        </div>
-        <div className="col-12 md:col-3">
-          <div className="surface-card border-round p-3 shadow-1">
-            <div className="flex align-items-center gap-2 mb-2"><i className="pi pi-tag text-primary" /><span className="text-color-secondary text-sm">Aplicativo</span></div>
-            <div className="font-bold text-lg">{proyecto.aplicativo || '—'}</div>
-          </div>
-        </div>
-        <div className="col-12 md:col-3">
-          <div className="surface-card border-round p-3 shadow-1">
-            <div className="flex align-items-center gap-2 mb-2"><i className="pi pi-dollar text-green-500" /><span className="text-color-secondary text-sm">Valor contrato</span></div>
-            <div className="font-bold text-lg text-green-600">{formatCurrency(proyecto.valor, moneda)}</div>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* ── Pipeline de estado ── */}
@@ -526,30 +517,19 @@ export default function ProyectoDetallePage({ params }) {
           })}
         </div>
 
-        <div className="flex align-items-center gap-2 mt-3 pt-3 flex-wrap" style={{ borderTop: '1px solid var(--surface-border)' }}>
-          <span className="text-sm text-color-secondary font-semibold">Cambiar estado:</span>
-          <Dropdown
-            value={proyecto.estadoId}
-            options={estados}
-            optionLabel="nombre"
-            optionValue="id"
-            onChange={(e) => handleEstadoChange(e.value)}
-            placeholder="Seleccionar estado"
-            disabled={savingEstado}
-            style={{ minWidth: '200px' }}
-            itemTemplate={(opt) => {
-              const cfg = ESTADO_CONFIG[opt.nombre] || { severity: 'secondary', label: opt.nombre }
-              return <Tag value={cfg.label} severity={cfg.severity} />
-            }}
-            valueTemplate={(opt) => {
-              if (!opt) return null
-              const cfg = ESTADO_CONFIG[opt.nombre] || { severity: 'secondary', label: opt.nombre }
-              return <Tag value={cfg.label} severity={cfg.severity} />
-            }}
-          />
-          {savingEstado && <i className="pi pi-spin pi-spinner text-color-secondary" />}
+        <div className="flex justify-content-center align-items-center gap-3 mt-3 pt-3" style={{ borderTop: '1px solid var(--surface-border)' }}>
+          {pipelineIdx < PIPELINE_STEPS.length - 1 ? (
+            <Button
+              label={`→ Mover a: ${PIPELINE_STEPS[pipelineIdx + 1]?.nombre}`}
+              outlined
+              loading={savingEstado}
+              onClick={() => handleEstadoChange(PIPELINE_STEPS[pipelineIdx + 1]?.id)}
+            />
+          ) : (
+            <span className="text-sm text-color-secondary font-semibold">✓ Proyecto finalizado</span>
+          )}
           {proyecto.projectOnline && (
-            <Button label="Project Online" icon="pi pi-external-link" severity="secondary" text size="small" className="ml-2"
+            <Button label="Project Online" icon="pi pi-external-link" severity="secondary" text size="small"
               onClick={() => window.open(proyecto.projectOnline, '_blank')} />
           )}
         </div>
@@ -616,37 +596,30 @@ export default function ProyectoDetallePage({ params }) {
 
         {/* Resumen Financiero compacto */}
         <Card>
-          <h3 className="m-0 mb-3 font-semibold text-base"><i className="pi pi-chart-bar mr-2 text-green-500" />Resumen Financiero</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
-            <div className="surface-50 border-round p-2 text-center">
-              <div className="text-xs text-color-secondary mb-1">Facturado</div>
-              <div className="font-bold text-sm">{formatCurrency(resumen.facturado, moneda)}</div>
+          <h3 className="m-0 mb-3 font-semibold text-base">💹 Resumen Financiero</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: '#e2e8f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '14px' }}>
+            <div style={{ background: '#fff', padding: '10px 12px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '5px' }}>Valor contrato</div>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>{formatCurrency(proyecto.valor, moneda)}</div>
             </div>
-            <div className="surface-50 border-round p-2 text-center">
-              <div className="text-xs text-color-secondary mb-1">Pagado</div>
-              <div className="font-bold text-sm text-green-600">{formatCurrency(resumen.pagado, moneda)}</div>
+            <div style={{ background: '#fff', padding: '10px 12px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '5px' }}>Facturado</div>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: '#1D4ED8' }}>{formatCurrency(resumen.facturado, moneda)}</div>
             </div>
-            <div className="surface-50 border-round p-2 text-center">
-              <div className="text-xs text-color-secondary mb-1">% Facturado</div>
-              <div className="font-bold text-sm">{resumen.pctFacturado}%</div>
+            <div style={{ background: '#fff', padding: '10px 12px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '5px' }}>Cobrado</div>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: '#15803D' }}>{formatCurrency(resumen.pagado, moneda)}</div>
             </div>
-            <div className="border-round p-2 text-center" style={{
-              background: resumen.saldo > 0.001 ? 'var(--red-50)' : 'var(--green-50)',
-              borderLeft: `3px solid ${resumen.saldo > 0.001 ? 'var(--red-400)' : 'var(--green-400)'}`,
-            }}>
-              <div className="text-xs text-color-secondary mb-1">Saldo</div>
-              <div className="font-bold text-sm" style={{ color: resumen.saldo > 0.001 ? 'var(--red-600)' : 'var(--green-600)' }}>
-                {formatCurrency(resumen.saldo, moneda)}
-              </div>
+            <div style={{ background: '#fff', padding: '10px 12px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '5px' }}>Saldo pendiente</div>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: '#B45309' }}>{formatCurrency(resumen.saldo, moneda)}</div>
             </div>
           </div>
-          <div className="flex justify-content-between text-xs text-color-secondary mb-1">
-            <span>% Cobrado</span><span>{resumen.pctPagado}%</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '5px' }}>
+            <span>Facturado</span><span style={{ fontWeight: 700 }}>{resumen.pctFacturado}%</span>
           </div>
-          <ProgressBar value={resumen.pctPagado} showValue={false} style={{ height: '6px' }} color="var(--green-500)" />
-          <div className="text-center mt-2">
-            <span className="text-xs text-color-secondary">Contrato: </span>
-            <span className="text-xs font-semibold">{formatCurrency(proyecto.valor, moneda)}</span>
+          <div style={{ height: '8px', background: '#f1f3f4', borderRadius: '20px', overflow: 'hidden' }}>
+            <div style={{ width: `${resumen.pctFacturado}%`, height: '100%', borderRadius: '20px', background: 'linear-gradient(90deg,#1D4ED8,#4F8EF7)' }} />
           </div>
         </Card>
       </div>
@@ -676,17 +649,26 @@ export default function ProyectoDetallePage({ params }) {
               {cronFin && <span>{formatDate(proyecto.fechaCierre)}</span>}
             </div>
           </div>
-          <div className="flex justify-content-between align-items-center mt-1">
-            <span className="text-sm text-color-secondary">{cronElapsed} días transcurridos ({cronPct}%)</span>
-            {cronRestantes !== null ? (
-              <span className={`text-sm font-semibold ${cronRestantes < 0 ? 'text-red-500' : cronRestantes < 15 ? 'text-orange-500' : 'text-color-secondary'}`}>
-                {cronRestantes < 0
-                  ? <><i className="pi pi-exclamation-triangle mr-1" />{Math.abs(cronRestantes)} días de retraso</>
-                  : `${cronRestantes} días restantes`}
-              </span>
-            ) : (
-              <span className="text-sm text-color-secondary">Sin fecha de cierre definida</span>
-            )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '16px', marginTop: '18px' }}>
+            <div style={{ padding: '12px 16px', borderRadius: '8px', background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#1D4ED8', marginBottom: '4px' }}>Días transcurridos</div>
+              <div style={{ fontSize: '22px', fontWeight: 700, color: '#1D4ED8', lineHeight: 1.1 }}>{cronElapsed}</div>
+              <div style={{ fontSize: '11px', color: '#3B82F6', marginTop: '3px' }}>desde el {formatDate(proyecto.fechaCreacion)}</div>
+            </div>
+            <div style={{ padding: '14px 20px', borderRadius: '8px', background: 'linear-gradient(135deg,#F0FDF4,#DCFCE7)', border: '1px solid #BBF7D0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#15803D', marginBottom: '4px' }}>Días restantes</div>
+              <div style={{ fontSize: '28px', fontWeight: 700, color: '#15803D', lineHeight: 1.1 }}>
+                {cronRestantes !== null ? (cronRestantes < 0 ? Math.abs(cronRestantes) : cronRestantes) : '—'}
+              </div>
+              <div style={{ fontSize: '11px', color: '#15803D', fontWeight: 600, marginTop: '3px' }}>
+                {cronFin ? `hasta el ${formatDate(proyecto.fechaCierre)}` : 'sin fecha de cierre'}
+              </div>
+            </div>
+            <div style={{ padding: '12px 16px', borderRadius: '8px', background: '#FEF2F2', border: '1px solid #FECACA' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#B91C1C', marginBottom: '4px', textAlign: 'right' }}>Progreso temporal</div>
+              <div style={{ fontSize: '22px', fontWeight: 700, color: '#B91C1C', lineHeight: 1.1, textAlign: 'right' }}>{cronPct}%</div>
+              <div style={{ fontSize: '11px', color: '#EF4444', marginTop: '3px', textAlign: 'right' }}>{cronTotal ? `de ${cronTotal} días totales` : ''}</div>
+            </div>
           </div>
         </Card>
       )}
@@ -715,26 +697,26 @@ export default function ProyectoDetallePage({ params }) {
             <p className="text-color-secondary text-sm m-0">No hay líneas de caso de negocio. Agrega perfiles para estimar la rentabilidad.</p>
           ) : (
             <>
-              <div className="grid mb-2">
-                <div className="col-12 md:col-4">
-                  <div className="p-3 surface-50 border-round text-center">
-                    <div className="text-xs text-color-secondary mb-1">Ingresos estimados</div>
-                    <div className="text-lg font-bold">{formatCurrency(casoNegocio.resumen.totalPrecio, moneda)}</div>
-                  </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '10px', marginBottom: '14px' }}>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '6px' }}>Total Horas</div>
+                  <div style={{ fontSize: '24px', fontWeight: 700, lineHeight: 1.2 }}>{casoNegocio.resumen.totalHoras}<span style={{ fontSize: '14px', fontWeight: 500, color: '#94a3b8' }}>h</span></div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>{casoNegocio.lineas.length} perfil(es)</div>
                 </div>
-                <div className="col-12 md:col-4">
-                  <div className="p-3 surface-50 border-round text-center">
-                    <div className="text-xs text-color-secondary mb-1">Costo estimado</div>
-                    <div className="text-lg font-bold text-color-secondary">{formatCurrency(casoNegocio.resumen.totalCosto, moneda)}</div>
-                  </div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '6px' }}>Costo Interno</div>
+                  <div style={{ fontSize: '24px', fontWeight: 700, color: '#B45309', lineHeight: 1.2 }}>{formatCurrency(casoNegocio.resumen.totalCosto, moneda)}</div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>Suma de costos del equipo</div>
                 </div>
-                <div className="col-12 md:col-4">
-                  <div className={`p-3 border-round text-center ${(casoNegocio.resumen.gmPct || 0) >= 40 ? 'bg-green-50' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'bg-yellow-50' : 'bg-red-50'}`}>
-                    <div className="text-xs text-color-secondary mb-1">Margen</div>
-                    <div className={`text-lg font-bold ${(casoNegocio.resumen.gmPct || 0) >= 40 ? 'text-green-600' : (casoNegocio.resumen.gmPct || 0) >= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
-                      {formatCurrency(casoNegocio.resumen.gm, moneda)}
-                    </div>
-                  </div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px 18px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '6px' }}>Precio al Cliente</div>
+                  <div style={{ fontSize: '24px', fontWeight: 700, color: '#1D4ED8', lineHeight: 1.2 }}>{formatCurrency(casoNegocio.resumen.totalPrecio, moneda)}</div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>Según tarifario vigente</div>
+                </div>
+                <div style={{ background: 'linear-gradient(135deg,#F0FDF4,#DCFCE7)', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '16px 18px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '6px' }}>Margen Bruto</div>
+                  <div style={{ fontSize: '24px', fontWeight: 700, color: '#15803D', lineHeight: 1.2 }}>{casoNegocio.resumen.gmPct}%</div>
+                  <div style={{ fontSize: '11px', color: '#15803D', marginTop: '4px' }}>{formatCurrency(casoNegocio.resumen.gm, moneda)} de ganancia</div>
                 </div>
               </div>
 
@@ -748,19 +730,23 @@ export default function ProyectoDetallePage({ params }) {
               </div>
 
               <div style={{ overflowX: 'auto' }}>
-                <div className="flex px-2 py-1 surface-100 text-xs font-semibold text-color-secondary border-round-top" style={{ minWidth: '720px', gap: '8px' }}>
+                <div className="flex px-2 py-1 surface-100 text-xs font-semibold text-color-secondary border-round-top" style={{ minWidth: '820px', gap: '8px' }}>
                   <div style={{ flex: '0 0 170px' }}>Perfil / Consultor</div>
                   <div style={{ flex: '0 0 55px', textAlign: 'right' }}>Horas</div>
-                  <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Costo/h</div>
+                  <div style={{ flex: '0 0 80px', textAlign: 'right' }}>Costo/h</div>
+                  <div style={{ flex: '0 0 80px', textAlign: 'right' }}>Precio/h</div>
                   <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Total Costo</div>
-                  <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Precio/h</div>
-                  <div style={{ flex: '1 1 auto', textAlign: 'right' }}>Total Precio</div>
+                  <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Total Precio</div>
+                  <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Margen</div>
                   <div style={{ flex: '0 0 70px' }} />
                 </div>
-                {casoNegocio.lineas.map((l, idx) => (
+                {casoNegocio.lineas.map((l, idx) => {
+                  const lineaMargenPct = l.precio > 0 ? Math.round(((l.precio - l.costo) / l.precio) * 100) : 0
+                  const mc = lineaMargenPct >= 40 ? { bg: '#DCFCE7', color: '#15803D' } : lineaMargenPct >= 20 ? { bg: '#FEFCE8', color: '#854D0E' } : { bg: '#FEF2F2', color: '#B91C1C' }
+                  return (
                   <div key={l.perfilConsultorId}
                     className={`flex px-2 py-2 text-sm align-items-center ${idx % 2 === 1 ? 'surface-50' : ''}`}
-                    style={{ borderTop: '1px solid var(--surface-border)', minWidth: '720px', gap: '8px' }}
+                    style={{ borderTop: '1px solid var(--surface-border)', minWidth: '820px', gap: '8px' }}
                   >
                     <div style={{ flex: '0 0 170px' }}>
                       <div className="font-medium">{l.perfil.nombre}</div>
@@ -772,10 +758,13 @@ export default function ProyectoDetallePage({ params }) {
                       </div>
                     </div>
                     <div style={{ flex: '0 0 55px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{l.horas}h</div>
-                    <div style={{ flex: '0 0 90px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{formatCurrency(l.costoHora, moneda)}</div>
+                    <div style={{ flex: '0 0 80px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{formatCurrency(l.costoHora, moneda)}</div>
+                    <div style={{ flex: '0 0 80px', textAlign: 'right', fontWeight: 700, color: '#1D4ED8' }}>{formatCurrency(l.precioHora, moneda)}</div>
                     <div style={{ flex: '0 0 90px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{formatCurrency(l.costo, moneda)}</div>
-                    <div style={{ flex: '0 0 90px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{formatCurrency(l.precioHora, moneda)}</div>
-                    <div style={{ flex: '1 1 auto', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(l.precio, moneda)}</div>
+                    <div style={{ flex: '0 0 90px', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(l.precio, moneda)}</div>
+                    <div style={{ flex: '0 0 90px', textAlign: 'right' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, background: mc.bg, color: mc.color }}>{lineaMargenPct}%</span>
+                    </div>
                     <div style={{ flex: '0 0 70px', textAlign: 'right' }}>
                       {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) && (
                         <div className="flex gap-1 justify-content-end">
@@ -785,14 +774,18 @@ export default function ProyectoDetallePage({ params }) {
                       )}
                     </div>
                   </div>
-                ))}
-                <div className="flex px-2 py-2 text-sm font-bold surface-100 border-round-bottom" style={{ borderTop: '2px solid var(--surface-border)', minWidth: '720px', gap: '8px' }}>
+                  )
+                })}
+                <div className="flex px-2 py-2 text-sm font-bold surface-100 border-round-bottom" style={{ borderTop: '2px solid var(--surface-border)', minWidth: '820px', gap: '8px' }}>
                   <div style={{ flex: '0 0 170px' }}>TOTAL</div>
                   <div style={{ flex: '0 0 55px', textAlign: 'right' }}>{casoNegocio.resumen.totalHoras}h</div>
-                  <div style={{ flex: '0 0 90px' }} />
+                  <div style={{ flex: '0 0 80px' }} />
+                  <div style={{ flex: '0 0 80px' }} />
                   <div style={{ flex: '0 0 90px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{formatCurrency(casoNegocio.resumen.totalCosto, moneda)}</div>
-                  <div style={{ flex: '0 0 90px' }} />
-                  <div style={{ flex: '1 1 auto', textAlign: 'right', color: 'var(--green-700)' }}>{formatCurrency(casoNegocio.resumen.totalPrecio, moneda)}</div>
+                  <div style={{ flex: '0 0 90px', textAlign: 'right', color: '#15803D' }}>{formatCurrency(casoNegocio.resumen.totalPrecio, moneda)}</div>
+                  <div style={{ flex: '0 0 90px', textAlign: 'right' }}>
+                    <span style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: '20px', fontSize: '12px', fontWeight: 700, background: '#DCFCE7', color: '#15803D' }}>~{casoNegocio.resumen.gmPct}%</span>
+                  </div>
                   <div style={{ flex: '0 0 70px' }} />
                 </div>
               </div>
@@ -942,21 +935,31 @@ export default function ProyectoDetallePage({ params }) {
               const anteriorNombre = log.estadoAnterior?.nombre || 'Inicio'
               const nuevoNombre = log.estadoNuevo?.nombre || '—'
               const nuevoSeverity = (ESTADO_CONFIG[nuevoNombre] || { severity: 'secondary' }).severity
+              const DOT_COLORS = {
+                'Adjudicado':   { bg: '#DCFCE7', color: '#15803D', border: '#BBF7D0' },
+                'En Ejecución': { bg: '#EFF6FF', color: '#4F8EF7', border: '#BFDBFE' },
+                'Por Facturar': { bg: '#FEF3C7', color: '#B45309', border: '#FDE68A' },
+                'Facturado':    { bg: '#F1F5F9', color: '#64748B', border: '#CBD5E1' },
+                'Cerrado':      { bg: '#F1F5F9', color: '#64748B', border: '#CBD5E1' },
+              }
+              const dc = DOT_COLORS[nuevoNombre] || { bg: '#F1F5F9', color: '#64748B', border: '#CBD5E1' }
               return (
                 <div key={log.id} className="flex gap-3">
                   <div className="flex flex-column align-items-center">
-                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--primary-color)', flexShrink: 0, marginTop: '4px' }} />
+                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: dc.bg, color: dc.color, border: `2px solid ${dc.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, flexShrink: 0 }}>
+                      {nuevoNombre[0] || '?'}
+                    </div>
                     {idx < estadoLogs.length - 1 && (
-                      <div style={{ width: '2px', flex: 1, background: 'var(--surface-200)', minHeight: '24px', margin: '4px 0' }} />
+                      <div style={{ width: '2px', flex: 1, background: '#e2e8f0', minHeight: '24px', margin: '4px 0' }} />
                     )}
                   </div>
-                  <div className="pb-3">
+                  <div className="pb-3" style={{ paddingTop: '5px' }}>
                     <div className="flex align-items-center gap-2 flex-wrap">
                       <Tag value={nuevoNombre} severity={nuevoSeverity} style={{ fontSize: '0.75rem' }} />
                       <span className="text-xs text-color-secondary">{new Date(log.createdAt).toLocaleString('es-EC')}</span>
                     </div>
                     <div className="text-xs text-color-secondary mt-1">
-                      <i className="pi pi-user mr-1" />{log.user?.name}
+                      👤 {log.user?.name}
                       {anteriorNombre !== 'Inicio' && <span> · desde <strong>{anteriorNombre}</strong></span>}
                       {log.nota && <span> · <em>{log.nota}</em></span>}
                     </div>
