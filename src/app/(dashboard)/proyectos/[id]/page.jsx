@@ -175,7 +175,8 @@ export default function ProyectoDetallePage({ params }) {
     const valorContrato = proyecto ? Number(proyecto.valor) : 0
     const pctFacturado = valorContrato > 0 ? Math.min(100, Math.round((facturado / valorContrato) * 100)) : 0
     const pctPagado = facturado > 0 ? Math.min(100, Math.round((pagado / facturado) * 100)) : 0
-    return { facturado, pagado, saldo, pctFacturado, pctPagado }
+    const valorRestante = valorContrato - facturado
+    return { facturado, pagado, saldo, pctFacturado, pctPagado, valorRestante }
   }, [facturas, proyecto])
 
   // === Cambio de estado (SP4-04) ===
@@ -613,6 +614,10 @@ export default function ProyectoDetallePage({ params }) {
             <div style={{ background: '#fff', padding: '10px 12px' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '5px' }}>Saldo pendiente</div>
               <div style={{ fontSize: '16px', fontWeight: 700, color: '#B45309' }}>{formatCurrency(resumen.saldo, moneda)}</div>
+            </div>
+            <div style={{ background: '#fff', padding: '10px 12px', gridColumn: '1 / -1' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '5px' }}>Valor restante (sin facturar)</div>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: resumen.valorRestante > 0.001 ? '#7C3AED' : '#15803D' }}>{formatCurrency(resumen.valorRestante, moneda)}</div>
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '5px' }}>

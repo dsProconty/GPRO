@@ -102,7 +102,7 @@ export default function UsuariosPage() {
         stripedRows
         emptyMessage="No hay usuarios registrados"
       >
-        <Column field="id" header="ID" style={{ width: '60px' }} />
+        <Column field="id" header="ID" style={{ width: '60px' }} sortable dataType="numeric" />
         <Column field="name" header="Nombre" sortable />
         <Column field="email" header="Email" sortable />
         <Column header="Rol" style={{ width: '130px' }} body={(u) => (

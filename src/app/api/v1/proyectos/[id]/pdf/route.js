@@ -29,17 +29,26 @@ export async function GET(request, { params }) {
 
     if (!proyecto) return NextResponse.json({ success: false, message: 'Proyecto no encontrado' }, { status: 404 })
 
-    const facturas = await prisma.factura.findMany({
-      where: { proyectoId: id },
-      include: { pagos: { select: { valor: true } } },
-      orderBy: { fechaFactura: 'asc' },
-    })
-
-    const observaciones = await prisma.observacion.findMany({
-      where: { proyectoId: id },
-      include: { user: { select: { name: true } } },
-      orderBy: { createdAt: 'desc' },
-    })
+    const [facturas, observaciones, casoLineas] = await Promise.all([
+      prisma.factura.findMany({
+        where: { proyectoId: id },
+        include: { pagos: { select: { valor: true } } },
+        orderBy: { fechaFactura: 'asc' },
+      }),
+      prisma.observacion.findMany({
+        where: { proyectoId: id },
+        include: { user: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.proyectoCasoNegocioLinea.findMany({
+        where: { proyectoId: id },
+        include: {
+          perfilConsultor: true,
+          empleado: { select: { id: true, nombre: true, apellido: true } },
+        },
+        orderBy: { perfilConsultor: { nombre: 'asc' } },
+      }),
+    ])
 
     // Calcular totalPagos por factura
     const facturasConPagos = facturas.map((f) => ({
@@ -48,12 +57,30 @@ export async function GET(request, { params }) {
       totalPagos: f.pagos.reduce((s, p) => s + Number(p.valor), 0),
     }))
 
+    const casoNegocio = casoLineas.length > 0 ? {
+      lineas: casoLineas.map((l) => ({
+        perfil:    l.perfilConsultor,
+        empleado:  l.empleado,
+        horas:     Number(l.horas),
+        costoHora: Number(l.costoHora),
+        precioHora: Number(l.precioHora),
+        costo:     Number(l.horas) * Number(l.costoHora),
+        precio:    Number(l.horas) * Number(l.precioHora),
+      })),
+      resumen: {
+        totalHoras:  casoLineas.reduce((s, l) => s + Number(l.horas), 0),
+        totalCosto:  casoLineas.reduce((s, l) => s + Number(l.horas) * Number(l.costoHora), 0),
+        totalPrecio: casoLineas.reduce((s, l) => s + Number(l.horas) * Number(l.precioHora), 0),
+      },
+    } : null
+
     const buffer = await renderToBuffer(
       React.createElement(ProyectoPDF, {
         proyecto: { ...proyecto, valor: Number(proyecto.valor) },
         facturas: facturasConPagos,
         observaciones,
         empresa: empresaCfg || {},
+        casoNegocio,
       })
     )
 

@@ -258,7 +258,7 @@ export default function EmpleadosPage() {
           </div>
         }
       >
-        <div className="grid">
+        <div className="formgrid grid">
           {/* Nombre y Apellido */}
           <div className="col-6">
             <label className="block font-medium mb-1">Nombre *</label>

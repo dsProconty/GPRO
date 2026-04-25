@@ -66,10 +66,17 @@ export default function TarifarioDetallePage() {
 
   useEffect(() => { load() }, [load])
 
+  const refreshPerfiles = () => {
+    axios.get('/api/v1/perfiles-consultor?activo=true')
+      .then((r) => setPerfiles(r.data.data || []))
+      .catch(() => {})
+  }
+
   const openNewLinea = () => {
     setForm(EMPTY_LINEA)
     setEditingLinea(null)
     setErrors({})
+    refreshPerfiles()
     setDialogOpen(true)
   }
 
@@ -77,6 +84,7 @@ export default function TarifarioDetallePage() {
     setForm({ perfilId: linea.perfilId, empleadoId: linea.empleadoId, precioHora: Number(linea.precioHora) })
     setEditingLinea(linea.id)
     setErrors({})
+    refreshPerfiles()
     setDialogOpen(true)
   }
 

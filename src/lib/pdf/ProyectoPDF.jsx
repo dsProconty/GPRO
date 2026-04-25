@@ -85,7 +85,7 @@ const makeFmt = (currency = 'USD') => (val) => {
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-EC') : '—'
 
 // ── Componente ────────────────────────────────────────────────────────────────
-export function ProyectoPDF({ proyecto, facturas, observaciones, empresa = {} }) {
+export function ProyectoPDF({ proyecto, facturas, observaciones, empresa = {}, casoNegocio = null }) {
   const nombreEmpresa = empresa.nombre || 'GPRO'
   const moneda        = empresa.moneda  || 'USD'
   const fmt           = makeFmt(moneda)
@@ -210,6 +210,55 @@ export function ProyectoPDF({ proyecto, facturas, observaciones, empresa = {} })
             <Text style={[styles.finValue, { color: saldo > 0.001 ? C.danger : C.success }]}>{fmt(saldo)}</Text>
           </View>
         </View>
+
+        {/* ── Caso de Negocio ── */}
+        {casoNegocio && casoNegocio.lineas.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Caso de Negocio</Text>
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Perfil / Consultor</Text>
+                <Text style={[styles.tableHeaderCell, { textAlign: 'right' }]}>Horas</Text>
+                <Text style={[styles.tableHeaderCell, { textAlign: 'right' }]}>Costo/h</Text>
+                <Text style={[styles.tableHeaderCell, { textAlign: 'right' }]}>Precio/h</Text>
+                <Text style={[styles.tableHeaderCell, { textAlign: 'right' }]}>Total Costo</Text>
+                <Text style={[styles.tableHeaderCell, { textAlign: 'right' }]}>Total Precio</Text>
+              </View>
+              {casoNegocio.lineas.map((l, i) => (
+                <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                  <View style={{ flex: 2 }}>
+                    <Text style={styles.tableCell}>{l.perfil?.nombre} {l.perfil?.nivel}</Text>
+                    {l.empleado && (
+                      <Text style={{ fontSize: 7, color: C.gray }}>{l.empleado.nombre} {l.empleado.apellido}</Text>
+                    )}
+                  </View>
+                  <Text style={styles.tableCellRight}>{l.horas}h</Text>
+                  <Text style={styles.tableCellRight}>{fmt(l.costoHora)}</Text>
+                  <Text style={[styles.tableCellRight, { color: C.accent }]}>{fmt(l.precioHora)}</Text>
+                  <Text style={styles.tableCellRight}>{fmt(l.costo)}</Text>
+                  <Text style={[styles.tableCellRight, { fontFamily: 'Helvetica-Bold' }]}>{fmt(l.precio)}</Text>
+                </View>
+              ))}
+              <View style={[styles.tableRow, { backgroundColor: C.lightGray }]}>
+                <Text style={[styles.tableCell, { flex: 2, fontFamily: 'Helvetica-Bold' }]}>TOTAL</Text>
+                <Text style={[styles.tableCellRight, { fontFamily: 'Helvetica-Bold' }]}>{casoNegocio.resumen.totalHoras}h</Text>
+                <Text style={styles.tableCellRight} />
+                <Text style={styles.tableCellRight} />
+                <Text style={[styles.tableCellRight, { fontFamily: 'Helvetica-Bold' }]}>{fmt(casoNegocio.resumen.totalCosto)}</Text>
+                <Text style={[styles.tableCellRight, { fontFamily: 'Helvetica-Bold', color: C.accent }]}>{fmt(casoNegocio.resumen.totalPrecio)}</Text>
+              </View>
+            </View>
+            {casoNegocio.resumen.totalPrecio > 0 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 4 }}>
+                <Text style={{ fontSize: 8, color: C.gray }}>Margen bruto: </Text>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: C.success }}>
+                  {fmt(casoNegocio.resumen.totalPrecio - casoNegocio.resumen.totalCosto)}
+                  {` (${Math.round(((casoNegocio.resumen.totalPrecio - casoNegocio.resumen.totalCosto) / casoNegocio.resumen.totalPrecio) * 100)}%)`}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* ── Facturas ── */}
         {facturas.length > 0 && (
