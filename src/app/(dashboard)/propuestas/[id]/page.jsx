@@ -270,12 +270,17 @@ export default function PropuestaDetallePage({ params }) {
     <div className="p-4">
       <Toast ref={toast} />
 
-      {/* ── Header ── */}
-      <div className="flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      {/* ── Breadcrumb + Header ── */}
+      <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+        <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3B82F6', fontWeight: 500, fontSize: '12px', padding: 0 }} onClick={() => router.push('/propuestas')}>
+          ← Propuestas
+        </button>
+        <span>/</span>
+        <span style={{ color: '#64748b' }}>{propuesta.titulo}</span>
+      </div>
+      <div className="flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div className="flex align-items-center gap-2 flex-wrap">
-          <Button label="Propuestas" icon="pi pi-arrow-left" severity="secondary" text onClick={() => router.push('/propuestas')} />
-          <i className="pi pi-angle-right text-color-secondary" />
-          <span className="text-900 font-bold text-xl">{propuesta.titulo}</span>
+          <span className="text-900 font-bold" style={{ fontSize: '20px' }}>{propuesta.titulo}</span>
           {propuesta.codigo && (
             <span style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 600, color: '#64748b', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '3px 9px', borderRadius: '20px', letterSpacing: '0.3px' }}>
               {propuesta.codigo}
@@ -335,55 +340,72 @@ export default function PropuestaDetallePage({ params }) {
         const getLabel = (key) => propuestaConfig[key]?.label || key
 
         return (
-          <Card className="mb-3">
-            {/* Stepper */}
-            <div className="flex align-items-start justify-content-center mb-4" style={{ gap: 0 }}>
-              {STEPS.map((key, idx) => {
-                const done = pipeIdx > idx
-                const curr = pipeIdx === idx
-                const circleStyle = done
-                  ? { background: '#22C55E', color: '#fff', border: '2px solid #22C55E' }
-                  : curr
-                    ? { background: '#F97316', color: '#fff', border: '2px solid #F97316', boxShadow: '0 0 0 4px rgba(249,115,22,.18)' }
-                    : { background: '#fff', color: '#94a3b8', border: '2px solid #CBD5E1' }
-                return (
-                  <div key={key} className="flex align-items-center" style={{ flex: idx < STEPS.length - 1 ? 1 : '0 0 auto' }}>
-                    <div className="flex flex-column align-items-center" style={{ minWidth: '72px' }}>
-                      <div style={{ width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px', ...circleStyle }}>
-                        {done ? '✓' : curr ? '●' : idx + 1}
+          <Card className="mb-3" style={{ padding: 0 }}>
+            <div style={{ padding: '18px 24px 16px' }}>
+              {/* Stepper — conector centrado en el círculo con marginTop: 16px */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+                {STEPS.map((key, idx) => {
+                  const done = pipeIdx > idx
+                  const curr = pipeIdx === idx
+                  const isLast = idx === STEPS.length - 1
+                  const circleStyle = done
+                    ? { background: '#22C55E', color: '#fff', border: '2px solid #22C55E' }
+                    : curr
+                      ? { background: '#F97316', color: '#fff', border: '2px solid #F97316', boxShadow: '0 0 0 4px rgba(249,115,22,.15)' }
+                      : { background: '#fff', color: '#94a3b8', border: '2px solid #CBD5E1' }
+                  return (
+                    <div key={key} style={{ display: 'flex', alignItems: 'flex-start', flex: isLast ? '0 0 auto' : 1 }}>
+                      {/* Step column */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '72px' }}>
+                        <div style={{ width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px', flexShrink: 0, ...circleStyle }}>
+                          {done ? '✓' : curr ? '●' : idx + 1}
+                        </div>
+                        <div style={{ fontSize: '11px', fontWeight: curr ? 700 : 500, color: curr ? '#F97316' : done ? '#16A34A' : '#94a3b8', textAlign: 'center', marginTop: '7px', maxWidth: '72px', lineHeight: '1.3' }}>
+                          {getLabel(key)}
+                        </div>
+                        {curr && <div style={{ fontSize: '9px', color: '#94a3b8', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Actual</div>}
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: curr ? 700 : 400, color: curr ? '#F97316' : done ? '#16A34A' : '#94a3b8', textAlign: 'center', marginTop: '6px', maxWidth: '72px', lineHeight: '1.3' }}>
-                        {getLabel(key)}
-                      </div>
-                      {curr && <div style={{ fontSize: '9.5px', color: '#94a3b8', marginTop: '2px' }}>Estado actual</div>}
+                      {/* Connector line — marginTop: 16px centra en el círculo de 34px */}
+                      {!isLast && (
+                        <div style={{ flex: 1, height: '2px', marginTop: '16px', marginLeft: '4px', marginRight: '4px', background: done ? '#22C55E' : undefined, backgroundImage: done ? undefined : 'repeating-linear-gradient(90deg,#CBD5E1 0,#CBD5E1 5px,transparent 5px,transparent 11px)' }} />
+                      )}
                     </div>
-                    {/* Connector */}
-                    <div style={{ flex: 1, height: '2px', margin: curr ? '-30px 4px 0' : '-22px 4px 0', backgroundImage: done ? 'none' : 'repeating-linear-gradient(90deg,#CBD5E1 0,#CBD5E1 5px,transparent 5px,transparent 11px)', background: done ? '#22C55E' : undefined }} />
-                  </div>
-                )
-              })}
+                  )
+                })}
 
-              {/* Fork: Aprobada | Rechazada */}
-              <div style={{ flex: '0 0 160px', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '10px', paddingTop: 0, position: 'relative' }}>
-                <div style={{ position: 'absolute', top: '16px', left: 0, right: '50%', height: '2px', backgroundImage: 'repeating-linear-gradient(90deg,#CBD5E1 0,#CBD5E1 5px,transparent 5px,transparent 11px)' }} />
-                {/* Aprobada */}
-                <div className="flex flex-column align-items-center">
-                  <div style={{ width: '2px', height: '14px', background: '#CBD5E1', marginBottom: '2px' }} />
-                  <div style={{ width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px', background: propuesta.estado === 'Aprobada' ? '#DCFCE7' : '#fff', color: propuesta.estado === 'Aprobada' ? '#15803D' : '#94a3b8', border: propuesta.estado === 'Aprobada' ? '2px solid #BBF7D0' : '2px solid #CBD5E1' }}>✓</div>
-                  <div style={{ fontSize: '11px', color: propuesta.estado === 'Aprobada' ? '#16A34A' : '#94a3b8', textAlign: 'center', marginTop: '6px', maxWidth: '65px', lineHeight: '1.3' }}>{getLabel('Aprobada')}</div>
+                {/* Conector hacia el fork */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', flex: '0 0 auto' }}>
+                  <div style={{ height: '2px', width: '24px', marginTop: '16px', backgroundImage: 'repeating-linear-gradient(90deg,#CBD5E1 0,#CBD5E1 5px,transparent 5px,transparent 11px)' }} />
                 </div>
-                {/* Rechazada */}
-                <div className="flex flex-column align-items-center">
-                  <div style={{ width: '2px', height: '14px', background: '#CBD5E1', marginBottom: '2px' }} />
-                  <div style={{ width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px', background: propuesta.estado === 'Rechazada' ? '#FEF2F2' : '#fff', color: propuesta.estado === 'Rechazada' ? '#DC2626' : '#94a3b8', border: propuesta.estado === 'Rechazada' ? '2px solid #FECACA' : '2px solid #CBD5E1' }}>✕</div>
-                  <div style={{ fontSize: '11px', color: propuesta.estado === 'Rechazada' ? '#DC2626' : '#94a3b8', textAlign: 'center', marginTop: '6px', maxWidth: '65px', lineHeight: '1.3' }}>{getLabel('Rechazada')}</div>
+
+                {/* Fork: Aprobada | Rechazada */}
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '16px', flex: '0 0 160px' }}>
+                  {/* Línea horizontal del fork */}
+                  <div style={{ position: 'absolute', top: '16px', left: '20px', right: '20px', height: '2px', backgroundImage: 'repeating-linear-gradient(90deg,#CBD5E1 0,#CBD5E1 5px,transparent 5px,transparent 11px)' }} />
+                  {[
+                    { key: 'Aprobada',  icon: '✓', activeStyle: { bg: '#DCFCE7', color: '#15803D', border: '#BBF7D0' }, activeColor: '#16A34A' },
+                    { key: 'Rechazada', icon: '✕', activeStyle: { bg: '#FEF2F2', color: '#DC2626', border: '#FECACA' }, activeColor: '#DC2626' },
+                  ].map(({ key, icon, activeStyle, activeColor }) => {
+                    const isActive = propuesta.estado === key
+                    return (
+                      <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ width: '2px', height: '14px', background: '#CBD5E1', marginBottom: '2px' }} />
+                        <div style={{ width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px', background: isActive ? activeStyle.bg : '#fff', color: isActive ? activeStyle.color : '#94a3b8', border: `2px solid ${isActive ? activeStyle.border : '#CBD5E1'}` }}>
+                          {icon}
+                        </div>
+                        <div style={{ fontSize: '11px', color: isActive ? activeColor : '#94a3b8', textAlign: 'center', marginTop: '7px', maxWidth: '65px', lineHeight: '1.3', fontWeight: isActive ? 700 : 400 }}>
+                          {getLabel(key)}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>
 
             {/* Action buttons */}
             {transicionesUI.length > 0 && puede(PERMISOS.PROPUESTAS.CAMBIAR_ESTADO) && (
-              <div className="flex justify-content-center gap-2 flex-wrap pt-3" style={{ borderTop: '1px solid var(--surface-border)' }}>
+              <div className="flex justify-content-center gap-2 flex-wrap" style={{ borderTop: '1px solid var(--surface-border)', padding: '12px 16px' }}>
                 {transicionesUI.map((t) => (
                   <Button key={t.estado} label={t.label} icon={'pi ' + t.icon}
                     severity={t.estado === 'Aprobada' ? 'success' : t.estado === 'Rechazada' ? 'danger' : 'secondary'}
@@ -396,55 +418,62 @@ export default function PropuestaDetallePage({ params }) {
       })()}
 
       {/* ── 2 col: Responsables | Descripción ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-        <Card>
-          <div className="flex align-items-center gap-2 mb-3">
-            <span style={{ fontSize: '15px' }}>👥</span>
-            <h3 className="m-0 font-semibold text-base">Responsables</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '12px', marginBottom: '12px' }}>
+        {/* Responsables */}
+        <div className="surface-card border-round shadow-1" style={{ border: '1px solid var(--surface-border)', overflow: 'hidden' }}>
+          <div style={{ padding: '11px 16px', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', gap: '7px' }}>
+            <span style={{ fontSize: '14px' }}>👥</span>
+            <span style={{ fontWeight: 600, fontSize: '13px' }}>Responsables Proconty</span>
           </div>
-          <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', color: '#94a3b8', marginBottom: '10px' }}>Equipo Proconty</div>
-          {propuesta.responsables?.length === 0
-            ? <p className="text-color-secondary text-sm">Sin responsables asignados</p>
-            : propuesta.responsables.map((r) => {
-                const initials = r.user?.name?.split(' ').map(w => w[0]).slice(0, 2).join('') || '?'
-                return (
-                  <div key={r.userId} className="flex align-items-center gap-2 mb-3">
-                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg,#4F8EF7,#3B5BDB)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, flexShrink: 0 }}>
-                      {initials}
+          <div style={{ padding: '14px 16px' }}>
+            {propuesta.responsables?.length === 0
+              ? <p className="text-color-secondary text-sm m-0">Sin responsables asignados</p>
+              : propuesta.responsables.map((r, i) => {
+                  const initials = r.user?.name?.split(' ').map(w => w[0]).slice(0, 2).join('') || '?'
+                  const COLORS = ['linear-gradient(135deg,#4F8EF7,#3B5BDB)', 'linear-gradient(135deg,#20C997,#12B886)', 'linear-gradient(135deg,#A855F7,#7C3AED)']
+                  return (
+                    <div key={r.userId} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: i < propuesta.responsables.length - 1 ? '12px' : 0 }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: COLORS[i % COLORS.length], color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, flexShrink: 0 }}>
+                        {initials}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '13px' }}>{r.user?.name}</div>
+                        {r.user?.email && <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '1px' }}>{r.user.email}</div>}
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-semibold text-sm">{r.user?.name}</div>
-                      {r.user?.email && <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '1px' }}>{r.user.email}</div>}
-                    </div>
-                  </div>
-                )
-              })
-          }
-        </Card>
+                  )
+                })
+            }
+          </div>
+        </div>
 
-        <Card>
-          <div className="flex align-items-center gap-2 mb-3">
-            <span style={{ fontSize: '15px' }}>📄</span>
-            <h3 className="m-0 font-semibold text-base">Descripción</h3>
+        {/* Descripción */}
+        <div className="surface-card border-round shadow-1" style={{ border: '1px solid var(--surface-border)', overflow: 'hidden' }}>
+          <div style={{ padding: '11px 16px', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', gap: '7px' }}>
+            <span style={{ fontSize: '14px' }}>📄</span>
+            <span style={{ fontWeight: 600, fontSize: '13px' }}>Descripción</span>
           </div>
-          {propuesta.descripcion
-            ? <p className="m-0 text-sm text-color-secondary" style={{ lineHeight: '1.65', whiteSpace: 'pre-wrap' }}>{propuesta.descripcion}</p>
-            : <p className="m-0 text-sm text-color-secondary" style={{ fontStyle: 'italic' }}>Sin descripción registrada.</p>
-          }
-          {propuesta.fechaEnvio && (
-            <div className="mt-3 pt-3 text-sm" style={{ borderTop: '1px solid var(--surface-border)' }}>
-              <span className="text-color-secondary">Fecha de envío: </span><strong>{formatDate(propuesta.fechaEnvio)}</strong>
-            </div>
-          )}
-        </Card>
+          <div style={{ padding: '14px 16px' }}>
+            {propuesta.descripcion
+              ? <p className="m-0" style={{ fontSize: '13.5px', color: '#64748b', lineHeight: '1.65', whiteSpace: 'pre-wrap' }}>{propuesta.descripcion}</p>
+              : <p className="m-0 text-sm text-color-secondary" style={{ fontStyle: 'italic' }}>Sin descripción registrada.</p>
+            }
+            {propuesta.fechaEnvio && (
+              <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--surface-border)', fontSize: '13px' }}>
+                <span className="text-color-secondary">Fecha de envío: </span><strong>{formatDate(propuesta.fechaEnvio)}</strong>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ── Caso de Negocio ── */}
       <Card className="mb-3" style={{ padding: 0 }}>
-        <div className="flex align-items-center justify-content-between p-3" style={{ borderBottom: '1px solid var(--surface-border)' }}>
+        {/* Header */}
+        <div className="flex align-items-center justify-content-between" style={{ padding: '13px 18px', borderBottom: '1px solid var(--surface-border)' }}>
           <div className="flex align-items-center gap-2 flex-wrap">
             <span style={{ fontSize: '15px' }}>📊</span>
-            <h3 className="m-0 font-semibold">Caso de Negocio</h3>
+            <h3 className="m-0 font-semibold" style={{ fontSize: '13px' }}>Caso de Negocio</h3>
             {casoTarifario && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '20px', background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1D4ED8', fontSize: '10.5px', fontWeight: 600 }}>
                 💲 {casoTarifario.nombre}
@@ -453,80 +482,97 @@ export default function PropuestaDetallePage({ params }) {
           </div>
           {!esTerminal && (
             <div className="flex gap-2">
-              {casoTarifario && (
-                <Button label="Cargar tarifario" icon="pi pi-download" size="small" severity="secondary" outlined loading={cargandoTarifario} onClick={handleCargarTarifario} />
-              )}
+              <Button
+                label="Cargar tarifario"
+                icon="pi pi-download"
+                size="small"
+                severity="secondary"
+                outlined
+                loading={cargandoTarifario}
+                disabled={!casoTarifario}
+                tooltip={!casoTarifario ? 'Esta empresa no tiene tarifario asignado' : `Cargar líneas de "${casoTarifario.nombre}"`}
+                tooltipOptions={{ position: 'top' }}
+                onClick={handleCargarTarifario}
+              />
               <Button label="Agregar perfil" icon="pi pi-plus" size="small" onClick={abrirNuevaLinea} />
             </div>
           )}
         </div>
 
         {casoLineas.length === 0 ? (
-          <div className="p-3 text-center text-color-secondary text-sm">
+          <div className="p-4 text-center text-color-secondary text-sm">
             <i className="pi pi-info-circle mr-2" />
             Sin líneas registradas.
-            {casoTarifario && !esTerminal && <span> Usa <strong>Cargar tarifario</strong> para precargar las líneas de <em>{casoTarifario.nombre}</em>.</span>}
+            {casoTarifario && !esTerminal && (
+              <span> Usa <strong>Cargar tarifario</strong> para precargar las líneas de <em>{casoTarifario.nombre}</em>.</span>
+            )}
           </div>
         ) : (
           <>
+            {/* Tabla con ancho 100% — sin minWidth fijo para evitar espacio muerto */}
             <div style={{ overflowX: 'auto' }}>
-              {/* Header tabla */}
-              <div className="flex px-3 py-2 text-xs font-semibold" style={{ minWidth: '700px', gap: '8px', background: '#f8f9fa', borderBottom: '1px solid var(--surface-border)', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <div style={{ flex: '0 0 180px' }}>Perfil / Consultor</div>
-                <div style={{ flex: '0 0 55px', textAlign: 'right' }}>Horas</div>
-                <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Costo/h</div>
-                <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Precio/h</div>
-                <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Total Costo</div>
-                <div style={{ flex: '1 1 auto', textAlign: 'right' }}>Total Precio</div>
-                <div style={{ flex: '0 0 70px' }} />
-              </div>
-
-              {casoLineas.map((l, idx) => (
-                <div key={l.perfilId}
-                  className="flex px-3 align-items-center"
-                  style={{ borderBottom: '1px solid #f1f5f9', minWidth: '700px', gap: '8px', padding: '13px 12px', background: idx % 2 === 1 ? '#fafbfc' : '#fff' }}
-                >
-                  <div style={{ flex: '0 0 180px' }}>
-                    <div className="font-semibold text-sm">{l.perfil.nombre}</div>
-                    <div className="text-xs mt-1 flex align-items-center gap-1">
-                      <Tag value={l.perfil.nivel} severity={l.perfil.nivel === 'Senior' ? 'success' : l.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'} style={{ fontSize: '0.65rem' }} />
-                      {l.empleado
-                        ? <span style={{ fontSize: '11px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '3px' }}>👤 {l.empleado.nombre} {l.empleado.apellido}</span>
-                        : <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>Sin consultor</span>}
-                    </div>
-                  </div>
-                  <div style={{ flex: '0 0 55px', textAlign: 'right', fontSize: '0.85rem' }}>{l.horas}h</div>
-                  <div style={{ flex: '0 0 90px', textAlign: 'right', fontSize: '0.85rem', color: '#94a3b8' }}>{formatCurrency(l.costoHora)}</div>
-                  <div style={{ flex: '0 0 90px', textAlign: 'right', fontSize: '0.85rem' }}>
-                    <span style={{ color: '#3B82F6', fontWeight: 600 }}>{formatCurrency(l.precioHora)}</span>
-                  </div>
-                  <div style={{ flex: '0 0 90px', textAlign: 'right', fontSize: '0.85rem', color: '#64748b' }}>{formatCurrency(l.costo)}</div>
-                  <div style={{ flex: '1 1 auto', textAlign: 'right', fontSize: '0.85rem', fontWeight: 700 }}>{formatCurrency(l.precio)}</div>
-                  <div style={{ flex: '0 0 70px', textAlign: 'right' }}>
-                    {!esTerminal && (
-                      <div className="flex gap-1 justify-content-end">
-                        <Button icon="pi pi-pencil" rounded text severity="info" size="small" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => abrirEditarLinea(l)} />
-                        <Button icon="pi pi-trash" rounded text severity="danger" size="small" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => handleDeleteLinea(l.perfilId)} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              {/* Fila TOTAL */}
-              <div className="flex px-3 font-semibold" style={{ borderTop: '2px solid var(--surface-border)', minWidth: '700px', gap: '8px', padding: '10px 12px', background: '#f8f9fa' }}>
-                <div style={{ flex: '0 0 180px', fontSize: '0.85rem' }}>TOTAL</div>
-                <div style={{ flex: '0 0 55px', textAlign: 'right', fontSize: '0.85rem' }}>{casoResumen?.totalHoras}h</div>
-                <div style={{ flex: '0 0 90px' }} />
-                <div style={{ flex: '0 0 90px' }} />
-                <div style={{ flex: '0 0 90px', textAlign: 'right', fontSize: '0.85rem', color: '#64748b' }}>{formatCurrency(casoResumen?.totalCosto)}</div>
-                <div style={{ flex: '1 1 auto', textAlign: 'right', fontSize: '0.85rem', color: '#15803d', fontWeight: 700 }}>{formatCurrency(casoResumen?.totalPrecio)}</div>
-                <div style={{ flex: '0 0 70px' }} />
-              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <colgroup>
+                  <col style={{ width: '28%' }} />
+                  <col style={{ width: '7%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '17%' }} />
+                  <col style={{ width: '12%' }} />
+                </colgroup>
+                <thead>
+                  <tr style={{ background: '#f8f9fa', borderBottom: '1px solid var(--surface-border)' }}>
+                    {['Perfil / Consultor','Horas','Costo/h','Precio/h','Total Costo','Total Precio',''].map((h, i) => (
+                      <th key={i} style={{ padding: '9px 12px', textAlign: i === 0 ? 'left' : 'right', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {casoLineas.map((l, idx) => (
+                    <tr key={l.perfilId} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 1 ? '#fafbfc' : '#fff' }}>
+                      <td style={{ padding: '12px' }}>
+                        <div className="font-semibold" style={{ fontSize: '13px' }}>{l.perfil.nombre}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
+                          <Tag value={l.perfil.nivel} severity={l.perfil.nivel === 'Senior' ? 'success' : l.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'} style={{ fontSize: '0.65rem' }} />
+                          {l.empleado
+                            ? <span style={{ fontSize: '11px', color: '#64748b' }}>👤 {l.empleado.nombre} {l.empleado.apellido}</span>
+                            : <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>Sin consultor</span>}
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'right', color: '#1e293b' }}>{l.horas}h</td>
+                      <td style={{ padding: '12px', textAlign: 'right', color: '#94a3b8' }}>{formatCurrency(l.costoHora)}</td>
+                      <td style={{ padding: '12px', textAlign: 'right' }}>
+                        <span style={{ color: '#3B82F6', fontWeight: 600 }}>{formatCurrency(l.precioHora)}</span>
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'right', color: '#64748b' }}>{formatCurrency(l.costo)}</td>
+                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: 700 }}>{formatCurrency(l.precio)}</td>
+                      <td style={{ padding: '12px', textAlign: 'right' }}>
+                        {!esTerminal && (
+                          <div className="flex gap-1 justify-content-end">
+                            <Button icon="pi pi-pencil" rounded text severity="info" size="small" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => abrirEditarLinea(l)} />
+                            <Button icon="pi pi-trash" rounded text severity="danger" size="small" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => handleDeleteLinea(l.perfilId)} />
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ background: '#f8f9fa', borderTop: '2px solid var(--surface-border)', fontWeight: 700 }}>
+                    <td style={{ padding: '10px 12px', fontSize: '13px' }}>TOTAL</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px' }}>{casoResumen?.totalHoras}h</td>
+                    <td /><td />
+                    <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: '#64748b' }}>{formatCurrency(casoResumen?.totalCosto)}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: '#15803d' }}>{formatCurrency(casoResumen?.totalPrecio)}</td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
             </div>
 
             {/* Margen bruto */}
-            <div className="flex align-items-center gap-3 px-3" style={{ borderTop: '1px solid var(--surface-border)', padding: '13px 16px' }}>
+            <div className="flex align-items-center gap-3" style={{ borderTop: '1px solid var(--surface-border)', padding: '13px 18px' }}>
               <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap' }}>Margen bruto</span>
               <div style={{ flex: 1, background: '#f1f3f4', borderRadius: '20px', height: '8px', overflow: 'hidden' }}>
                 <div style={{ width: `${casoResumen?.gmPct || 0}%`, height: '100%', borderRadius: '20px', background: 'linear-gradient(90deg,#16A34A,#22C55E)' }} />
@@ -537,8 +583,15 @@ export default function PropuestaDetallePage({ params }) {
             </div>
 
             {!esTerminal && (
-              <div className="flex justify-content-end px-3 pb-3">
-                <Button label={`↑ Usar ${formatCurrency(casoResumen?.totalPrecio)} como Valor Estimado`} icon="pi pi-arrow-up" size="small" severity="success" outlined onClick={handleAplicarValor} />
+              <div className="flex justify-content-end" style={{ padding: '0 18px 14px' }}>
+                <Button
+                  label={`↑ Usar ${formatCurrency(casoResumen?.totalPrecio)} como Valor Estimado`}
+                  icon="pi pi-arrow-up"
+                  size="small"
+                  severity="success"
+                  outlined
+                  onClick={handleAplicarValor}
+                />
               </div>
             )}
           </>
@@ -559,12 +612,16 @@ export default function PropuestaDetallePage({ params }) {
       )}
 
       {/* ── Trazabilidad de Estado ── */}
-      <Card>
-        <div className="flex align-items-center gap-2 mb-1">
-          <span style={{ fontSize: '15px' }}>🕐</span>
-          <h3 className="m-0 font-semibold">Trazabilidad de Estado</h3>
+      <Card style={{ padding: 0 }}>
+        <div style={{ padding: '11px 18px', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontWeight: 600, fontSize: '13px' }}>
+              <span>🕐</span> Trazabilidad de Estado
+            </div>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>Registro inmutable de todos los cambios de estado</div>
+          </div>
         </div>
-        <p style={{ fontSize: '11px', color: '#94a3b8', margin: '0 0 16px' }}>Registro inmutable de todos los cambios de estado</p>
+        <div style={{ padding: '14px 18px' }}>
 
         {(!propuesta.logs || propuesta.logs.length === 0) ? (
           <p className="text-color-secondary text-sm m-0">Sin historial de cambios.</p>
@@ -613,6 +670,7 @@ export default function PropuestaDetallePage({ params }) {
             })}
           </div>
         )}
+        </div>{/* /padding wrapper */}
       </Card>
 
       {/* ── Dialogs ── */}
