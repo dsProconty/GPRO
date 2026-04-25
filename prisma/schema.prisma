@@ -16,32 +16,57 @@ datasource db {
 
 // ─── USUARIOS (tabla de Laravel = users, aquí = User) ────────────────────────
 model User {
-  id            Int      @id @default(autoincrement())
-  name          String   @db.VarChar(150)
-  email         String   @unique @db.VarChar(200)
-  password      String
-  role          String   @default("user") @db.VarChar(50)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id                Int            @id @default(autoincrement())
+  name              String         @db.VarChar(150)
+  email             String         @unique @db.VarChar(200)
+  password          String
+  role              String         @default("user") @db.VarChar(50)
+  perfilUsuarioId   Int?           @map("id_perfil_usuario")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
 
   // Relaciones
-  proyectosResponsable ProyectoResponsable[]
-  observaciones        Observacion[]
+  perfilUsuario          PerfilUsuario?        @relation(fields: [perfilUsuarioId], references: [id])
+  proyectosResponsable   ProyectoResponsable[]
+  observaciones          Observacion[]
+  estadoLogs             ProyectoEstadoLog[]
+  propuestaResponsables  PropuestaResponsable[]
+  propuestaLogs          PropuestaEstadoLog[]
 
   @@map("users")
 }
 
+// ─── PERFIL DE USUARIO (RBAC) ─────────────────────────────────────────────────
+// Permisos almacenados como array JSON de strings (ej: ["proyectos.ver","facturas.crear"])
+// estadosProyectoEditables: null = sin restricción de estado; int[] = solo esos estados
+model PerfilUsuario {
+  id                       Int      @id @default(autoincrement())
+  nombre                   String   @db.VarChar(100)
+  descripcion              String?  @db.VarChar(255)
+  permisos                 Json     // string[] de permission keys
+  estadosProyectoEditables Json?    @map("estados_proyecto_editables") // null | int[]
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  usuarios User[]
+
+  @@map("perfiles_usuario")
+}
+
 // ─── EMPRESA ─────────────────────────────────────────────────────────────────
 model Empresa {
-  id        Int      @id @default(autoincrement()) @map("id_empresa")
-  nombre    String   @db.VarChar(150)
-  ciudad    String?  @db.VarChar(100)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id          Int      @id @default(autoincrement()) @map("id_empresa")
+  nombre      String   @db.VarChar(150)
+  ciudad      String?  @db.VarChar(100)
+  tarifarioId Int?     @map("id_tarifario")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relaciones
-  clientes  Cliente[]
-  proyectos Proyecto[]
+  clientes   Cliente[]
+  proyectos  Proyecto[]
+  propuestas Propuesta[]
+  tarifario  Tarifario? @relation(fields: [tarifarioId], references: [id])
 
   @@map("empresas")
 }
@@ -70,7 +95,9 @@ model Estado {
   color       String     @default("secondary") @db.VarChar(30) // Para PrimeReact Tag severity
 
   // Relaciones
-  proyectos   Proyecto[]
+  proyectos    Proyecto[]
+  logsAnterior ProyectoEstadoLog[] @relation("EstadoAnterior")
+  logsNuevo    ProyectoEstadoLog[] @relation("EstadoNuevo")
 
   @@map("estados")
 }
@@ -86,6 +113,8 @@ model Proyecto {
   fechaCierre    DateTime? @map("fecha_cierre") @db.Date
   estadoId       Int       @map("id_estado")
   projectOnline  String?   @map("project_online") @db.VarChar(500)
+  codigo         String?   @unique @db.VarChar(20)
+  aplicativo     String?   @db.VarChar(100)
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
@@ -96,6 +125,10 @@ model Proyecto {
   responsables   ProyectoResponsable[]
   facturas       Factura[]
   observaciones  Observacion[]
+  recordatorios  RecordatorioFactura[]
+  estadoLogs     ProyectoEstadoLog[]
+  propuesta      Propuesta?
+  casoNegocio    ProyectoCasoNegocioLinea[]
 
   @@map("proyectos")
 }
@@ -161,6 +194,37 @@ model Pago {
   @@map("pagos")
 }
 
+// ─── RECORDATORIO DE FACTURACIÓN ─────────────────────────────────────────────
+// Permite configurar alertas recurrentes por día del mes para un proyecto.
+// El cron job (/api/cron/recordatorios) lo ejecuta Vercel a las 8am UTC diariamente.
+model RecordatorioFactura {
+  id            Int       @id @default(autoincrement()) @map("id_recordatorio")
+  proyectoId    Int       @map("id_negocio")
+  diaMes        Int       @map("dia_mes")       // 1-28
+  descripcion   String    @db.Text
+  destinatarios String    @db.Text              // emails separados por coma
+  activo        Boolean   @default(true)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  proyecto      Proyecto          @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  logs          RecordatorioLog[]
+
+  @@map("recordatorio_facturas")
+}
+
+model RecordatorioLog {
+  id              Int                 @id @default(autoincrement())
+  recordatorioId  Int                 @map("id_recordatorio")
+  enviadoEn       DateTime            @default(now()) @map("enviado_en")
+  exitoso         Boolean
+  error           String?             @db.Text
+
+  recordatorio    RecordatorioFactura @relation(fields: [recordatorioId], references: [id], onDelete: Cascade)
+
+  @@map("recordatorio_logs")
+}
+
 // ─── OBSERVACION (INMUTABLE) ──────────────────────────────────────────────────
 // REGLA DE NEGOCIO: Solo INSERT. Nunca UPDATE ni DELETE.
 // El id_user se toma del token de sesión, NUNCA del body del request.
@@ -176,4 +240,228 @@ model Observacion {
   user        User     @relation(fields: [userId], references: [id])
 
   @@map("observaciones")
+}
+
+// ─── HISTORIAL DE CAMBIOS DE ESTADO (INMUTABLE) ───────────────────────────────
+// Se crea automáticamente al hacer PATCH /api/v1/proyectos/:id (cambio de estado)
+model ProyectoEstadoLog {
+  id               Int      @id @default(autoincrement())
+  proyectoId       Int      @map("id_negocio")
+  estadoAnteriorId Int?     @map("id_estado_anterior")
+  estadoNuevoId    Int      @map("id_estado_nuevo")
+  userId           Int      @map("id_user")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  proyecto       Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  estadoAnterior Estado?  @relation("EstadoAnterior", fields: [estadoAnteriorId], references: [id])
+  estadoNuevo    Estado   @relation("EstadoNuevo", fields: [estadoNuevoId], references: [id])
+  user           User     @relation(fields: [userId], references: [id])
+
+  @@map("proyecto_estado_logs")
+}
+
+// ─── CONFIGURACIÓN: DATOS DE LA EMPRESA (singleton id=1) ─────────────────────
+// Nombre, moneda, logo y datos de contacto usados en PDF, layout y emails.
+model ConfiguracionEmpresa {
+  id        Int      @id @default(1)
+  nombre    String   @default("Mi Empresa") @db.VarChar(150)
+  moneda    String   @default("USD")         @db.VarChar(10)
+  logoUrl   String?  @map("logo_url")        @db.VarChar(500)
+  direccion String?  @db.VarChar(300)
+  telefono  String?  @db.VarChar(50)
+  email     String?  @db.VarChar(200)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("configuracion_empresa")
+}
+
+// ─── CONFIGURACIÓN: LABELS DE ESTADOS DE PROPUESTA ───────────────────────────
+// Permite renombrar los estados de propuesta sin cambiar la lógica interna.
+// key: identificador interno inmutable (Factibilidad, Haciendo, Enviada, Aprobada, Rechazada)
+// label: nombre visible al usuario, personalizable desde /configuracion
+model PropuestaEstadoLabel {
+  key       String   @id @db.VarChar(50)
+  label     String   @db.VarChar(100)
+  severity  String   @db.VarChar(20)
+  icon      String   @db.VarChar(50)
+  orden     Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("propuesta_estado_labels")
+}
+
+// ─── CATÁLOGO: PERFILES DE CONSULTOR ─────────────────────────────────────────
+// Parametrización: rol + nivel + tarifas. Usado en el Caso de Negocio.
+model PerfilConsultor {
+  id         Int      @id @default(autoincrement())
+  nombre     String   @db.VarChar(100)   // Ej: "Full Stack", "QA", "PM"
+  nivel      String   @db.VarChar(50)    // "Senior" | "Semi Senior" | "Junior"
+  costoHora  Decimal  @map("costo_hora") @db.Decimal(10, 2)
+  precioHora Decimal  @map("precio_hora") @db.Decimal(10, 2)
+  activo     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  lineasCaso         CasoNegocioLinea[]
+  lineasProyecto     ProyectoCasoNegocioLinea[]
+  empleados          Empleado[]
+  tarifarioLineas    TarifarioLinea[]
+
+  @@map("perfiles_consultor")
+}
+
+// ─── CASO DE NEGOCIO DEL PROYECTO ────────────────────────────────────────────
+// Copia snapshot de las líneas de la propuesta al momento de ser aprobada.
+// costoHora y precioHora se almacenan para preservar tarifas históricas.
+model ProyectoCasoNegocioLinea {
+  proyectoId        Int             @map("id_proyecto")
+  perfilConsultorId Int             @map("id_perfil_consultor")
+  horas             Decimal         @db.Decimal(10, 2)
+  costoHora         Decimal         @map("costo_hora")  @db.Decimal(10, 2)
+  precioHora        Decimal         @map("precio_hora") @db.Decimal(10, 2)
+  empleadoId        Int?            @map("id_empleado")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  proyecto          Proyecto        @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  perfilConsultor   PerfilConsultor @relation(fields: [perfilConsultorId], references: [id])
+  empleado          Empleado?       @relation(fields: [empleadoId], references: [id])
+
+  @@id([proyectoId, perfilConsultorId])
+  @@map("proyecto_caso_negocio")
+}
+
+// ─── PROPUESTA ────────────────────────────────────────────────────────────────
+// Pipeline comercial previo a la adjudicación de proyectos.
+// Estados: Factibilidad → Haciendo → Enviada → Aprobada|Rechazada
+// Al pasar a Aprobada se crea automáticamente un Proyecto (estadoId=3 Adjudicado)
+model Propuesta {
+  id             Int       @id @default(autoincrement())
+  titulo         String    @db.VarChar(255)
+  descripcion    String?   @db.Text
+  empresaId      Int       @map("id_empresa")
+  valorEstimado  Decimal?  @map("valor_estimado") @db.Decimal(12, 2)
+  fechaCreacion  DateTime  @map("fecha_creacion") @db.Date
+  fechaEnvio     DateTime? @map("fecha_envio")    @db.Date
+  estado         String    @default("Factibilidad") @db.VarChar(30)
+  proyectoId     Int?      @unique @map("id_proyecto")
+  codigo         String?   @unique @db.VarChar(20)
+  aplicativo     String?   @db.VarChar(100)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  empresa      Empresa              @relation(fields: [empresaId], references: [id])
+  proyecto     Proyecto?            @relation(fields: [proyectoId], references: [id])
+  responsables PropuestaResponsable[]
+  logs         PropuestaEstadoLog[]
+  casoNegocio  CasoNegocioLinea[]
+
+  @@map("propuestas")
+}
+
+// ─── CASO DE NEGOCIO: LÍNEAS (pivot propuesta × perfil) ──────────────────────
+// Opcional por propuesta. costo/precio/GM se calculan en tiempo real.
+// RN-CN04: bloqueado (solo lectura) cuando propuesta está Aprobada o Rechazada.
+model CasoNegocioLinea {
+  propuestaId Int      @map("id_propuesta")
+  perfilId    Int      @map("id_perfil")
+  horas       Decimal  @db.Decimal(10, 2)
+  empleadoId  Int?     @map("id_empleado")
+  precioHora  Decimal? @map("precio_hora") @db.Decimal(10, 2)
+
+  propuesta Propuesta       @relation(fields: [propuestaId], references: [id], onDelete: Cascade)
+  perfil    PerfilConsultor @relation(fields: [perfilId], references: [id])
+  empleado  Empleado?       @relation(fields: [empleadoId], references: [id])
+
+  @@id([propuestaId, perfilId])
+  @@map("caso_negocio_lineas")
+}
+
+// ─── PIVOT: PROPUESTA ↔ RESPONSABLE ─────────────────────────────────────────
+model PropuestaResponsable {
+  propuestaId Int @map("id_propuesta")
+  userId      Int @map("id_user")
+
+  propuesta   Propuesta @relation(fields: [propuestaId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([propuestaId, userId])
+  @@map("propuesta_responsable")
+}
+
+// ─── TRAZABILIDAD DE ESTADO DE PROPUESTA (INMUTABLE) ─────────────────────────
+// Se crea en cada cambio de estado. Nunca se modifica ni elimina.
+model PropuestaEstadoLog {
+  id             Int      @id @default(autoincrement())
+  propuestaId    Int      @map("id_propuesta")
+  estadoAnterior String?  @map("estado_anterior") @db.VarChar(30)
+  estadoNuevo    String   @map("estado_nuevo")    @db.VarChar(30)
+  userId         Int      @map("id_user")
+  nota           String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  propuesta      Propuesta @relation(fields: [propuestaId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id])
+
+  @@map("propuesta_estado_logs")
+}
+
+// ─── EMPLEADO / RECURSO ───────────────────────────────────────────────────────
+// Consultores de Proconty. Entidad separada de los usuarios del sistema.
+// Pueden existir como recurso sin tener acceso a GPRO.
+model Empleado {
+  id           Int              @id @default(autoincrement())
+  nombre       String           @db.VarChar(100)
+  apellido     String           @db.VarChar(100)
+  email        String?          @db.VarChar(200)
+  costoHora      Decimal          @map("costo_hora") @db.Decimal(10, 2)
+  salarioMensual Decimal?        @map("salario_mensual") @db.Decimal(10, 2)
+  perfilBaseId   Int?            @map("id_perfil_base")
+  activo         Boolean         @default(true)
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  perfilBase                PerfilConsultor?          @relation(fields: [perfilBaseId], references: [id])
+  tarifarioLineas           TarifarioLinea[]
+  casoNegocioLineas         CasoNegocioLinea[]
+  proyectoCasoNegocioLineas ProyectoCasoNegocioLinea[]
+
+  @@map("empleados")
+}
+
+// ─── TARIFARIO ────────────────────────────────────────────────────────────────
+// Lista de precios nombrada (ej: "Deloitte 2026"). Reutilizable entre empresas.
+// Cada empresa puede tener un tarifario activo asignado.
+model Tarifario {
+  id          Int              @id @default(autoincrement())
+  nombre      String           @db.VarChar(150)
+  descripcion String?          @db.Text
+  activo      Boolean          @default(true)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  lineas   TarifarioLinea[]
+  empresas Empresa[]
+
+  @@map("tarifarios")
+}
+
+// ─── TARIFARIO LÍNEA ──────────────────────────────────────────────────────────
+// Una línea de un tarifario: perfil + empleado + precio cliente.
+// El precio aquí es el que se cobra al cliente (distinto del costoHora del empleado).
+model TarifarioLinea {
+  id          Int      @id @default(autoincrement())
+  tarifarioId Int      @map("id_tarifario")
+  perfilId    Int      @map("id_perfil")
+  empleadoId  Int      @map("id_empleado")
+  precioHora  Decimal  @map("precio_hora") @db.Decimal(10, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tarifario Tarifario       @relation(fields: [tarifarioId], references: [id], onDelete: Cascade)
+  perfil    PerfilConsultor @relation(fields: [perfilId], references: [id])
+  empleado  Empleado        @relation(fields: [empleadoId], references: [id])
+
+  @@unique([tarifarioId, perfilId, empleadoId])
+  @@map("tarifario_lineas")
 }

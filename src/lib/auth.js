@@ -2,6 +2,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuración de NextAuth - Equivalente a Laravel Sanctum del doc técnico
 // Usa CredentialsProvider con email/password hasheado con bcrypt
+// Sprint 11: carga permisos y estadosProyectoEditables del perfilUsuario en JWT
 // ─────────────────────────────────────────────────────────────────────────────
 
 import CredentialsProvider from 'next-auth/providers/credentials'
@@ -21,9 +22,10 @@ export const authOptions = {
           throw new Error('Email y contraseña son requeridos')
         }
 
-        // Buscar usuario en DB (equivalente a POST /api/auth/login en Laravel)
+        // Buscar usuario en DB incluyendo su perfil de acceso (Sprint 11)
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
+          include: { perfilUsuario: { select: { permisos: true, estadosProyectoEditables: true } } },
         })
 
         if (!user) {
@@ -38,29 +40,38 @@ export const authOptions = {
 
         // Retornar objeto usuario (se guarda en el token JWT)
         return {
-          id:    user.id.toString(),
-          name:  user.name,
-          email: user.email,
-          role:  user.role,
+          id:                      user.id.toString(),
+          name:                    user.name,
+          email:                   user.email,
+          role:                    user.role,
+          perfilUsuarioId:         user.perfilUsuarioId,
+          permisos:                user.perfilUsuario?.permisos ?? [],
+          estadosProyectoEditables: user.perfilUsuario?.estadosProyectoEditables ?? null,
         }
       },
     }),
   ],
 
   callbacks: {
-    // Agrega id y role al JWT token
+    // Agrega id, role y permisos al JWT token
     async jwt({ token, user }) {
       if (user) {
-        token.id   = user.id
-        token.role = user.role
+        token.id                      = user.id
+        token.role                    = user.role
+        token.perfilUsuarioId         = user.perfilUsuarioId
+        token.permisos                = user.permisos
+        token.estadosProyectoEditables = user.estadosProyectoEditables
       }
       return token
     },
-    // Expone id y role en la sesión del cliente
+    // Expone id, role y permisos en la sesión del cliente
     async session({ session, token }) {
       if (token) {
-        session.user.id   = token.id
-        session.user.role = token.role
+        session.user.id                      = token.id
+        session.user.role                    = token.role
+        session.user.perfilUsuarioId         = token.perfilUsuarioId
+        session.user.permisos                = token.permisos ?? []
+        session.user.estadosProyectoEditables = token.estadosProyectoEditables ?? null
       }
       return session
     },

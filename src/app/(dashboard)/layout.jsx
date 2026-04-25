@@ -4,23 +4,31 @@ import { useEffect, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import axios from 'axios'
 import { Button } from 'primereact/button'
+import { Badge } from 'primereact/badge'
 import { Ripple } from 'primereact/ripple'
 import { classNames } from 'primereact/utils'
 
-const menuItems = [
+const menuItemsBase = [
   {
     label: 'Principal',
     items: [
-      { label: 'Dashboard', icon: 'pi pi-home',      path: '/dashboard' },
-      { label: 'Proyectos', icon: 'pi pi-briefcase', path: '/proyectos' },
+      { label: 'Dashboard',        icon: 'pi pi-home',         path: '/dashboard',      permiso: 'dashboard.ver' },
+      { label: 'Propuestas',       icon: 'pi pi-send',         path: '/propuestas',     permiso: 'propuestas.ver' },
+      { label: 'Proyectos',        icon: 'pi pi-briefcase',    path: '/proyectos',      permiso: 'proyectos.ver' },
+      { label: 'Casos de Negocio', icon: 'pi pi-chart-bar',    path: '/casos-negocio',  permiso: 'casosNegocio.ver' },
     ],
   },
   {
     label: 'Configuración',
     items: [
-      { label: 'Empresas', icon: 'pi pi-building', path: '/empresas' },
-      { label: 'Clientes', icon: 'pi pi-users',    path: '/clientes'  },
+      { label: 'Clientes',        icon: 'pi pi-building',    path: '/clientes',      permiso: 'clientes.ver' },
+      { label: 'Empleados',       icon: 'pi pi-id-card',     path: '/empleados',     permiso: 'empleados.ver' },
+      { label: 'Tarifarios',      icon: 'pi pi-dollar',      path: '/tarifarios',    permiso: 'tarifarios.ver' },
+      { label: 'Usuarios',        icon: 'pi pi-users',       path: '/usuarios',      adminOnly: true },
+      { label: 'Perfiles',        icon: 'pi pi-shield',      path: '/perfiles',      adminOnly: true },
+      { label: 'Personalización', icon: 'pi pi-sliders-h',   path: '/configuracion', adminOnly: true },
     ],
   },
 ]
@@ -30,6 +38,28 @@ export default function DashboardLayout({ children }) {
   const router   = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [recordatoriosHoy, setRecordatoriosHoy] = useState(0)
+  const [nombreEmpresa, setNombreEmpresa] = useState('GPRO')
+  const isAdmin = session?.user?.role === 'admin'
+  const permisos = session?.user?.permisos || []
+
+  const menuItems = menuItemsBase.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => {
+      if (item.adminOnly) return isAdmin
+      if (item.permiso && !isAdmin) return permisos.includes(item.permiso)
+      return true
+    }),
+  }))
+
+  useEffect(() => {
+    axios.get('/api/v1/dashboard')
+      .then((res) => setRecordatoriosHoy(res.data.data?.recordatoriosHoy ?? 0))
+      .catch(() => {})
+    axios.get('/api/v1/configuracion')
+      .then((res) => { if (res.data.data?.empresa?.nombre) setNombreEmpresa(res.data.data.empresa.nombre) })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -65,7 +95,7 @@ export default function DashboardLayout({ children }) {
           </div>
           <div>
             <div className="text-900 font-bold text-lg">GPRO</div>
-            <div className="text-400 text-xs">Gestor de Proyectos</div>
+            <div className="text-400 text-xs">{nombreEmpresa}</div>
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto p-3">
@@ -80,7 +110,10 @@ export default function DashboardLayout({ children }) {
                       <Link href={item.path} style={{ textDecoration: 'none' }}>
                         <div className={classNames('p-ripple flex align-items-center gap-2 px-3 py-2 border-round cursor-pointer', active ? 'bg-primary text-white' : 'text-700 hover:surface-200')}>
                           <i className={classNames(item.icon, 'text-base')} />
-                          <span className="font-medium text-sm">{item.label}</span>
+                          <span className="font-medium text-sm flex-1">{item.label}</span>
+                          {item.path === '/dashboard' && recordatoriosHoy > 0 && (
+                            <Badge value={recordatoriosHoy} severity="danger" />
+                          )}
                           <Ripple />
                         </div>
                       </Link>
@@ -100,14 +133,15 @@ export default function DashboardLayout({ children }) {
               <div className="text-900 text-sm font-semibold">{session.user?.name}</div>
               <div className="text-400 text-xs">{session.user?.email}</div>
             </div>
-            <Button icon="pi pi-sign-out" rounded text severity="secondary" size="small" onClick={() => signOut({ callbackUrl: '/login' })} />
+            <Button icon="pi pi-user-edit" rounded text severity="secondary" size="small" tooltip="Mi perfil" tooltipOptions={{ position: 'top' }} onClick={() => router.push('/perfil')} />
+            <Button icon="pi pi-sign-out" rounded text severity="secondary" size="small" tooltip="Cerrar sesión" tooltipOptions={{ position: 'top' }} onClick={() => signOut({ callbackUrl: '/login' })} />
           </div>
         </div>
       </aside>
       <div className="flex flex-column flex-1" style={{ overflow: 'hidden' }}>
         <header className="flex align-items-center gap-3 px-4 surface-card shadow-1" style={{ height: '64px', borderBottom: '1px solid var(--surface-border)', flexShrink: 0 }}>
           <Button icon="pi pi-bars" rounded text severity="secondary" onClick={() => setSidebarOpen(!sidebarOpen)} />
-          <span className="text-900 font-semibold">GPRO · Proconty</span>
+          <span className="text-900 font-semibold">GPRO · {nombreEmpresa}</span>
           <div className="flex-1" />
           <span className="text-400 text-sm">{new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
         </header>

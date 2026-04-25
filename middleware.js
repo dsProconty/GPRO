@@ -13,5 +13,13 @@ export const config = {
     '/empresas/:path*',
     '/clientes/:path*',
     '/facturas/:path*',
+    '/propuestas/:path*',
+    '/casos-negocio/:path*',
+    '/empleados/:path*',
+    '/tarifarios/:path*',
+    '/usuarios/:path*',
+    '/perfiles/:path*',
+    '/configuracion/:path*',
+    '/perfil/:path*',
   ],
 }
