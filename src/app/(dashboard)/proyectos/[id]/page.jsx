@@ -462,6 +462,10 @@ export default function ProyectoDetallePage({ params }) {
             <Button label="PDF" icon="pi pi-file-pdf" severity="secondary" outlined onClick={() => window.open(`/api/v1/proyectos/${id}/pdf`, '_blank')} />
           )}
           <Button label="Excel" icon="pi pi-file-excel" severity="secondary" outlined onClick={exportarFacturas} disabled={facturas.length === 0} />
+          {proyecto.propuesta && (
+            <Button label="Propuesta original" icon="pi pi-file-edit" severity="secondary" outlined
+              onClick={() => router.push('/propuestas/' + proyecto.propuesta.id)} />
+          )}
           {(puede(PERMISOS.PROYECTOS.EDITAR) && puedeEditarProyecto(proyecto?.estadoId)) && (
             <Button label="Editar" icon="pi pi-pencil" severity="secondary" outlined onClick={() => setEditDialogVisible(true)} />
           )}
@@ -469,10 +473,11 @@ export default function ProyectoDetallePage({ params }) {
       </div>
 
       {/* ── KPI Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '10px', marginBottom: '14px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '10px', marginBottom: '14px' }}>
         {[
           { icon: '🏢', bg: '#EFF6FF', label: 'Empresa', value: proyecto.empresa?.nombre || '—', valueColor: '#1e293b' },
           { icon: '📅', bg: '#F1F5F9', label: 'Fecha inicio', value: formatDate(proyecto.fechaCreacion), valueColor: '#1e293b' },
+          { icon: '🏁', bg: '#FFF7ED', label: 'Fecha de cierre', value: formatDate(proyecto.fechaCierre) || 'Sin definir', valueColor: proyecto.fechaCierre ? '#1e293b' : '#94a3b8' },
           { icon: '🖥️', bg: '#F5F3FF', label: 'Aplicativo', value: proyecto.aplicativo || '—', valueColor: '#1e293b' },
           { icon: '💰', bg: '#F0FDF4', label: 'Valor contrato', value: formatCurrency(proyecto.valor, moneda), valueColor: '#15803D' },
         ].map((k) => (
@@ -568,29 +573,56 @@ export default function ProyectoDetallePage({ params }) {
           }
         </Card>
 
-        {/* Propuesta origen */}
+        {/* Cronograma compacto */}
         <Card>
-          <h3 className="m-0 mb-3 font-semibold text-base"><i className="pi pi-file-edit mr-2 text-primary" />Propuesta Origen</h3>
-          {proyecto.propuesta ? (
-            <div className="flex flex-column gap-2">
-              <div>
-                <div className="text-xs text-color-secondary mb-1">Título</div>
-                <div className="font-semibold text-sm">{proyecto.propuesta.titulo}</div>
-              </div>
-              {proyecto.propuesta.valorEstimado && (
-                <div>
-                  <div className="text-xs text-color-secondary mb-1">Valor estimado</div>
-                  <div className="font-semibold text-sm">{formatCurrency(proyecto.propuesta.valorEstimado, moneda)}</div>
+          <h3 className="m-0 mb-3 font-semibold text-base"><i className="pi pi-calendar-clock mr-2 text-primary" />Cronograma</h3>
+          {cronInicio ? (
+            <>
+              {/* Barra de progreso con marcador de hoy */}
+              <div style={{ position: 'relative', marginBottom: '20px' }}>
+                <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '20px', overflow: 'visible', position: 'relative' }}>
+                  <div style={{ width: `${cronPct}%`, height: '100%', background: 'linear-gradient(90deg,var(--primary-300),var(--primary-color))', borderRadius: '20px' }} />
+                  {cronTotal && (
+                    <div style={{ position: 'absolute', top: '-6px', left: `calc(${Math.min(97, cronPct)}%)`, transform: 'translateX(-50%)', zIndex: 2 }}>
+                      <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--primary-color)', border: '3px solid white', boxShadow: '0 2px 6px rgba(0,0,0,.25)' }} />
+                    </div>
+                  )}
                 </div>
-              )}
-              <Button label="Ver propuesta" icon="pi pi-external-link" severity="secondary" outlined size="small" className="mt-2 w-full"
-                onClick={() => router.push('/propuestas/' + proyecto.propuesta.id)} />
-            </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '11px', color: '#94a3b8' }}>
+                  <span>{formatDate(proyecto.fechaCreacion)}</span>
+                  {cronFin
+                    ? <span style={{ background: '#eff6ff', color: 'var(--primary-color)', borderRadius: '4px', padding: '1px 6px', fontWeight: 600, fontSize: '10px' }}>HOY {cronPct}%</span>
+                    : <span style={{ background: '#eff6ff', color: 'var(--primary-color)', borderRadius: '4px', padding: '1px 6px', fontWeight: 600, fontSize: '10px' }}>HOY</span>
+                  }
+                  <span>{cronFin ? formatDate(proyecto.fechaCierre) : 'Sin cierre'}</span>
+                </div>
+              </div>
+              {/* Stats compactos */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div style={{ padding: '10px 12px', borderRadius: '8px', background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
+                  <div style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#1D4ED8', marginBottom: '2px' }}>Transcurridos</div>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#1D4ED8', lineHeight: 1.1 }}>{cronElapsed}<span style={{ fontSize: '11px', fontWeight: 500 }}> días</span></div>
+                </div>
+                <div style={{ padding: '10px 12px', borderRadius: '8px', background: cronRestantes !== null && cronRestantes < 0 ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${cronRestantes !== null && cronRestantes < 0 ? '#FECACA' : '#BBF7D0'}` }}>
+                  <div style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: cronRestantes !== null && cronRestantes < 0 ? '#B91C1C' : '#15803D', marginBottom: '2px' }}>
+                    {cronRestantes !== null && cronRestantes < 0 ? 'Vencido' : 'Restantes'}
+                  </div>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: cronRestantes !== null && cronRestantes < 0 ? '#B91C1C' : '#15803D', lineHeight: 1.1 }}>
+                    {cronRestantes !== null ? Math.abs(cronRestantes) : '—'}<span style={{ fontSize: '11px', fontWeight: 500 }}> días</span>
+                  </div>
+                </div>
+                {cronTotal && (
+                  <div style={{ padding: '10px 12px', borderRadius: '8px', background: '#F8FAFC', border: '1px solid #E2E8F0', gridColumn: '1 / -1' }}>
+                    <div style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#64748b', marginBottom: '2px' }}>Duración total del proyecto</div>
+                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>{cronTotal} días <span style={{ fontSize: '11px', fontWeight: 500, color: '#94a3b8' }}>· {cronPct}% completado</span></div>
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
-            <div className="flex flex-column align-items-center justify-content-center text-center py-4">
-              <i className="pi pi-file-plus text-4xl text-color-secondary mb-2" />
-              <p className="text-sm text-color-secondary m-0">Sin propuesta vinculada</p>
-              <p className="text-xs text-color-secondary mt-1 mb-0">Proyecto creado directamente</p>
+            <div className="flex flex-column align-items-center justify-content-center text-center py-3">
+              <i className="pi pi-calendar text-3xl text-color-secondary mb-2" />
+              <p className="text-sm text-color-secondary m-0">Sin fecha de inicio definida</p>
             </div>
           )}
         </Card>
@@ -629,54 +661,6 @@ export default function ProyectoDetallePage({ params }) {
         </Card>
       </div>
 
-      {/* ── Cronograma ── */}
-      {cronInicio && (
-        <Card className="mb-3">
-          <div className="flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-            <h3 className="m-0 font-semibold"><i className="pi pi-calendar-clock mr-2 text-primary" />Cronograma</h3>
-            <div className="flex align-items-center gap-3 text-sm text-color-secondary flex-wrap">
-              <span><i className="pi pi-play-circle mr-1" />{formatDate(proyecto.fechaCreacion)}</span>
-              {cronFin && <span><i className="pi pi-stop-circle mr-1" />{formatDate(proyecto.fechaCierre)}</span>}
-              {cronTotal && <span><i className="pi pi-clock mr-1" />{cronTotal} días totales</span>}
-            </div>
-          </div>
-          <div style={{ position: 'relative', paddingBottom: '20px' }}>
-            <div style={{ height: '10px', background: 'var(--surface-200)', borderRadius: '5px', overflow: 'hidden' }}>
-              <div style={{ width: `${cronPct}%`, height: '100%', background: 'linear-gradient(90deg, var(--primary-300), var(--primary-color))', borderRadius: '5px' }} />
-            </div>
-            {cronTotal && (
-              <div style={{ position: 'absolute', top: '-5px', left: `calc(${Math.min(97, cronPct)}%)`, transform: 'translateX(-50%)' }}>
-                <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--primary-color)', border: '3px solid white', boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }} />
-              </div>
-            )}
-            <div className="flex justify-content-between text-xs text-color-secondary mt-2">
-              <span>{formatDate(proyecto.fechaCreacion)}</span>
-              {cronFin && <span>{formatDate(proyecto.fechaCierre)}</span>}
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '16px', marginTop: '18px' }}>
-            <div style={{ padding: '12px 16px', borderRadius: '8px', background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#1D4ED8', marginBottom: '4px' }}>Días transcurridos</div>
-              <div style={{ fontSize: '22px', fontWeight: 700, color: '#1D4ED8', lineHeight: 1.1 }}>{cronElapsed}</div>
-              <div style={{ fontSize: '11px', color: '#3B82F6', marginTop: '3px' }}>desde el {formatDate(proyecto.fechaCreacion)}</div>
-            </div>
-            <div style={{ padding: '14px 20px', borderRadius: '8px', background: 'linear-gradient(135deg,#F0FDF4,#DCFCE7)', border: '1px solid #BBF7D0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#15803D', marginBottom: '4px' }}>Días restantes</div>
-              <div style={{ fontSize: '28px', fontWeight: 700, color: '#15803D', lineHeight: 1.1 }}>
-                {cronRestantes !== null ? (cronRestantes < 0 ? Math.abs(cronRestantes) : cronRestantes) : '—'}
-              </div>
-              <div style={{ fontSize: '11px', color: '#15803D', fontWeight: 600, marginTop: '3px' }}>
-                {cronFin ? `hasta el ${formatDate(proyecto.fechaCierre)}` : 'sin fecha de cierre'}
-              </div>
-            </div>
-            <div style={{ padding: '12px 16px', borderRadius: '8px', background: '#FEF2F2', border: '1px solid #FECACA' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#B91C1C', marginBottom: '4px', textAlign: 'right' }}>Progreso temporal</div>
-              <div style={{ fontSize: '22px', fontWeight: 700, color: '#B91C1C', lineHeight: 1.1, textAlign: 'right' }}>{cronPct}%</div>
-              <div style={{ fontSize: '11px', color: '#EF4444', marginTop: '3px', textAlign: 'right' }}>{cronTotal ? `de ${cronTotal} días totales` : ''}</div>
-            </div>
-          </div>
-        </Card>
-      )}
 
       {/* ── Caso de Negocio ── */}
       {(casoNegocio !== null && (casoNegocio.lineas.length > 0 || puede(PERMISOS.CASOS_NEGOCIO.EDITAR))) && (
