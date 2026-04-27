@@ -15,10 +15,8 @@ export async function PUT(request, { params }) {
   const { nombre, nivel, costoHora, precioHora, activo } = await request.json()
 
   const errors = {}
-  if (!nombre?.trim())            errors.nombre     = ['Requerido']
-  if (!nivel?.trim())             errors.nivel      = ['Requerido']
-  if (!costoHora  || costoHora  <= 0) errors.costoHora  = ['Debe ser mayor a 0']
-  if (!precioHora || precioHora <= 0) errors.precioHora = ['Debe ser mayor a 0']
+  if (!nombre?.trim()) errors.nombre = ['Requerido']
+  if (!nivel?.trim())  errors.nivel  = ['Requerido']
 
   if (Object.keys(errors).length) {
     return NextResponse.json({ success: false, message: 'Datos inválidos', errors }, { status: 422 })
@@ -29,8 +27,8 @@ export async function PUT(request, { params }) {
     data: {
       nombre:     nombre.trim(),
       nivel:      nivel.trim(),
-      costoHora:  Number(costoHora),
-      precioHora: Number(precioHora),
+      costoHora:  Number(costoHora ?? 0),
+      precioHora: Number(precioHora ?? 0),
       activo:     activo !== undefined ? Boolean(activo) : undefined,
     },
   })
