@@ -250,7 +250,8 @@ export default function EmpleadosPage() {
         header={editingId ? 'Editar Empleado' : 'Nuevo Empleado'}
         visible={dialogOpen}
         onHide={() => setDialogOpen(false)}
-        style={{ width: '500px' }}
+        style={{ width: '480px' }}
+        contentStyle={{ overflowX: 'hidden', padding: '1.25rem 1.5rem' }}
         footer={
           <div className="flex justify-content-end gap-2">
             <Button label="Cancelar" outlined severity="secondary" onClick={() => setDialogOpen(false)} disabled={saving} />
@@ -293,13 +294,14 @@ export default function EmpleadosPage() {
           </div>
 
           {/* Salario mensual → auto-calcula costo/hora */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', minWidth: 0 }}>
+            <div style={{ minWidth: 0 }}>
               <label className="block font-medium mb-1">
                 Salario mensual <span className="text-color-secondary text-xs">(bruto)</span>
               </label>
               <InputNumber
                 className="w-full"
+                inputStyle={{ width: '100%' }}
                 value={form.salarioMensual}
                 onValueChange={(e) => onSalarioChange(e.value)}
                 mode="currency" currency="USD" locale="en-US" minFractionDigits={2}
@@ -307,10 +309,11 @@ export default function EmpleadosPage() {
               />
               <small className="text-color-secondary">÷ 173.36 h/mes = costo/hora</small>
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label className="block font-medium mb-1">Costo/hora (interno) *</label>
               <InputNumber
                 className={`w-full${errors.costoHora ? ' p-invalid' : ''}`}
+                inputStyle={{ width: '100%' }}
                 value={form.costoHora}
                 onValueChange={(e) => { setForm((p) => ({ ...p, costoHora: e.value ?? 0 })); setErrors((p) => ({ ...p, costoHora: null })) }}
                 mode="currency" currency="USD" locale="en-US" minFractionDigits={2}
