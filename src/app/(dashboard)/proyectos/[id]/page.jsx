@@ -718,27 +718,26 @@ export default function ProyectoDetallePage({ params }) {
                 />
               </div>
 
-              <div style={{ overflowX: 'auto' }}>
-                <div className="flex px-2 py-1 surface-100 text-xs font-semibold text-color-secondary border-round-top" style={{ minWidth: '820px', gap: '8px' }}>
-                  <div style={{ flex: '0 0 170px' }}>Perfil / Consultor</div>
-                  <div style={{ flex: '0 0 55px', textAlign: 'right' }}>Horas</div>
-                  <div style={{ flex: '0 0 80px', textAlign: 'right' }}>Costo/h</div>
-                  <div style={{ flex: '0 0 80px', textAlign: 'right' }}>Precio/h</div>
-                  <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Total Costo</div>
-                  <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Total Precio</div>
-                  <div style={{ flex: '0 0 90px', textAlign: 'right' }}>Margen</div>
-                  <div style={{ flex: '0 0 70px' }} />
+              <div style={{ width: '100%' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '2.4fr 0.7fr 1fr 1fr 1.1fr 1.1fr 1fr 80px', gap: '0', background: 'var(--surface-100)', borderRadius: '8px 8px 0 0', padding: '8px 12px' }}>
+                  <div className="text-xs font-semibold text-color-secondary">Perfil / Consultor</div>
+                  <div className="text-xs font-semibold text-color-secondary" style={{ textAlign: 'right' }}>Horas</div>
+                  <div className="text-xs font-semibold text-color-secondary" style={{ textAlign: 'right' }}>Costo/h</div>
+                  <div className="text-xs font-semibold text-color-secondary" style={{ textAlign: 'right' }}>Precio/h</div>
+                  <div className="text-xs font-semibold text-color-secondary" style={{ textAlign: 'right' }}>Total Costo</div>
+                  <div className="text-xs font-semibold text-color-secondary" style={{ textAlign: 'right' }}>Total Precio</div>
+                  <div className="text-xs font-semibold text-color-secondary" style={{ textAlign: 'right' }}>Margen</div>
+                  <div />
                 </div>
                 {casoNegocio.lineas.map((l, idx) => {
                   const lineaMargenPct = l.precio > 0 ? Math.round(((l.precio - l.costo) / l.precio) * 100) : 0
                   const mc = lineaMargenPct >= 40 ? { bg: '#DCFCE7', color: '#15803D' } : lineaMargenPct >= 20 ? { bg: '#FEFCE8', color: '#854D0E' } : { bg: '#FEF2F2', color: '#B91C1C' }
                   return (
                   <div key={l.perfilConsultorId}
-                    className={`flex px-2 py-2 text-sm align-items-center ${idx % 2 === 1 ? 'surface-50' : ''}`}
-                    style={{ borderTop: '1px solid var(--surface-border)', minWidth: '820px', gap: '8px' }}
+                    style={{ display: 'grid', gridTemplateColumns: '2.4fr 0.7fr 1fr 1fr 1.1fr 1.1fr 1fr 80px', gap: '0', borderTop: '1px solid var(--surface-border)', padding: '10px 12px', alignItems: 'center', background: idx % 2 === 1 ? 'var(--surface-50)' : '#fff' }}
                   >
-                    <div style={{ flex: '0 0 170px' }}>
-                      <div className="font-medium">{l.perfil.nombre}</div>
+                    <div>
+                      <div className="font-medium text-sm">{l.perfil.nombre}</div>
                       <div className="text-xs mt-1 flex align-items-center gap-1">
                         <Tag value={l.perfil.nivel} severity={l.perfil.nivel === 'Senior' ? 'success' : l.perfil.nivel === 'Semi Senior' ? 'info' : 'secondary'} style={{ fontSize: '0.65rem' }} />
                         {l.empleado
@@ -746,15 +745,15 @@ export default function ProyectoDetallePage({ params }) {
                           : <span className="text-color-secondary" style={{ fontStyle: 'italic' }}>Sin consultor</span>}
                       </div>
                     </div>
-                    <div style={{ flex: '0 0 55px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{l.horas}h</div>
-                    <div style={{ flex: '0 0 80px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{formatCurrency(l.costoHora, moneda)}</div>
-                    <div style={{ flex: '0 0 80px', textAlign: 'right', fontWeight: 700, color: '#1D4ED8' }}>{formatCurrency(l.precioHora, moneda)}</div>
-                    <div style={{ flex: '0 0 90px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{formatCurrency(l.costo, moneda)}</div>
-                    <div style={{ flex: '0 0 90px', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(l.precio, moneda)}</div>
-                    <div style={{ flex: '0 0 90px', textAlign: 'right' }}>
+                    <div style={{ textAlign: 'right', color: 'var(--text-color-secondary)', fontSize: '13px' }}>{l.horas}h</div>
+                    <div style={{ textAlign: 'right', color: 'var(--text-color-secondary)', fontSize: '13px' }}>{formatCurrency(l.costoHora, moneda)}</div>
+                    <div style={{ textAlign: 'right', fontWeight: 700, color: '#1D4ED8', fontSize: '13px' }}>{formatCurrency(l.precioHora, moneda)}</div>
+                    <div style={{ textAlign: 'right', color: 'var(--text-color-secondary)', fontSize: '13px' }}>{formatCurrency(l.costo, moneda)}</div>
+                    <div style={{ textAlign: 'right', fontWeight: 600, fontSize: '13px' }}>{formatCurrency(l.precio, moneda)}</div>
+                    <div style={{ textAlign: 'right' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, background: mc.bg, color: mc.color }}>{lineaMargenPct}%</span>
                     </div>
-                    <div style={{ flex: '0 0 70px', textAlign: 'right' }}>
+                    <div style={{ textAlign: 'right' }}>
                       {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) && (
                         <div className="flex gap-1 justify-content-end">
                           <Button icon="pi pi-pencil" rounded text severity="info" size="small" onClick={() => openAddLinea(l)} tooltip="Editar" tooltipOptions={{ position: 'top' }} />
@@ -765,17 +764,17 @@ export default function ProyectoDetallePage({ params }) {
                   </div>
                   )
                 })}
-                <div className="flex px-2 py-2 text-sm font-bold surface-100 border-round-bottom" style={{ borderTop: '2px solid var(--surface-border)', minWidth: '820px', gap: '8px' }}>
-                  <div style={{ flex: '0 0 170px' }}>TOTAL</div>
-                  <div style={{ flex: '0 0 55px', textAlign: 'right' }}>{casoNegocio.resumen.totalHoras}h</div>
-                  <div style={{ flex: '0 0 80px' }} />
-                  <div style={{ flex: '0 0 80px' }} />
-                  <div style={{ flex: '0 0 90px', textAlign: 'right', color: 'var(--text-color-secondary)' }}>{formatCurrency(casoNegocio.resumen.totalCosto, moneda)}</div>
-                  <div style={{ flex: '0 0 90px', textAlign: 'right', color: '#15803D' }}>{formatCurrency(casoNegocio.resumen.totalPrecio, moneda)}</div>
-                  <div style={{ flex: '0 0 90px', textAlign: 'right' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '2.4fr 0.7fr 1fr 1fr 1.1fr 1.1fr 1fr 80px', gap: '0', borderTop: '2px solid var(--surface-border)', padding: '10px 12px', background: 'var(--surface-100)', borderRadius: '0 0 8px 8px', alignItems: 'center', fontWeight: 700, fontSize: '13px' }}>
+                  <div>TOTAL</div>
+                  <div style={{ textAlign: 'right' }}>{casoNegocio.resumen.totalHoras}h</div>
+                  <div />
+                  <div />
+                  <div style={{ textAlign: 'right', color: 'var(--text-color-secondary)' }}>{formatCurrency(casoNegocio.resumen.totalCosto, moneda)}</div>
+                  <div style={{ textAlign: 'right', color: '#15803D' }}>{formatCurrency(casoNegocio.resumen.totalPrecio, moneda)}</div>
+                  <div style={{ textAlign: 'right' }}>
                     <span style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: '20px', fontSize: '12px', fontWeight: 700, background: '#DCFCE7', color: '#15803D' }}>~{casoNegocio.resumen.gmPct}%</span>
                   </div>
-                  <div style={{ flex: '0 0 70px' }} />
+                  <div />
                 </div>
               </div>
             </>
