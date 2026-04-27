@@ -284,17 +284,6 @@ export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, 
                 />
               </div>
             </div>
-            <div className="col-6">
-              <div className="field mb-0">
-                <label className="font-semibold block mb-1">URL del proyecto</label>
-                <InputText
-                  value={form.projectOnline}
-                  onChange={(e) => setForm({ ...form, projectOnline: e.target.value })}
-                  className="w-full"
-                  placeholder="https://... (opcional)"
-                />
-              </div>
-            </div>
           </div>
 
         </div>
