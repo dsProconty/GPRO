@@ -258,29 +258,31 @@ export default function EmpleadosPage() {
           </div>
         }
       >
-        <div className="formgrid grid">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Nombre y Apellido */}
-          <div className="col-6">
-            <label className="block font-medium mb-1">Nombre *</label>
-            <InputText
-              className={`w-full${errors.nombre ? ' p-invalid' : ''}`}
-              value={form.nombre}
-              onChange={(e) => { setForm((p) => ({ ...p, nombre: e.target.value })); setErrors((p) => ({ ...p, nombre: null })) }}
-            />
-            {errors.nombre && <small className="p-error">{errors.nombre}</small>}
-          </div>
-          <div className="col-6">
-            <label className="block font-medium mb-1">Apellido *</label>
-            <InputText
-              className={`w-full${errors.apellido ? ' p-invalid' : ''}`}
-              value={form.apellido}
-              onChange={(e) => { setForm((p) => ({ ...p, apellido: e.target.value })); setErrors((p) => ({ ...p, apellido: null })) }}
-            />
-            {errors.apellido && <small className="p-error">{errors.apellido}</small>}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label className="block font-medium mb-1">Nombre *</label>
+              <InputText
+                className={`w-full${errors.nombre ? ' p-invalid' : ''}`}
+                value={form.nombre}
+                onChange={(e) => { setForm((p) => ({ ...p, nombre: e.target.value })); setErrors((p) => ({ ...p, nombre: null })) }}
+              />
+              {errors.nombre && <small className="p-error">{errors.nombre}</small>}
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Apellido *</label>
+              <InputText
+                className={`w-full${errors.apellido ? ' p-invalid' : ''}`}
+                value={form.apellido}
+                onChange={(e) => { setForm((p) => ({ ...p, apellido: e.target.value })); setErrors((p) => ({ ...p, apellido: null })) }}
+              />
+              {errors.apellido && <small className="p-error">{errors.apellido}</small>}
+            </div>
           </div>
 
           {/* Email */}
-          <div className="col-12">
+          <div>
             <label className="block font-medium mb-1">Email</label>
             <InputText
               className="w-full"
@@ -291,48 +293,45 @@ export default function EmpleadosPage() {
           </div>
 
           {/* Salario mensual → auto-calcula costo/hora */}
-          <div className="col-6">
-            <label className="block font-medium mb-1">
-              Salario mensual
-              <span className="text-color-secondary text-xs ml-1">(bruto)</span>
-            </label>
-            <InputNumber
-              className="w-full"
-              value={form.salarioMensual}
-              onValueChange={(e) => onSalarioChange(e.value)}
-              mode="currency" currency="USD" locale="en-US" minFractionDigits={2}
-              placeholder="Ej: 1600"
-            />
-            <small className="text-color-secondary">÷ 173.36 h/mes = costo/hora</small>
-          </div>
-          <div className="col-6">
-            <label className="block font-medium mb-1">
-              Costo/hora (interno) *
-            </label>
-            <InputNumber
-              className={`w-full${errors.costoHora ? ' p-invalid' : ''}`}
-              value={form.costoHora}
-              onValueChange={(e) => { setForm((p) => ({ ...p, costoHora: e.value ?? 0 })); setErrors((p) => ({ ...p, costoHora: null })) }}
-              mode="currency" currency="USD" locale="en-US" minFractionDigits={2}
-            />
-            {errors.costoHora && <small className="p-error">{errors.costoHora}</small>}
-            {!errors.costoHora && form.salarioMensual && (
-              <small className="text-color-secondary">Calculado automáticamente</small>
-            )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label className="block font-medium mb-1">
+                Salario mensual <span className="text-color-secondary text-xs">(bruto)</span>
+              </label>
+              <InputNumber
+                className="w-full"
+                value={form.salarioMensual}
+                onValueChange={(e) => onSalarioChange(e.value)}
+                mode="currency" currency="USD" locale="en-US" minFractionDigits={2}
+                placeholder="Ej: 1600"
+              />
+              <small className="text-color-secondary">÷ 173.36 h/mes = costo/hora</small>
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Costo/hora (interno) *</label>
+              <InputNumber
+                className={`w-full${errors.costoHora ? ' p-invalid' : ''}`}
+                value={form.costoHora}
+                onValueChange={(e) => { setForm((p) => ({ ...p, costoHora: e.value ?? 0 })); setErrors((p) => ({ ...p, costoHora: null })) }}
+                mode="currency" currency="USD" locale="en-US" minFractionDigits={2}
+              />
+              {errors.costoHora && <small className="p-error">{errors.costoHora}</small>}
+              {!errors.costoHora && form.salarioMensual && (
+                <small className="text-color-secondary">Calculado automáticamente</small>
+              )}
+            </div>
           </div>
 
           {/* Preview */}
           {costoPreview > 0 && (
-            <div className="col-12">
-              <div className="p-2 surface-50 border-round text-sm text-center text-color-secondary">
-                Costo/h: <strong>${costoPreview.toFixed(2)}</strong>
-                {form.salarioMensual ? ` · Salario: $${Number(form.salarioMensual).toFixed(2)}/mes` : ''}
-              </div>
+            <div className="p-2 surface-50 border-round text-sm text-center text-color-secondary">
+              Costo/h: <strong>${costoPreview.toFixed(2)}</strong>
+              {form.salarioMensual ? ` · Salario: $${Number(form.salarioMensual).toFixed(2)}/mes` : ''}
             </div>
           )}
 
           {/* Perfil base */}
-          <div className="col-12">
+          <div>
             <label className="block font-medium mb-1">Perfil base (rol)</label>
             <Dropdown
               className="w-full"
@@ -345,7 +344,7 @@ export default function EmpleadosPage() {
           </div>
 
           {/* Activo */}
-          <div className="col-12 flex align-items-center gap-3 mt-2">
+          <div className="flex align-items-center gap-3">
             <InputSwitch
               checked={form.activo}
               onChange={(e) => setForm((p) => ({ ...p, activo: e.value }))}
