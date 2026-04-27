@@ -13,6 +13,8 @@ import { Password } from 'primereact/password'
 import { Button } from 'primereact/button'
 import { Toast } from 'primereact/toast'
 import { classNames } from 'primereact/utils'
+import { IconField } from 'primereact/iconfield'
+import { InputIcon } from 'primereact/inputicon'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -81,8 +83,8 @@ export default function LoginPage() {
             <label htmlFor="email" className="text-900 font-semibold">
               Correo electrónico
             </label>
-            <span className="p-input-icon-left w-full">
-              <i className="pi pi-envelope" />
+            <IconField iconPosition="left" className="w-full">
+              <InputIcon className="pi pi-envelope" />
               <InputText
                 id="email"
                 type="email"
@@ -92,7 +94,7 @@ export default function LoginPage() {
                 className={classNames('w-full', { 'p-invalid': submitted && !email })}
                 autoComplete="email"
               />
-            </span>
+            </IconField>
             {submitted && !email && (
               <small className="p-error">El email es requerido</small>
             )}
