@@ -35,14 +35,18 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'Datos inválidos', errors }, { status: 422 })
   }
 
-  const perfil = await prisma.perfilConsultor.create({
-    data: {
-      nombre:     nombre.trim(),
-      nivel:      nivel.trim(),
-      costoHora:  Number(costoHora ?? 0),
-      precioHora: Number(precioHora ?? 0),
-    },
-  })
-
-  return NextResponse.json({ success: true, data: perfil, message: 'Perfil creado' }, { status: 201 })
+  try {
+    const perfil = await prisma.perfilConsultor.create({
+      data: {
+        nombre:     nombre.trim(),
+        nivel:      nivel.trim(),
+        costoHora:  Number(costoHora ?? 0),
+        precioHora: Number(precioHora ?? 0),
+      },
+    })
+    return NextResponse.json({ success: true, data: perfil, message: 'Perfil creado' }, { status: 201 })
+  } catch (err) {
+    console.error('Error creando perfil consultor:', err)
+    return NextResponse.json({ success: false, message: err.message || 'Error al crear el perfil' }, { status: 500 })
+  }
 }
