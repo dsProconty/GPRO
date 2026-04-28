@@ -182,11 +182,15 @@ export default function EmpleadosPage() {
         emptyMessage="No hay empleados registrados"
         stripedRows
         size="small"
+        filterDisplay="menu"
       >
         <Column
           header="Consultor"
           sortable
           sortField="nombre"
+          filter
+          filterField="nombre"
+          filterPlaceholder="Buscar consultor..."
           body={(r) => (
             <div>
               <div className="font-semibold">{r.nombre} {r.apellido}</div>
@@ -196,6 +200,11 @@ export default function EmpleadosPage() {
         />
         <Column
           header="Perfil base"
+          sortable
+          sortField="perfilBase.nombre"
+          filter
+          filterField="perfilBase.nombre"
+          filterPlaceholder="Buscar perfil..."
           body={(r) => r.perfilBase
             ? (
               <Tag
@@ -209,6 +218,7 @@ export default function EmpleadosPage() {
         />
         <Column
           header="Salario/mes"
+          sortable sortField="salarioMensual" dataType="numeric"
           style={{ textAlign: 'right', width: '130px' }}
           body={(r) => r.salarioMensual != null
             ? <span className="text-color-secondary">${Number(r.salarioMensual).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -217,6 +227,7 @@ export default function EmpleadosPage() {
         />
         <Column
           header="Costo/h"
+          sortable sortField="costoHora" dataType="numeric"
           style={{ textAlign: 'right', width: '100px' }}
           body={(r) => <span className="font-semibold">${Number(r.costoHora).toFixed(2)}</span>}
         />

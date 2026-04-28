@@ -152,17 +152,18 @@ export default function PropuestasPage() {
         paginator rows={10} rowsPerPageOptions={[10, 25, 50]}
         emptyMessage="No hay propuestas registradas"
         stripedRows
+        filterDisplay="menu"
       >
-        <Column field="codigo" header="Código" body={(r) => r.codigo || '—'} sortable style={{ width: '130px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
-        <Column header="Título" sortable sortField="titulo" style={{ minWidth: '200px' }} body={(r) => (
+        <Column field="codigo" header="Código" body={(r) => r.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '130px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
+        <Column field="titulo" header="Título" sortable filter filterPlaceholder="Buscar título..." style={{ minWidth: '200px' }} body={(r) => (
           <Button label={r.titulo} link className="p-0 text-left" style={{ fontWeight: 500 }}
             onClick={() => router.push('/propuestas/' + r.id)} />
         )} />
-        <Column header="Empresa" body={(r) => r.empresa?.nombre} sortable sortField="empresa.nombre" />
-        <Column field="aplicativo" header="Aplicativo" body={(r) => r.aplicativo || '—'} style={{ width: '120px' }} />
-        <Column header="Valor est." style={{ textAlign: 'right', width: '130px' }}
+        <Column field="empresa.nombre" header="Empresa" body={(r) => r.empresa?.nombre} sortable filter filterPlaceholder="Buscar empresa..." />
+        <Column field="aplicativo" header="Aplicativo" body={(r) => r.aplicativo || '—'} sortable filter filterPlaceholder="Buscar aplicativo..." style={{ width: '120px' }} />
+        <Column header="Valor est." sortable sortField="valorEstimado" dataType="numeric" style={{ textAlign: 'right', width: '130px' }}
           body={(r) => r.valorEstimado ? formatCurrency(r.valorEstimado) : '—'} />
-        <Column header="Estado" style={{ width: '180px' }} body={(r) => {
+        <Column field="estado" header="Estado" sortable filter filterPlaceholder="Buscar estado..." style={{ width: '180px' }} body={(r) => {
           const cfg = propuestaConfig[r.estado] || { severity: 'secondary', label: r.estado }
           return <Tag value={cfg.label} severity={cfg.severity} />
         }} />
@@ -171,7 +172,7 @@ export default function PropuestasPage() {
             {r.responsables?.map((res) => res.user?.name).join(', ') || '—'}
           </span>
         )} />
-        <Column header="Creada" style={{ width: '110px' }} body={(r) => formatDate(r.fechaCreacion)} />
+        <Column header="Creada" sortable sortField="fechaCreacion" style={{ width: '110px' }} body={(r) => formatDate(r.fechaCreacion)} />
         <Column header="Acciones" style={{ width: '120px' }} body={(r) => (
           <div className="flex gap-1">
             <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }}

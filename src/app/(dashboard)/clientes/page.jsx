@@ -163,12 +163,13 @@ export default function ClientesPage() {
         rowsPerPageOptions={[10, 25, 50]}
         emptyMessage="No hay clientes registrados"
         stripedRows
+        filterDisplay="menu"
         onRowClick={(e) => router.push(`/clientes/${e.data.id}`)}
         rowClassName={() => 'cursor-pointer'}
       >
-        <Column field="id" header="ID" sortable style={{ width: '70px' }} />
-        <Column field="nombre" header="Cliente" sortable filter filterPlaceholder="Filtrar..." />
-        <Column field="ciudad" header="Ciudad" sortable body={(row) => row.ciudad || '—'} />
+        <Column field="id" header="ID" sortable filter filterPlaceholder="Filtrar ID..." dataType="numeric" style={{ width: '70px' }} />
+        <Column field="nombre" header="Cliente" sortable filter filterPlaceholder="Buscar cliente..." />
+        <Column field="ciudad" header="Ciudad" sortable filter filterPlaceholder="Buscar ciudad..." body={(row) => row.ciudad || '—'} />
         <Column header="Contactos" body={contactosTemplate} style={{ width: '100px', textAlign: 'center' }} />
         <Column header="Acciones" body={accionesTemplate} style={{ width: '120px' }} />
       </DataTable>

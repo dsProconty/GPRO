@@ -101,17 +101,18 @@ export default function UsuariosPage() {
         loading={loading}
         stripedRows
         emptyMessage="No hay usuarios registrados"
+        filterDisplay="menu"
       >
-        <Column field="id" header="ID" style={{ width: '60px' }} sortable dataType="numeric" />
-        <Column field="name" header="Nombre" sortable />
-        <Column field="email" header="Email" sortable />
-        <Column header="Rol" style={{ width: '130px' }} body={(u) => (
+        <Column field="id" header="ID" style={{ width: '60px' }} sortable dataType="numeric" filter filterPlaceholder="Filtrar ID..." />
+        <Column field="name" header="Nombre" sortable filter filterPlaceholder="Buscar nombre..." />
+        <Column field="email" header="Email" sortable filter filterPlaceholder="Buscar email..." />
+        <Column field="role" header="Rol" sortable filter filterPlaceholder="Buscar rol..." style={{ width: '130px' }} body={(u) => (
           <Tag
             value={u.role === 'admin' ? 'Administrador' : 'Usuario'}
             severity={u.role === 'admin' ? 'danger' : 'info'}
           />
         )} />
-        <Column header="Registrado" style={{ width: '130px' }} body={(u) => formatDate(u.createdAt)} />
+        <Column field="createdAt" header="Registrado" sortable style={{ width: '130px' }} body={(u) => formatDate(u.createdAt)} />
         <Column header="Acciones" style={{ width: '120px' }} body={(u) => (
           <div className="flex gap-1">
             <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => openEdit(u)} />

@@ -291,19 +291,20 @@ export default function ProyectosPage() {
         emptyMessage="No hay proyectos registrados"
         stripedRows
         scrollable
+        filterDisplay="menu"
       >
-        <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable style={{ width: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
-        <Column header="Proyecto" body={detalleTemplate} sortable sortField="detalle" style={{ minWidth: '180px' }} />
-        <Column header="Cliente" body={(row) => row.empresa?.nombre} sortable sortField="empresa.nombre" />
-        <Column field="aplicativo" header="Aplicativo" body={(row) => row.aplicativo || '—'} style={{ width: '120px' }} />
-        <Column header="Valor" body={valorTemplate} sortable sortField="valor" style={{ textAlign: 'right' }} />
-        <Column header="Facturado" body={facturadoTemplate} style={{ textAlign: 'right' }} />
-        <Column header="Pagado" body={pagadoTemplate} style={{ textAlign: 'right' }} />
-        <Column header="Saldo" body={saldoTemplate} style={{ textAlign: 'right' }} />
-        <Column header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable sortField="fechaCreacion" style={{ width: '115px' }} />
-        <Column header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable sortField="fechaCierre" style={{ width: '115px' }} />
+        <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
+        <Column field="detalle" header="Proyecto" body={detalleTemplate} sortable filter filterPlaceholder="Buscar proyecto..." style={{ minWidth: '180px' }} />
+        <Column field="empresa.nombre" header="Cliente" body={(row) => row.empresa?.nombre} sortable filter filterPlaceholder="Buscar cliente..." />
+        <Column field="aplicativo" header="Aplicativo" body={(row) => row.aplicativo || '—'} sortable filter filterPlaceholder="Buscar aplicativo..." style={{ width: '120px' }} />
+        <Column field="valor" header="Valor" body={valorTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
+        <Column field="facturado" header="Facturado" body={facturadoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
+        <Column field="pagado" header="Pagado" body={pagadoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
+        <Column field="saldo" header="Saldo" body={saldoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
+        <Column field="fechaCreacion" header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable style={{ width: '115px' }} />
+        <Column field="fechaCierre" header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable style={{ width: '115px' }} />
         <Column header="Tiempo de vida" body={tiempoVidaTemplate} style={{ width: '130px' }} />
-        <Column header="Estado" body={estadoTemplate} style={{ width: '140px' }} />
+        <Column field="estado.nombre" header="Estado" body={estadoTemplate} sortable filter filterPlaceholder="Buscar estado..." style={{ width: '140px' }} />
         <Column header="Acciones" body={accionesTemplate} style={{ width: '120px' }} />
       </DataTable>
 
