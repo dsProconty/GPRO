@@ -168,6 +168,10 @@ export default function ProyectosPage() {
   // Filtrado avanzado en frontend (SP7-05)
   const proyectosFiltrados = useMemo(() => {
     let lista = proyectos
+    // Por defecto ocultar proyectos Cerrados; el usuario puede verlos eligiendo "Cerrado" en el filtro
+    if (!estadoFiltro) {
+      lista = lista.filter((p) => p.estado?.nombre !== 'Cerrado')
+    }
     if (responsableFiltro) {
       lista = lista.filter((p) => p.responsables?.some((r) => r.userId === responsableFiltro))
     }
@@ -180,7 +184,7 @@ export default function ProyectosPage() {
       lista = lista.filter((p) => new Date(p.fechaCreacion) <= hasta)
     }
     return lista
-  }, [proyectos, responsableFiltro, fechaRango])
+  }, [proyectos, estadoFiltro, responsableFiltro, fechaRango])
 
   const exportarExcel = () => {
     const filas = proyectosFiltrados.map((p) => ({
@@ -262,6 +266,7 @@ export default function ProyectosPage() {
           onChange={(e) => setResponsableFiltro(e.value)}
           placeholder="Filtrar por responsable"
           showClear
+          filter filterPlaceholder="Buscar responsable..."
           style={{ minWidth: '200px' }}
         />
         <Calendar

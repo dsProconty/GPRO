@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Card } from 'primereact/card'
@@ -8,6 +8,7 @@ import { Chart } from 'primereact/chart'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
 import { Tag } from 'primereact/tag'
+import { Dropdown } from 'primereact/dropdown'
 import { ProgressSpinner } from 'primereact/progressspinner'
 import axios from 'axios'
 import { formatCurrency, formatDate } from '@/utils/format'
@@ -27,6 +28,7 @@ export default function DashboardPage() {
   const [alertas, setAlertas] = useState([])
   const [loadingKpis, setLoadingKpis] = useState(true)
   const [loadingAlertas, setLoadingAlertas] = useState(true)
+  const [empresaFiltroAlertas, setEmpresaFiltroAlertas] = useState(null)
 
   useEffect(() => {
     axios.get('/api/v1/dashboard')
@@ -108,6 +110,24 @@ export default function DashboardPage() {
       x: { ticks: { callback: (v) => '$' + v.toLocaleString('es-EC') } },
     },
   }
+
+  // ── Filtro de alertas por empresa ──────────────────────────────
+  const empresasAlertas = useMemo(() => {
+    const map = {}
+    alertas.forEach((a) => {
+      const nombre = a.proyecto?.empresa?.nombre
+      if (nombre) map[nombre] = true
+    })
+    return [
+      { label: 'Todas las empresas', value: null },
+      ...Object.keys(map).sort().map((n) => ({ label: n, value: n })),
+    ]
+  }, [alertas])
+
+  const alertasFiltradas = useMemo(() => {
+    if (!empresaFiltroAlertas) return alertas
+    return alertas.filter((a) => a.proyecto?.empresa?.nombre === empresaFiltroAlertas)
+  }, [alertas, empresaFiltroAlertas])
 
   const kpiCards = [
     {
@@ -226,10 +246,25 @@ export default function DashboardPage() {
 
       {/* Alertas de Cobranza */}
       <Card className="shadow-1 mb-4">
-        <div className="flex align-items-center gap-2 mb-3">
-          <i className="pi pi-exclamation-triangle text-xl text-orange-500" />
-          <h3 className="m-0 font-semibold">Alertas de Cobranza</h3>
-          <span className="text-color-secondary text-sm ml-1">(facturas con saldo pendiente &gt; 30 días)</span>
+        <div className="flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
+          <div className="flex align-items-center gap-2">
+            <i className="pi pi-exclamation-triangle text-xl text-orange-500" />
+            <h3 className="m-0 font-semibold">Alertas de Cobranza</h3>
+            <span className="text-color-secondary text-sm ml-1">(facturas con saldo pendiente &gt; 30 días)</span>
+          </div>
+          {alertas.length > 0 && (
+            <Dropdown
+              value={empresaFiltroAlertas}
+              options={empresasAlertas}
+              onChange={(e) => setEmpresaFiltroAlertas(e.value)}
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Filtrar por empresa"
+              showClear
+              filter filterPlaceholder="Buscar empresa..."
+              style={{ minWidth: '200px' }}
+            />
+          )}
         </div>
 
         {loadingAlertas ? (
@@ -242,7 +277,7 @@ export default function DashboardPage() {
             <span className="text-green-700 font-semibold">Sin facturas vencidas — cobranza al día</span>
           </div>
         ) : (
-          <DataTable value={alertas} size="small" stripedRows>
+          <DataTable value={alertasFiltradas} size="small" stripedRows>
             <Column header="Proyecto" body={(r) => (
               <span
                 className="text-primary cursor-pointer font-medium"

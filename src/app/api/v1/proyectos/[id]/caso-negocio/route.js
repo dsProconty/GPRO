@@ -39,21 +39,70 @@ export async function GET(request, { params }) {
   const proyectoId = parseInt(params.id)
   if (isNaN(proyectoId)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
 
-  const lineas = await prisma.proyectoCasoNegocioLinea.findMany({
-    where: { proyectoId },
-    include: {
-      perfilConsultor: true,
-      empleado: { select: { id: true, nombre: true, apellido: true } },
-    },
-    orderBy: { perfilConsultor: { nombre: 'asc' } },
-  })
+  const [lineas, proyecto] = await Promise.all([
+    prisma.proyectoCasoNegocioLinea.findMany({
+      where: { proyectoId },
+      include: {
+        perfilConsultor: true,
+        empleado: { select: { id: true, nombre: true, apellido: true } },
+      },
+      orderBy: { perfilConsultor: { nombre: 'asc' } },
+    }),
+    prisma.proyecto.findUnique({
+      where: { id: proyectoId },
+      include: { empresa: { include: { tarifario: { select: { id: true, nombre: true } } } } },
+    }),
+  ])
 
   const serialized = serializeLineas(lineas)
+  const tarifario = proyecto?.empresa?.tarifario || null
   return NextResponse.json({
     success: true,
-    data: { lineas: serialized, resumen: calcResumen(lineas) },
+    data: { lineas: serialized, resumen: calcResumen(lineas), tarifario },
     message: '',
   })
+}
+
+// PUT /api/v1/proyectos/:id/caso-negocio — carga líneas desde tarifario de la empresa
+export async function PUT(request, { params }) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.CASOS_NEGOCIO.EDITAR)) {
+    return NextResponse.json({ success: false, message: 'No tiene permiso para editar el caso de negocio' }, { status: 403 })
+  }
+
+  const proyectoId = parseInt(params.id)
+  if (isNaN(proyectoId)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
+
+  const proyecto = await prisma.proyecto.findUnique({
+    where: { id: proyectoId },
+    include: { empresa: true },
+  })
+  if (!proyecto) return NextResponse.json({ success: false, message: 'Proyecto no encontrado' }, { status: 404 })
+
+  const tarifarioId = proyecto.empresa?.tarifarioId
+  if (!tarifarioId) return NextResponse.json({ success: false, message: 'Esta empresa no tiene tarifario asignado' }, { status: 409 })
+
+  const lineasTarifario = await prisma.tarifarioLinea.findMany({
+    where: { tarifarioId },
+    include: { empleado: true, perfil: true },
+  })
+  if (lineasTarifario.length === 0) {
+    return NextResponse.json({ success: false, message: 'El tarifario no tiene líneas configuradas' }, { status: 409 })
+  }
+
+  await Promise.all(
+    lineasTarifario.map((tl) => {
+      const costoHora = tl.empleado ? Number(tl.empleado.costoHora) : Number(tl.perfil.costoHora)
+      return prisma.proyectoCasoNegocioLinea.upsert({
+        where: { proyectoId_perfilConsultorId: { proyectoId, perfilConsultorId: tl.perfilId } },
+        update: { empleadoId: tl.empleadoId, precioHora: tl.precioHora, costoHora },
+        create: { proyectoId, perfilConsultorId: tl.perfilId, horas: 0, empleadoId: tl.empleadoId, precioHora: tl.precioHora, costoHora },
+      })
+    })
+  )
+
+  return NextResponse.json({ success: true, message: `${lineasTarifario.length} línea(s) cargadas desde el tarifario` })
 }
 
 // POST /api/v1/proyectos/:id/caso-negocio — upsert línea

@@ -325,6 +325,15 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
               value={form.valorEstimado}
               onValueChange={(e) => { setForm((p) => ({ ...p, valorEstimado: e.value })); setErrors((p) => ({ ...p, valorEstimado: null })) }}
               mode="decimal" minFractionDigits={2} maxFractionDigits={2} placeholder="0.00"
+              pt={{ input: { onPaste: (e) => {
+                const text = e.clipboardData.getData('text').replace(/[$,\s]/g, '')
+                const num = parseFloat(text)
+                if (!isNaN(num)) {
+                  e.preventDefault()
+                  setForm((p) => ({ ...p, valorEstimado: num }))
+                  setErrors((p) => ({ ...p, valorEstimado: null }))
+                }
+              }}}}
             />
           </div>
           <div className="flex flex-column gap-1">
@@ -341,6 +350,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
             value={form.responsableIds} options={usuarios} optionLabel="name" optionValue="id"
             onChange={(e) => setForm((p) => ({ ...p, responsableIds: e.value }))}
             placeholder="Seleccionar responsables" display="chip"
+            filter filterPlaceholder="Buscar responsable..."
           />
         </div>
 

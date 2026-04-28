@@ -143,6 +143,7 @@ export default function UsuarioFormDialog({ visible, onHide, onSave, usuario }) 
               optionLabel="label"
               optionValue="value"
               placeholder="Sin perfil"
+              filter filterPlaceholder="Buscar perfil..."
             />
             <small className="text-color-secondary">Determina los permisos del usuario. Aplica al próximo inicio de sesión.</small>
           </div>

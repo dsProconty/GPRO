@@ -61,9 +61,16 @@ export default function PropuestasPage() {
     ...Object.values(propuestaConfig).map((cfg) => ({ label: cfg.label, value: cfg.key })),
   ], [propuestaConfig])
 
+  const ESTADOS_TERMINALES = ['Aprobada', 'Rechazada']
+
   const propuestasFiltradas = useMemo(() => {
     let lista = propuestas
-    if (estadoFiltro) lista = lista.filter((p) => p.estado === estadoFiltro)
+    if (estadoFiltro) {
+      lista = lista.filter((p) => p.estado === estadoFiltro)
+    } else {
+      // Por defecto ocultar propuestas en estado terminal (Aprobada/Rechazada)
+      lista = lista.filter((p) => !ESTADOS_TERMINALES.includes(p.estado))
+    }
     return lista
   }, [propuestas, estadoFiltro])
 

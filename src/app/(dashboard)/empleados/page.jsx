@@ -343,6 +343,7 @@ export default function EmpleadosPage() {
               onChange={(e) => setForm((p) => ({ ...p, perfilBaseId: e.value }))}
               placeholder="Sin perfil asignado"
               showClear
+              filter filterPlaceholder="Buscar perfil..."
             />
           </div>
 

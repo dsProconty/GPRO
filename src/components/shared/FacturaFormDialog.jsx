@@ -17,7 +17,7 @@ export default function FacturaFormDialog({ visible, onHide, onSave, factura, pr
     numFactura: '',
     ordenCompra: '',
     valor: 0,
-    fechaFactura: null,
+    fechaFactura: new Date(),
     observacion: '',
   }
 
@@ -45,7 +45,7 @@ export default function FacturaFormDialog({ visible, onHide, onSave, factura, pr
   const validate = () => {
     const e = {}
     if (!form.numFactura.trim()) e.numFactura = 'Requerido'
-    else if (!/^\d{3}-\d{3}-\d{9}$/.test(form.numFactura.trim())) e.numFactura = 'Formato: 001-001-000000000'
+    else if (!/^\d{3}-\d{3}-\d{7,9}$/.test(form.numFactura.trim())) e.numFactura = 'Formato: 001-001-0000000(00)'
     if (!form.valor || form.valor <= 0) e.valor = 'Debe ser mayor a 0'
     if (!form.fechaFactura) e.fechaFactura = 'Requerido'
     setErrors(e)

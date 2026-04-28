@@ -167,7 +167,7 @@ export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, 
                   onChange={(e) => handleEmpresaChange(e.value)}
                   className={`w-full ${errors.empresaId ? 'p-invalid' : ''}`}
                   placeholder="Seleccionar cliente"
-                  filter
+                  filter filterPlaceholder="Buscar cliente..."
                 />
                 {errors.empresaId && <small className="p-error">{errors.empresaId}</small>}
               </div>
@@ -183,6 +183,7 @@ export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, 
                   onChange={(e) => setForm({ ...form, estadoId: e.value })}
                   className={`w-full ${errors.estadoId ? 'p-invalid' : ''}`}
                   placeholder="Seleccionar estado"
+                  filter filterPlaceholder="Buscar estado..."
                 />
                 {errors.estadoId && <small className="p-error">{errors.estadoId}</small>}
               </div>
@@ -217,7 +218,7 @@ export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, 
               display="chip"
               disabled={!form.empresaId || loadingClientes}
               emptyMessage="No hay contactos para este cliente"
-              filter
+              filter filterPlaceholder="Buscar contacto..."
             />
           </div>
 
@@ -233,7 +234,7 @@ export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, 
               className="w-full"
               placeholder="Seleccionar responsables"
               display="chip"
-              filter
+              filter filterPlaceholder="Buscar responsable..."
             />
           </div>
 
