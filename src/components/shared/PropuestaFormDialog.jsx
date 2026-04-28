@@ -42,6 +42,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
   const [empleados, setEmpleados] = useState([])
   const [lineaForm, setLineaForm] = useState(null)          // null = panel cerrado
   const [lineaEditIdx, setLineaEditIdx] = useState(null)    // null = nuevo, número = editar
+  const [cargandoTarifario, setCargandoTarifario] = useState(false)
 
   // ── Carga al abrir ────────────────────────────────────────────
   useEffect(() => {
@@ -114,6 +115,44 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
       value: e.id,
     })),
   ], [empleados])
+
+  // Empresa y tarifario seleccionados
+  const empresaSel      = useMemo(() => empresas.find((e) => e.id === form.empresaId) || null, [empresas, form.empresaId])
+  const tarifarioActivo = empresaSel?.tarifario || null
+
+  // Cargar tarifario de la empresa seleccionada
+  const handleCargarTarifario = async () => {
+    if (!tarifarioActivo) return
+    setCargandoTarifario(true)
+    try {
+      if (isEdit) {
+        // En edición: el API crea las líneas directo en la BD
+        await axios.put(`/api/v1/propuestas/${propuesta.id}/caso-negocio`)
+        const res = await axios.get(`/api/v1/propuestas/${propuesta.id}/caso-negocio`)
+        setCasoLineas((res.data.lineas || []).map((l) => ({ ...l, _isNew: false })))
+        setLineasEliminadas([])
+      } else {
+        // En creación: cargar líneas del tarifario en estado local
+        const res = await axios.get(`/api/v1/tarifarios/${tarifarioActivo.id}`)
+        const lineasTarifario = res.data.data?.lineas || []
+        const nuevasLineas = lineasTarifario.map((tl) => ({
+          perfilId:   tl.perfilId,
+          horas:      0,
+          empleadoId: tl.empleadoId || null,
+          precioHora: Number(tl.precioHora),
+          costoHora:  tl.empleado ? Number(tl.empleado.costoHora) : Number(tl.perfil?.costoHora ?? 0),
+          perfil:     tl.perfil   ? { nombre: tl.perfil.nombre, nivel: tl.perfil.nivel } : null,
+          empleado:   tl.empleado ? { nombre: tl.empleado.nombre, apellido: tl.empleado.apellido } : null,
+          _isNew:     true,
+        }))
+        setCasoLineas(nuevasLineas)
+      }
+    } catch {
+      // silencioso — el usuario puede ver el error en toast del padre si es necesario
+    } finally {
+      setCargandoTarifario(false)
+    }
+  }
 
   // Perfil y empleado seleccionados en el form de línea (para preview)
   const perfilSel    = perfiles.find((p) => p.id === lineaForm?.perfilId)
@@ -322,14 +361,37 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
         <div style={{ border: '1px solid var(--surface-border)', borderRadius: '8px', overflow: 'hidden' }}>
 
           {/* Header caso */}
-          <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+          <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
               <span>📊</span>
               <span style={{ fontWeight: 600, fontSize: '13px' }}>Caso de Negocio</span>
               <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>(opcional)</span>
+              {tarifarioActivo && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '20px', background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1D4ED8', fontSize: '10.5px', fontWeight: 600 }}>
+                  💲 {tarifarioActivo.nombre}
+                </span>
+              )}
             </div>
             {!lineaForm && (
-              <Button label="Agregar perfil" icon="pi pi-plus" size="small" onClick={abrirNuevaLinea} />
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <Button
+                  label="Cargar tarifario"
+                  icon="pi pi-download"
+                  size="small"
+                  severity="secondary"
+                  outlined
+                  loading={cargandoTarifario}
+                  disabled={!tarifarioActivo || !form.empresaId}
+                  tooltip={
+                    !form.empresaId           ? 'Primero selecciona una empresa'
+                    : !tarifarioActivo        ? 'Esta empresa no tiene tarifario asignado'
+                    : `Cargar líneas de "${tarifarioActivo.nombre}"`
+                  }
+                  tooltipOptions={{ position: 'top' }}
+                  onClick={handleCargarTarifario}
+                />
+                <Button label="Agregar perfil" icon="pi pi-plus" size="small" onClick={abrirNuevaLinea} />
+              </div>
             )}
           </div>
 
@@ -403,7 +465,11 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
           {casoLineas.length === 0 && !lineaForm && (
             <div style={{ padding: '22px', textAlign: 'center', fontSize: '13px', color: '#94a3b8' }}>
               <i className="pi pi-info-circle mr-2" />
-              Sin líneas registradas. Agrega perfiles para calcular el presupuesto.
+              {!form.empresaId
+                ? 'Selecciona una empresa para habilitar el caso de negocio.'
+                : tarifarioActivo
+                  ? <>Sin líneas. Usa <strong>Cargar tarifario</strong> para precargar desde <em>{tarifarioActivo.nombre}</em>, o agrega perfiles manualmente.</>
+                  : 'Sin líneas registradas. Agrega perfiles para calcular el presupuesto.'}
             </div>
           )}
 
