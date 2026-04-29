@@ -758,6 +758,23 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
                   {fmt(resumen.gm)} <span style={{ fontWeight: 400, fontSize: '11px' }}>({resumen.gmPct}%)</span>
                 </span>
               </div>
+
+              {/* Botón confirmar valor */}
+              {resumen.totalPrecio > 0 && (
+                <div style={{ padding: '8px 14px 12px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button
+                    type="button"
+                    label={`↑ Usar ${fmt(resumen.totalPrecio)} como Valor Estimado`}
+                    icon="pi pi-check-circle"
+                    severity="success"
+                    outlined
+                    size="small"
+                    onClick={() => setForm((p) => ({ ...p, valorEstimado: resumen.totalPrecio }))}
+                    tooltip="Copia el Total Precio del caso de negocio al campo Valor Estimado"
+                    tooltipOptions={{ position: 'top' }}
+                  />
+                </div>
+              )}
             </>
           )}
         </div>
