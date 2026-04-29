@@ -347,6 +347,7 @@ model Propuesta {
   proyectoId     Int?      @unique @map("id_proyecto")
   codigo         String?   @unique @db.VarChar(20)
   aplicativo     String?   @db.VarChar(100)
+  tipoPropuesta  String    @default("PorHoras") @map("tipo_propuesta") @db.VarChar(20)
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 

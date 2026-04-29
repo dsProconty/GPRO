@@ -47,7 +47,7 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'No tiene permiso para crear propuestas' }, { status: 403 })
   }
 
-  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, aplicativo, responsableIds = [] } = await request.json()
+  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, aplicativo, responsableIds = [], tipoPropuesta = 'PorHoras' } = await request.json()
 
   const errors = {}
   if (!titulo?.trim()) errors.titulo = ['El título es requerido']
@@ -71,6 +71,7 @@ export async function POST(request) {
       valorEstimado: valorEstimado ? parseFloat(valorEstimado) : null,
       fechaCreacion: new Date(fechaCreacion),
       aplicativo: aplicativo?.trim() || null,
+      tipoPropuesta: ['PorHoras', 'Mensualizada'].includes(tipoPropuesta) ? tipoPropuesta : 'PorHoras',
       estado: 'Factibilidad',
       responsables: {
         create: responsableIds.map((uid) => ({ userId: parseInt(uid) })),

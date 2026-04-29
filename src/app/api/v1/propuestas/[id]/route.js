@@ -58,7 +58,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, message: 'No se puede editar una propuesta en estado terminal' }, { status: 422 })
   }
 
-  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, aplicativo, responsableIds = [] } = await request.json()
+  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, aplicativo, responsableIds = [], tipoPropuesta } = await request.json()
 
   const errors = {}
   if (!titulo?.trim()) errors.titulo = ['El título es requerido']
@@ -81,6 +81,7 @@ export async function PUT(request, { params }) {
       valorEstimado: valorEstimado != null ? parseFloat(valorEstimado) : null,
       fechaCreacion: new Date(fechaCreacion),
       aplicativo: aplicativo?.trim() || null,
+      ...(tipoPropuesta && ['PorHoras', 'Mensualizada'].includes(tipoPropuesta) && { tipoPropuesta }),
       responsables: {
         create: responsableIds.map((uid) => ({ userId: parseInt(uid) })),
       },

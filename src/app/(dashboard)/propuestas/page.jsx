@@ -155,6 +155,15 @@ export default function PropuestasPage() {
         filterDisplay="menu"
       >
         <Column field="codigo" header="Código" body={(r) => r.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '130px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
+        <Column field="tipoPropuesta" header="Tipo" style={{ width: '130px' }} sortable filter filterPlaceholder="Buscar tipo..."
+          body={(r) => (
+            <Tag
+              value={r.tipoPropuesta === 'Mensualizada' ? '📅 Mensualizada' : '⏱ Por Horas'}
+              severity={r.tipoPropuesta === 'Mensualizada' ? 'info' : 'secondary'}
+              style={{ fontSize: '0.75rem' }}
+            />
+          )}
+        />
         <Column field="titulo" header="Título" sortable filter filterPlaceholder="Buscar título..." style={{ minWidth: '200px' }} body={(r) => (
           <Button label={r.titulo} link className="p-0 text-left" style={{ fontWeight: 500 }}
             onClick={() => router.push('/propuestas/' + r.id)} />
