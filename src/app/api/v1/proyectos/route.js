@@ -38,8 +38,9 @@ function calcularCampos(proyecto) {
 
 export async function GET(request) {
   const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.PROYECTOS.VER)) {
+    return NextResponse.json({ success: false, message: 'Sin permiso para ver proyectos' }, { status: 403 })
   }
 
   const estadoId = request.nextUrl.searchParams.get('estado_id')

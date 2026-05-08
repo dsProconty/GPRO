@@ -7,6 +7,9 @@ import { tienePermiso, PERMISOS } from '@/lib/permisos'
 export async function GET(request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.PAGOS.VER)) {
+    return NextResponse.json({ success: false, message: 'Sin permiso para ver pagos' }, { status: 403 })
+  }
 
   const { searchParams } = new URL(request.url)
   const facturaId = searchParams.get('factura_id')

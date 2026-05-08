@@ -8,12 +8,21 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
 
+  const isAdmin = session.user.role === 'admin'
+
+  // Usuarios no-admin solo reciben id+name para poblar MultiSelect de responsables.
+  // Admins reciben el detalle completo para el panel de gestión. (SEC-04)
   const usuarios = await prisma.user.findMany({
     select: {
-      id: true, name: true, email: true, role: true,
-      perfilUsuarioId: true,
-      perfilUsuario: { select: { id: true, nombre: true } },
-      createdAt: true,
+      id: true,
+      name: true,
+      ...(isAdmin && {
+        email: true,
+        role: true,
+        perfilUsuarioId: true,
+        perfilUsuario: { select: { id: true, nombre: true } },
+        createdAt: true,
+      }),
     },
     orderBy: { name: 'asc' },
   })

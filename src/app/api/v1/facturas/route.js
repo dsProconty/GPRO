@@ -12,6 +12,9 @@ function calcFactura(f) {
 export async function GET(request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.FACTURAS.VER)) {
+    return NextResponse.json({ success: false, message: 'Sin permiso para ver facturas' }, { status: 403 })
+  }
 
   const { searchParams } = new URL(request.url)
   const proyectoId = searchParams.get('proyecto_id')

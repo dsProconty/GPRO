@@ -14,6 +14,9 @@ const PROPUESTA_INCLUDE = {
 export async function GET(request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.PROPUESTAS.VER)) {
+    return NextResponse.json({ success: false, message: 'Sin permiso para ver propuestas' }, { status: 403 })
+  }
 
   const { searchParams } = new URL(request.url)
   const estado = searchParams.get('estado')

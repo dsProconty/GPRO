@@ -8,8 +8,9 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export async function GET(request) {
   const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.CLIENTES.VER)) {
+    return NextResponse.json({ success: false, message: 'Sin permiso para ver clientes' }, { status: 403 })
   }
 
   const empresaId = request.nextUrl.searchParams.get('empresa_id')
