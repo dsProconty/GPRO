@@ -27,11 +27,13 @@ incluyendo facturación y registro de pagos.
 | Deploy | Vercel | Región iad1 (US East) |
 | Estilos | PrimeFlex utility classes | Sin CSS custom salvo excepciones |
 
-### Variables de entorno (ya configuradas en Vercel)
+### Variables de entorno (configuradas en Vercel — NO incluir valores aquí)
 ```
-DATABASE_URL=postgresql://neondb_owner:...@ep-rough-feather...neon.tech/neondb?sslmode=require
-NEXTAUTH_SECRET=pbhO5JLv...
+DATABASE_URL=<ver Vercel dashboard → Settings → Environment Variables>
+NEXTAUTH_SECRET=<ver Vercel dashboard>
 NEXTAUTH_URL=https://gpro.vercel.app
+CRON_SECRET=<ver Vercel dashboard>
+RESEND_API_KEY=<ver Vercel dashboard>
 ```
 
 ---
@@ -327,7 +329,7 @@ export const calcTiempoVida = (fechaCreacion, fechaCierre) => {
 - Base de datos Neon con tablas creadas y seedeadas
 - Layout dashboard con sidebar y topbar (estilo Sakai)
 - Deploy en Vercel funcionando: https://gpro.vercel.app
-- Usuario admin: `admin@proconty.com` / `password123`
+- Usuario admin: `admin@proconty.com` / [contraseña en gestor de contraseñas]
 
 ---
 
@@ -681,7 +683,7 @@ Señala qué regla de negocio del CLAUDE.md implementa cada sección.
 | Servicio | URL / Credencial |
 |---------|-----------------|
 | App producción | https://gpro.vercel.app |
-| Login admin | admin@proconty.com / password123 |
+| Login admin | admin@proconty.com / [ver gestor de contraseñas] |
 | GitHub repo | https://github.com/dsProconty/GPRO |
 | Vercel dashboard | https://vercel.com/dsprocontys-projects/gpro |
 | Neon DB | https://console.neon.tech → proyecto Gpro |

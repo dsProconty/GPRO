@@ -1,5 +1,15 @@
 import { Resend } from 'resend'
 
+// Escapa caracteres HTML para prevenir inyección en emails (SEC-03)
+function esc(str) {
+  return (str ?? '').toString()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
 export async function enviarRecordatorio({ proyecto, recordatorio }) {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const destinatarios = recordatorio.destinatarios
@@ -14,7 +24,7 @@ export async function enviarRecordatorio({ proyecto, recordatorio }) {
   return resend.emails.send({
     from: 'GPRO Proconty <recordatorios@gpro.proconty.com>',
     to: destinatarios,
-    subject: `[GPRO] Recordatorio de facturación — ${proyecto.detalle}`,
+    subject: `[GPRO] Recordatorio de facturación — ${esc(proyecto.detalle)}`,
     html: plantillaEmail({ proyecto, recordatorio }),
   })
 }
@@ -60,12 +70,12 @@ function plantillaEmail({ proyecto, recordatorio }) {
         <tr>
           <td style="padding:32px;">
             <p style="margin:0 0 6px;color:#6b7280;font-size:13px;text-transform:uppercase;letter-spacing:0.05em;">Proyecto</p>
-            <h2 style="margin:0 0 24px;color:#111827;font-size:20px;">${proyecto.detalle}</h2>
+            <h2 style="margin:0 0 24px;color:#111827;font-size:20px;">${esc(proyecto.detalle)}</h2>
 
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:6px;padding:16px;margin-bottom:24px;">
               <tr>
                 <td style="padding:6px 0;color:#6b7280;font-size:13px;width:130px;">Cliente:</td>
-                <td style="padding:6px 0;color:#111827;font-size:13px;font-weight:600;">${proyecto.empresa?.nombre || '—'}</td>
+                <td style="padding:6px 0;color:#111827;font-size:13px;font-weight:600;">${esc(proyecto.empresa?.nombre) || '—'}</td>
               </tr>
               <tr>
                 <td style="padding:6px 0;color:#6b7280;font-size:13px;">Día configurado:</td>
@@ -75,7 +85,7 @@ function plantillaEmail({ proyecto, recordatorio }) {
 
             <p style="margin:0 0 8px;color:#6b7280;font-size:13px;text-transform:uppercase;letter-spacing:0.05em;">Nota</p>
             <p style="margin:0 0 28px;color:#374151;font-size:15px;line-height:1.6;background:#f0f9ff;border-left:3px solid #2e75b6;padding:12px 16px;border-radius:0 6px 6px 0;">
-              ${recordatorio.descripcion}
+              ${esc(recordatorio.descripcion)}
             </p>
 
             <a href="${appUrl}/proyectos/${proyecto.id}"

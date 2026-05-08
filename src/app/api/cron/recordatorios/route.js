@@ -7,11 +7,11 @@ import { enviarRecordatorio } from '@/lib/email'
 // Para probar manualmente: GET /api/cron/recordatorios con el header correcto.
 
 export async function GET(request) {
-  // Verificar CRON_SECRET (Vercel lo inyecta; en dev puede omitirse si no está configurado)
+  // Verificar CRON_SECRET — fail-closed: si no está configurado, rechazar siempre
   const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   }
 
@@ -56,8 +56,9 @@ export async function GET(request) {
       message: `Cron ejecutado: ${enviados} enviados, ${errores} errores`,
     })
   } catch (error) {
+    console.error('[cron/recordatorios]', error)
     return NextResponse.json(
-      { success: false, message: 'Error en cron de recordatorios', error: error.message },
+      { success: false, message: 'Error interno al ejecutar el cron de recordatorios' },
       { status: 500 }
     )
   }
