@@ -9,6 +9,9 @@ export async function GET(request, { params }) {
   if (!session) {
     return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   }
+  if (!tienePermiso(session, PERMISOS.EMPRESAS.VER)) {
+    return NextResponse.json({ success: false, message: 'Sin permiso para ver empresas' }, { status: 403 })
+  }
 
   const id = parseInt(params.id)
   if (isNaN(id)) {

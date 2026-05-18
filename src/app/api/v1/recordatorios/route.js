@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { tienePermiso, PERMISOS } from '@/lib/permisos'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -13,6 +14,9 @@ function validarDestinatarios(str) {
 export async function GET(request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.RECORDATORIOS.VER)) {
+    return NextResponse.json({ success: false, message: 'Sin permiso para ver recordatorios' }, { status: 403 })
+  }
 
   const { searchParams } = new URL(request.url)
   const proyectoId = searchParams.get('proyecto_id')
@@ -33,6 +37,9 @@ export async function GET(request) {
 export async function POST(request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.RECORDATORIOS.CREAR)) {
+    return NextResponse.json({ success: false, message: 'Sin permiso para crear recordatorios' }, { status: 403 })
+  }
 
   const body = await request.json()
   const { proyectoId, diaMes, descripcion, destinatarios, activo = true } = body

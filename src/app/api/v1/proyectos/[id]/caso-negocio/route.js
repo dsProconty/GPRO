@@ -35,6 +35,9 @@ function serializeLineas(lineas) {
 export async function GET(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.CASOS_NEGOCIO.VER)) {
+    return NextResponse.json({ success: false, message: 'Sin permiso para ver el caso de negocio' }, { status: 403 })
+  }
 
   const proyectoId = parseInt(params.id)
   if (isNaN(proyectoId)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })

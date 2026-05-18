@@ -2,10 +2,14 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { tienePermiso, PERMISOS } from '@/lib/permisos'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.DASHBOARD.VER)) {
+    return NextResponse.json({ success: false, message: 'Sin permiso para ver el dashboard' }, { status: 403 })
+  }
 
   try {
     const diaHoy = new Date().getDate()

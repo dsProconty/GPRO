@@ -3,11 +3,14 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// GET /api/v1/perfiles-usuario — lista todos los perfiles (autenticado)
+// GET /api/v1/perfiles-usuario — lista todos los perfiles (solo admin)
 // POST /api/v1/perfiles-usuario — crea un perfil (solo admin)
 export async function GET(request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (session.user.role !== 'admin') {
+    return NextResponse.json({ success: false, message: 'Solo el administrador puede gestionar perfiles' }, { status: 403 })
+  }
 
   const perfiles = await prisma.perfilUsuario.findMany({
     orderBy: { nombre: 'asc' },

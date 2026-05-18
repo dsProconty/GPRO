@@ -2,11 +2,20 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { tienePermiso, PERMISOS } from '@/lib/permisos'
 
 // GET /api/v1/perfiles-consultor?activo=true
 export async function GET(request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  // Catálogo con costos internos: requiere acceso a casos de negocio, empleados o tarifarios
+  const puedeVer =
+    tienePermiso(session, PERMISOS.CASOS_NEGOCIO.VER) ||
+    tienePermiso(session, PERMISOS.EMPLEADOS.VER) ||
+    tienePermiso(session, PERMISOS.TARIFARIOS.VER)
+  if (!puedeVer) {
+    return NextResponse.json({ success: false, message: 'Sin permiso para ver perfiles de consultor' }, { status: 403 })
+  }
 
   const { searchParams } = new URL(request.url)
   const soloActivos = searchParams.get('activo') === 'true'

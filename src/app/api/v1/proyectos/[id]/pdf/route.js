@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { tienePermiso, PERMISOS } from '@/lib/permisos'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { ProyectoPDF } from '@/lib/pdf/ProyectoPDF'
 import React from 'react'
@@ -9,6 +10,9 @@ import React from 'react'
 export async function GET(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
+  if (!tienePermiso(session, PERMISOS.PROYECTOS.PDF)) {
+    return NextResponse.json({ success: false, message: 'Sin permiso para descargar el PDF' }, { status: 403 })
+  }
 
   const id = parseInt(params.id)
   if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
