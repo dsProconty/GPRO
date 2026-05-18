@@ -279,6 +279,7 @@ async function main() {
         fechaCierre:   parseDate(row['Fecha_Cierre'])   || null,
         estadoId:      newEstadoId || 5,
         projectOnline: null,
+        aplicativo:    row['Aplicativo']?.trim() || null,
       }
     })
     proyectoIdMap[row['ID']] = proy.id
