@@ -38,3 +38,6 @@ next-env.d.ts
 
 # prisma
 prisma/migrations/dev.db
+
+# migration data (CSV files con datos reales)
+scripts/data/

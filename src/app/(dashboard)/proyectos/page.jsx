@@ -23,11 +23,16 @@ import * as XLSX from 'xlsx'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
 const ESTADO_CONFIG = {
-  Prefactibilidad:       { severity: 'warning',   label: 'Prefactibilidad' },
-  Elaboracion_Propuesta: { severity: 'info',       label: 'Elab. Propuesta' },
-  Adjudicado:            { severity: 'success',    label: 'Adjudicado' },
-  Rechazado:             { severity: 'danger',     label: 'Rechazado' },
-  Cerrado:               { severity: 'secondary',  label: 'Cerrado' },
+  Adjudicado:            { severity: 'success',   label: 'Adjudicado'        },
+  'En Ejecución':        { severity: 'info',      label: 'En Ejecución'      },
+  'Por Facturar':        { severity: 'warning',   label: 'Por Facturar'      },
+  Facturado:             { severity: 'secondary', label: 'Facturado'         },
+  Cerrado:               { severity: 'secondary', label: 'Cerrado'           },
+  Elaboracion_Propuesta: { severity: 'info',      label: 'Elab. Propuesta'   },
+  Ejecución:             { severity: 'info',      label: 'Ejecución'         },
+  Pruebas:               { severity: 'warning',   label: 'Pruebas'           },
+  Rechazado:             { severity: 'danger',    label: 'Rechazado'         },
+  Entregado:             { severity: 'success',   label: 'Entregado'         },
 }
 
 export default function ProyectosPage() {
