@@ -161,7 +161,7 @@ model ProyectoResponsable {
 // REGLA DE NEGOCIO: total_pagos y saldo NO se almacenan, se calculan en tiempo real
 model Factura {
   id           Int       @id @default(autoincrement()) @map("id_factura")
-  numFactura   String    @unique @map("num_factura") @db.VarChar(50)
+  numFactura   String    @map("num_factura") @db.VarChar(50)
   proyectoId   Int       @map("id_negocio")
   ordenCompra  String?   @map("orden_compra") @db.VarChar(50)
   valor        Decimal   @db.Decimal(12, 2)

@@ -18,11 +18,16 @@ import { formatCurrency, formatDate } from '@/utils/format'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
 const ESTADO_SEVERITY = {
-  Prefactibilidad:       'warning',
-  Elaboracion_Propuesta: 'info',
   Adjudicado:            'success',
-  Rechazado:             'danger',
+  'En Ejecución':        'info',
+  'Por Facturar':        'warning',
+  Facturado:             'secondary',
   Cerrado:               'secondary',
+  Elaboracion_Propuesta: 'info',
+  Ejecución:             'info',
+  Pruebas:               'warning',
+  Rechazado:             'danger',
+  Entregado:             'success',
 }
 
 function margenColor(pct) {

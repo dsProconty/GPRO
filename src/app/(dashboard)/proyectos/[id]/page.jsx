@@ -32,11 +32,16 @@ import { Dialog } from 'primereact/dialog'
 import { InputNumber } from 'primereact/inputnumber'
 
 const ESTADO_CONFIG = {
-  'Adjudicado':    { severity: 'success',   label: 'Adjudicado'   },
-  'En Ejecución':  { severity: 'info',      label: 'En Ejecución' },
-  'Por Facturar':  { severity: 'warning',   label: 'Por Facturar' },
-  'Facturado':     { severity: 'secondary', label: 'Facturado'    },
-  'Cerrado':       { severity: 'secondary', label: 'Cerrado'      },
+  'Adjudicado':            { severity: 'success',   label: 'Adjudicado'      },
+  'En Ejecución':          { severity: 'info',      label: 'En Ejecución'    },
+  'Por Facturar':          { severity: 'warning',   label: 'Por Facturar'    },
+  'Facturado':             { severity: 'secondary', label: 'Facturado'       },
+  'Cerrado':               { severity: 'secondary', label: 'Cerrado'         },
+  'Elaboracion_Propuesta': { severity: 'info',      label: 'Elab. Propuesta' },
+  'Ejecución':             { severity: 'info',      label: 'Ejecución'       },
+  'Pruebas':               { severity: 'warning',   label: 'Pruebas'         },
+  'Rechazado':             { severity: 'danger',    label: 'Rechazado'       },
+  'Entregado':             { severity: 'success',   label: 'Entregado'       },
 }
 
 const PIPELINE_STEPS = [
