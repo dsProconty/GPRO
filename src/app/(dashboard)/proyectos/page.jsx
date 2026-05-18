@@ -22,6 +22,8 @@ import { formatCurrency, formatDate, calcTiempoVida } from '@/utils/format'
 import * as XLSX from 'xlsx'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
+const ESTADOS_PROPUESTAS = ['Elaboracion_Propuesta', 'Rechazado']
+
 const ESTADO_CONFIG = {
   Adjudicado:            { severity: 'success',   label: 'Adjudicado'        },
   'En Ejecución':        { severity: 'info',      label: 'En Ejecución'      },
@@ -173,6 +175,8 @@ export default function ProyectosPage() {
   // Filtrado avanzado en frontend (SP7-05)
   const proyectosFiltrados = useMemo(() => {
     let lista = proyectos
+    // Siempre excluir estados que pertenecen al módulo de Propuestas
+    lista = lista.filter((p) => !ESTADOS_PROPUESTAS.includes(p.estado?.nombre))
     // Ocultar Cerrados por defecto, salvo que haya búsqueda de texto activa o se elija "Cerrado"
     if (!estadoFiltro && !globalFilter) {
       lista = lista.filter((p) => p.estado?.nombre !== 'Cerrado')
@@ -215,7 +219,7 @@ export default function ProyectosPage() {
 
   const estadosFiltroOptions = [
     { id: null, nombre: 'Todos los estados' },
-    ...estados.map((e) => ({ id: e.id, nombre: e.nombre })),
+    ...estados.filter((e) => !ESTADOS_PROPUESTAS.includes(e.nombre)).map((e) => ({ id: e.id, nombre: e.nombre })),
   ]
 
   if (loading && proyectos.length === 0) {
