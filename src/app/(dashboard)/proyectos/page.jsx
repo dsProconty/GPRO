@@ -215,11 +215,7 @@ export default function ProyectosPage() {
 
   const estadosFiltroOptions = [
     { id: null, nombre: 'Todos los estados' },
-    { id: 1, nombre: 'Prefactibilidad' },
-    { id: 2, nombre: 'Elaboracion_Propuesta' },
-    { id: 3, nombre: 'Adjudicado' },
-    { id: 4, nombre: 'Rechazado' },
-    { id: 5, nombre: 'Cerrado' },
+    ...estados.map((e) => ({ id: e.id, nombre: e.nombre })),
   ]
 
   if (loading && proyectos.length === 0) {
