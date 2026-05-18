@@ -173,8 +173,8 @@ export default function ProyectosPage() {
   // Filtrado avanzado en frontend (SP7-05)
   const proyectosFiltrados = useMemo(() => {
     let lista = proyectos
-    // Por defecto ocultar proyectos Cerrados; el usuario puede verlos eligiendo "Cerrado" en el filtro
-    if (!estadoFiltro) {
+    // Ocultar Cerrados por defecto, salvo que haya búsqueda de texto activa o se elija "Cerrado"
+    if (!estadoFiltro && !globalFilter) {
       lista = lista.filter((p) => p.estado?.nombre !== 'Cerrado')
     }
     if (responsableFiltro) {
@@ -189,7 +189,7 @@ export default function ProyectosPage() {
       lista = lista.filter((p) => new Date(p.fechaCreacion) <= hasta)
     }
     return lista
-  }, [proyectos, estadoFiltro, responsableFiltro, fechaRango])
+  }, [proyectos, estadoFiltro, responsableFiltro, fechaRango, globalFilter])
 
   const exportarExcel = () => {
     const filas = proyectosFiltrados.map((p) => ({
