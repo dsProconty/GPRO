@@ -26,7 +26,12 @@ const DATA = path.join(__dirname, 'data')
 // ─── UTILIDADES ──────────────────────────────────────────────────────────────
 
 function parseCSV(filename) {
-  const content = fs.readFileSync(path.join(DATA, filename), 'utf-8')
+  const raw = fs.readFileSync(path.join(DATA, filename))
+  // strip UTF-8 BOM (0xEF 0xBB 0xBF) si existe
+  const start = (raw[0] === 0xEF && raw[1] === 0xBB && raw[2] === 0xBF) ? 3 : 0
+  const content = raw.slice(start).toString('utf-8')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
   const rows = []
   let headers = null
   let i = 0
