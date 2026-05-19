@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { tienePermiso, PERMISOS } from '@/lib/permisos'
+import { generarCodigoProyecto } from '@/lib/codigoHelper'
 
 const PROYECTO_INCLUDE = {
   empresa: { select: { id: true, nombre: true } },
@@ -76,10 +77,7 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'Error de validación', errors }, { status: 422 })
   }
 
-  // Auto-generar código único PRO-YYYY-NNN
-  const anio = new Date().getFullYear()
-  const countAnio = await prisma.proyecto.count({ where: { codigo: { startsWith: `PRO-${anio}-` } } })
-  const codigo = `PRO-${anio}-${String(countAnio + 1).padStart(3, '0')}`
+  const codigo = await generarCodigoProyecto(parseInt(empresaId), new Date(fechaCreacion), prisma)
 
   try {
     const proyecto = await prisma.proyecto.create({

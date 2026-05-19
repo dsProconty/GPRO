@@ -55,12 +55,13 @@ model PerfilUsuario {
 
 // ─── EMPRESA ─────────────────────────────────────────────────────────────────
 model Empresa {
-  id          Int      @id @default(autoincrement()) @map("id_empresa")
-  nombre      String   @db.VarChar(150)
-  ciudad      String?  @db.VarChar(100)
-  tarifarioId Int?     @map("id_tarifario")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id             Int      @id @default(autoincrement()) @map("id_empresa")
+  nombre         String   @db.VarChar(150)
+  ciudad         String?  @db.VarChar(100)
+  tarifarioId    Int?     @map("id_tarifario")
+  codigoCliente  String?  @map("codigo_cliente") @db.VarChar(10)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   // Relaciones
   clientes   Cliente[]

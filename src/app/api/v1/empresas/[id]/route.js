@@ -47,7 +47,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
   }
 
-  const { nombre, ciudad, tarifarioId } = await request.json()
+  const { nombre, ciudad, tarifarioId, codigoCliente } = await request.json()
 
   if (!nombre || nombre.trim() === '') {
     return NextResponse.json(
@@ -60,9 +60,10 @@ export async function PUT(request, { params }) {
     const empresa = await prisma.empresa.update({
       where: { id },
       data: {
-        nombre:      nombre.trim(),
-        ciudad:      ciudad?.trim() || null,
-        tarifarioId: tarifarioId !== undefined ? (tarifarioId ? parseInt(tarifarioId) : null) : undefined,
+        nombre:        nombre.trim(),
+        ciudad:        ciudad?.trim() || null,
+        tarifarioId:   tarifarioId !== undefined ? (tarifarioId ? parseInt(tarifarioId) : null) : undefined,
+        codigoCliente: codigoCliente !== undefined ? (codigoCliente?.trim().toUpperCase() || null) : undefined,
       },
       include: { tarifario: { select: { id: true, nombre: true, activo: true } } },
     })

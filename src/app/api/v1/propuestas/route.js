@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { tienePermiso, PERMISOS } from '@/lib/permisos'
+import { generarCodigoPropuesta } from '@/lib/codigoHelper'
 
 const PROPUESTA_INCLUDE = {
   empresa: { select: { id: true, nombre: true } },
@@ -61,9 +62,7 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'Error de validación', errors }, { status: 422 })
   }
 
-  const anio = new Date().getFullYear()
-  const countAnio = await prisma.propuesta.count({ where: { codigo: { startsWith: `PROP-${anio}-` } } })
-  const codigo = `PROP-${anio}-${String(countAnio + 1).padStart(3, '0')}`
+  const codigo = await generarCodigoPropuesta(parseInt(empresaId), new Date(fechaCreacion), prisma)
 
   const propuesta = await prisma.propuesta.create({
     data: {

@@ -19,6 +19,7 @@ import { InputNumber } from 'primereact/inputnumber'
 import { InputSwitch } from 'primereact/inputswitch'
 import { configuracionService, SEVERITY_COLORS } from '@/services/configuracionService'
 import { perfilConsultorService, NIVEL_OPTIONS } from '@/services/perfilConsultorService'
+import axios from 'axios'
 
 const MONEDA_OPTIONS = [
   { label: 'USD — Dólar estadounidense',  value: 'USD' },
@@ -614,6 +615,60 @@ export default function ConfiguracionPage() {
             onClick={handleSaveEmpresa}
             loading={empresaSaving}
           />
+        </div>
+      </Card>
+
+      {/* ── Acciones de administración ───────────────────────────────────────── */}
+      <Card className="mt-4">
+        <div className="flex align-items-center gap-2 mb-3">
+          <i className="pi pi-wrench text-orange-500" style={{ fontSize: '1.2rem' }} />
+          <div>
+            <h3 className="m-0 font-semibold">Acciones de administración</h3>
+            <p className="text-color-secondary text-xs mt-1 mb-0">Migraciones y generación retroactiva de datos</p>
+          </div>
+        </div>
+        <div className="flex flex-column gap-3">
+          <div className="flex align-items-center justify-content-between p-3 surface-100 border-round">
+            <div>
+              <p className="m-0 font-semibold text-sm">1. Agregar columna código cliente</p>
+              <p className="m-0 text-color-secondary text-xs mt-1">Ejecutar una sola vez para habilitar el campo "Código cliente" en empresas</p>
+            </div>
+            <Button
+              label="Ejecutar migración"
+              icon="pi pi-database"
+              severity="warning"
+              size="small"
+              onClick={async () => {
+                try {
+                  const res = await axios.post('/api/v1/admin/migrate-codigo-cliente')
+                  toast.current.show({ severity: 'success', summary: 'Migración', detail: res.data.message, life: 5000 })
+                } catch (e) {
+                  toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 6000 })
+                }
+              }}
+            />
+          </div>
+          <div className="flex align-items-center justify-content-between p-3 surface-100 border-round">
+            <div>
+              <p className="m-0 font-semibold text-sm">2. Generar códigos retroactivos</p>
+              <p className="m-0 text-color-secondary text-xs mt-1">Asigna códigos PRO/PRP a todos los registros sin código, ordenados por fecha de creación</p>
+            </div>
+            <Button
+              label="Generar códigos"
+              icon="pi pi-hashtag"
+              severity="info"
+              size="small"
+              onClick={async () => {
+                try {
+                  const res = await axios.post('/api/v1/admin/generar-codigos', { force: false })
+                  const { proyectosActualizados, propuestasActualizadas, errores } = res.data.data
+                  toast.current.show({ severity: 'success', summary: 'Códigos generados', detail: `${proyectosActualizados} proyectos · ${propuestasActualizadas} propuestas${errores.length > 0 ? ` · ${errores.length} errores` : ''}`, life: 8000 })
+                } catch (e) {
+                  toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 6000 })
+                }
+              }}
+            />
+          </div>
         </div>
       </Card>
 

@@ -8,33 +8,51 @@ import { Toast } from 'primereact/toast'
 import { Divider } from 'primereact/divider'
 import { empresaService } from '@/services/empresaService'
 import { clienteService } from '@/services/clienteService'
+import { sugerirCodigoCliente } from '@/lib/codigoHelper'
 
 const EMPTY_CONTACTO = { nombre: '', apellido: '', telefono: '', mail: '' }
 
 export default function EmpresaFormDialog({ visible, onHide, onSave, empresa, labelOverride }) {
   const label = labelOverride || 'Empresa'
   const toast = useRef(null)
-  const [form, setForm] = useState({ nombre: '', ciudad: '' })
+  const [form, setForm] = useState({ nombre: '', ciudad: '', codigoCliente: '' })
   const [contactos, setContactos] = useState([])
   const [errors, setErrors] = useState({})
   const [contactoErrors, setContactoErrors] = useState([])
   const [loading, setLoading] = useState(false)
+  const [codigoManual, setCodigoManual] = useState(false)
 
   const isCreating = !empresa
 
   useEffect(() => {
     if (visible) {
       if (empresa) {
-        setForm({ nombre: empresa.nombre || '', ciudad: empresa.ciudad || '' })
+        setForm({ nombre: empresa.nombre || '', ciudad: empresa.ciudad || '', codigoCliente: empresa.codigoCliente || '' })
         setContactos([])
+        setCodigoManual(true)
       } else {
-        setForm({ nombre: '', ciudad: '' })
+        setForm({ nombre: '', ciudad: '', codigoCliente: '' })
         setContactos([])
+        setCodigoManual(false)
       }
       setErrors({})
       setContactoErrors([])
     }
   }, [empresa, visible])
+
+  const handleNombreChange = (value) => {
+    const next = { ...form, nombre: value }
+    if (!codigoManual) {
+      next.codigoCliente = sugerirCodigoCliente(value)
+    }
+    setForm(next)
+  }
+
+  const handleCodigoChange = (value) => {
+    const clean = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 10)
+    setForm({ ...form, codigoCliente: clean })
+    setCodigoManual(true)
+  }
 
   const addContacto = () => {
     setContactos([...contactos, { ...EMPTY_CONTACTO }])
@@ -75,9 +93,9 @@ export default function EmpresaFormDialog({ visible, onHide, onSave, empresa, la
     setLoading(true)
     try {
       if (empresa) {
-        await empresaService.update(empresa.id, form)
+        await empresaService.update(empresa.id, { ...form, codigoCliente: form.codigoCliente || null })
       } else {
-        const res = await empresaService.create(form)
+        const res = await empresaService.create({ ...form, codigoCliente: form.codigoCliente || null })
         const empresaId = res.data.id
 
         for (const contacto of contactos) {
@@ -116,18 +134,41 @@ export default function EmpresaFormDialog({ visible, onHide, onSave, empresa, la
         closable={!loading}
       >
         <div className="flex flex-column gap-3 pt-2">
-          <div className="field mb-0">
-            <label htmlFor="nombre" className="font-semibold block mb-1">
-              Nombre <span className="text-red-500">*</span>
-            </label>
-            <InputText
-              id="nombre"
-              value={form.nombre}
-              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-              className={`w-full ${errors.nombre ? 'p-invalid' : ''}`}
-              placeholder={`Nombre del ${label.toLowerCase()}`}
-            />
-            {errors.nombre && <small className="p-error">{errors.nombre}</small>}
+          <div className="grid">
+            <div className="col-8">
+              <div className="field mb-0">
+                <label htmlFor="nombre" className="font-semibold block mb-1">
+                  Nombre <span className="text-red-500">*</span>
+                </label>
+                <InputText
+                  id="nombre"
+                  value={form.nombre}
+                  onChange={(e) => handleNombreChange(e.target.value)}
+                  className={`w-full ${errors.nombre ? 'p-invalid' : ''}`}
+                  placeholder={`Nombre del ${label.toLowerCase()}`}
+                />
+                {errors.nombre && <small className="p-error">{errors.nombre}</small>}
+              </div>
+            </div>
+            <div className="col-4">
+              <div className="field mb-0">
+                <label htmlFor="codigoCliente" className="font-semibold block mb-1">
+                  Código cliente
+                </label>
+                <InputText
+                  id="codigoCliente"
+                  value={form.codigoCliente}
+                  onChange={(e) => handleCodigoChange(e.target.value)}
+                  className="w-full"
+                  placeholder="Ej: DEL"
+                  maxLength={10}
+                  style={{ fontFamily: 'monospace' }}
+                />
+                <small className="text-color-secondary">
+                  {isCreating ? 'Auto-sugerido' : 'No cambia códigos existentes'}
+                </small>
+              </div>
+            </div>
           </div>
 
           <div className="field mb-0">

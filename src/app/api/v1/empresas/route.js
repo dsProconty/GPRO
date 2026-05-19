@@ -27,7 +27,7 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'No tiene permiso para crear empresas' }, { status: 403 })
   }
 
-  const { nombre, ciudad } = await request.json()
+  const { nombre, ciudad, codigoCliente } = await request.json()
 
   if (!nombre || nombre.trim() === '') {
     return NextResponse.json(
@@ -37,7 +37,11 @@ export async function POST(request) {
   }
 
   const empresa = await prisma.empresa.create({
-    data: { nombre: nombre.trim(), ciudad: ciudad?.trim() || null },
+    data: {
+      nombre: nombre.trim(),
+      ciudad: ciudad?.trim() || null,
+      codigoCliente: codigoCliente?.trim().toUpperCase() || null,
+    },
   })
 
   return NextResponse.json(
