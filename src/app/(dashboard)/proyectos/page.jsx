@@ -143,10 +143,9 @@ export default function ProyectosPage() {
     />
   )
 
-  const estadoTemplate = (row) => {
-    const cfg = ESTADO_CONFIG[row.estado?.nombre] || { severity: 'secondary', label: row.estado?.nombre }
-    return <Tag value={cfg.label} severity={cfg.severity} />
-  }
+  const estadoTemplate = (row) => (
+    <Tag value={row.estado?.nombre} severity={row.estado?.color || 'secondary'} />
+  )
 
   const valorTemplate = (row) => formatCurrency(row.valor, moneda)
   const facturadoTemplate = (row) => formatCurrency(row.facturado, moneda)
@@ -217,7 +216,11 @@ export default function ProyectosPage() {
       conteo[nombre] = (conteo[nombre] || 0) + 1
     })
     return Object.entries(conteo)
-      .map(([nombre, count]) => ({ nombre, count, cfg: ESTADO_CONFIG[nombre] || { severity: 'secondary', label: nombre } }))
+      .map(([nombre, count]) => {
+        const estadoDB = estados.find((e) => e.nombre === nombre)
+        const severity = estadoDB?.color || 'secondary'
+        return { nombre, count, cfg: { severity, label: nombre } }
+      })
       .sort((a, b) => b.count - a.count)
   }, [visibleRows, proyectosFiltrados])
 
@@ -381,7 +384,6 @@ export default function ProyectosPage() {
         <Column field="saldo" header="Saldo" body={saldoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
         <Column field="fechaCreacion" header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable style={{ width: '115px' }} />
         <Column field="fechaCierre" header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable style={{ width: '115px' }} />
-        <Column header="Tiempo de vida" body={tiempoVidaTemplate} style={{ width: '130px' }} />
         <Column field="estado.nombre" header="Estado" body={estadoTemplate} sortable filter filterPlaceholder="Buscar estado..." style={{ width: '140px' }} />
         <Column header="Acciones" body={accionesTemplate} style={{ width: '120px' }} />
       </DataTable>
