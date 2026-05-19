@@ -23,6 +23,7 @@ export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, 
     fechaCierre: null,
     estadoId: null,
     aplicativo: '',
+    ot: '',
     projectOnline: '',
     clienteIds: [],
     responsableIds: [],
@@ -45,6 +46,7 @@ export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, 
           fechaCierre: proyecto.fechaCierre ? new Date(proyecto.fechaCierre) : null,
           estadoId: proyecto.estadoId || null,
           aplicativo: proyecto.aplicativo || '',
+          ot: proyecto.ot || '',
           projectOnline: proyecto.projectOnline || '',
           clienteIds: proyecto.clienteIds || [],
           responsableIds: proyecto.responsableIds || [],
@@ -190,15 +192,26 @@ export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, 
             </div>
           </div>
 
-          {/* Aplicativo */}
-          <div className="field mb-0">
-            <label className="font-semibold block mb-1">Aplicativo</label>
-            <InputText
-              value={form.aplicativo}
-              onChange={(e) => setForm({ ...form, aplicativo: e.target.value })}
-              className="w-full"
-              placeholder="ej: CRV, Typing, Tips (opcional)"
-            />
+          {/* Aplicativo + OT */}
+          <div className="grid">
+            <div className="col-12 md:col-6 field mb-0">
+              <label className="font-semibold block mb-1">Aplicativo</label>
+              <InputText
+                value={form.aplicativo}
+                onChange={(e) => setForm({ ...form, aplicativo: e.target.value })}
+                className="w-full"
+                placeholder="ej: CRV, Typing, Tips (opcional)"
+              />
+            </div>
+            <div className="col-12 md:col-6 field mb-0">
+              <label className="font-semibold block mb-1">OT (Orden de Trabajo)</label>
+              <InputText
+                value={form.ot}
+                onChange={(e) => setForm({ ...form, ot: e.target.value })}
+                className="w-full"
+                placeholder="ej: OT-2024-001 (opcional)"
+              />
+            </div>
           </div>
 
           {/* Contactos/PMs del proyecto */}

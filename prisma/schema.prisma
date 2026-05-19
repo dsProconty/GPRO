@@ -115,6 +115,7 @@ model Proyecto {
   projectOnline  String?   @map("project_online") @db.VarChar(500)
   codigo         String?   @unique @db.VarChar(20)
   aplicativo     String?   @db.VarChar(100)
+  ot             String?   @db.VarChar(50)
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 

@@ -280,6 +280,7 @@ async function main() {
         estadoId:      newEstadoId || 5,
         projectOnline: null,
         aplicativo:    row['Aplicativo']?.trim() || null,
+        ot:            row['OT']?.trim()         || null,
       }
     })
     proyectoIdMap[row['ID']] = proy.id

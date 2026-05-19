@@ -202,6 +202,8 @@ export default function ProyectosPage() {
       'Cliente': p.empresa?.nombre || '',
       'Responsable(s)': p.responsables?.map((r) => r.user?.name).join(', ') || '',
       'Estado': p.estado?.nombre?.replace('_', ' ') || '',
+      'Aplicativo': p.aplicativo || '',
+      'OT': p.ot || '',
       'Valor': Number(p.valor) || 0,
       'Facturado': Number(p.facturado) || 0,
       'Pagado': Number(p.pagado) || 0,
@@ -302,6 +304,7 @@ export default function ProyectosPage() {
         <Column field="detalle" header="Proyecto" body={detalleTemplate} sortable filter filterPlaceholder="Buscar proyecto..." style={{ minWidth: '180px' }} />
         <Column field="empresa.nombre" header="Cliente" body={(row) => row.empresa?.nombre} sortable filter filterPlaceholder="Buscar cliente..." />
         <Column field="aplicativo" header="Aplicativo" body={(row) => row.aplicativo || '—'} sortable filter filterPlaceholder="Buscar aplicativo..." style={{ width: '120px' }} />
+        <Column field="ot" header="OT" body={(row) => row.ot || '—'} sortable filter filterPlaceholder="Buscar OT..." style={{ width: '110px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
         <Column field="valor" header="Valor" body={valorTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
         <Column field="facturado" header="Facturado" body={facturadoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
         <Column field="pagado" header="Pagado" body={pagadoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
