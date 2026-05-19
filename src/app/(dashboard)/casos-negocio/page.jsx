@@ -108,12 +108,18 @@ export default function CasosNegocioPage() {
     return { totalCaso, totalHoras, totalCosto, totalPrecio, gm, gmPct, totalFact, totalPagado, saldoCobrar, pctCobrado, pctFacturado }
   }, [fuente])
 
-  // Gráfica pipeline: Estimado → Facturado → Cobrado
+  // Gráfica pipeline: Estimado → Facturado → Por Facturar → Cobrado → Saldo
   const pipelineData = useMemo(() => ({
-    labels: ['Ingreso Estimado', 'Facturado', 'Cobrado'],
+    labels: ['Ingreso Estimado', 'Facturado', 'Por Facturar', 'Cobrado', 'Saldo por Cobrar'],
     datasets: [{
-      data: [kpi.totalPrecio, kpi.totalFact, kpi.totalPagado],
-      backgroundColor: ['#3b82f6', '#f59e0b', '#22c55e'],
+      data: [
+        kpi.totalPrecio,
+        kpi.totalFact,
+        Math.max(0, kpi.totalPrecio - kpi.totalFact),
+        kpi.totalPagado,
+        kpi.saldoCobrar,
+      ],
+      backgroundColor: ['#3b82f6', '#f59e0b', '#f87171', '#22c55e', '#ef4444'],
       borderRadius: 6,
       borderSkipped: false,
     }],
@@ -300,7 +306,7 @@ export default function CasosNegocioPage() {
         </DataTable>
       </Card>
 
-      {/* ── KPIs + Gráficas ──────────────────────────────────────────────── */}
+      {/* ── KPIs financieros ─────────────────────────────────────────────── */}
       {haySeleccion && (
         <p className="text-xs text-color-secondary mb-2">
           <i className="pi pi-filter-fill mr-1 text-primary" />
@@ -308,62 +314,80 @@ export default function CasosNegocioPage() {
         </p>
       )}
 
-      <div className="grid">
-        {/* Columna izquierda: 3 KPI cards apiladas */}
-        <div className="col-12 lg:col-3 flex flex-column gap-3">
-
-          {/* KPI: Proyectos */}
-          <Card className="text-center flex-1">
-            <div className="text-color-secondary text-sm mb-2">
-              <i className="pi pi-briefcase mr-1" />Proyectos
-            </div>
-            <div className="text-4xl font-bold text-primary mb-1">{kpi.totalCaso}</div>
-            {haySeleccion && <div className="text-xs text-color-secondary">de {casos.length} totales</div>}
-            <div className="text-xs text-color-secondary mt-1">{kpi.totalHoras}h planificadas</div>
-          </Card>
-
-          {/* KPI: Margen */}
-          <Card className="flex-1">
-            <div className="text-color-secondary text-sm mb-2 text-center">
-              <i className="pi pi-percentage mr-1" />Margen
-            </div>
-            <div className={`text-3xl font-bold text-center mb-1 ${margenColor(kpi.gmPct)}`}>{kpi.gmPct}%</div>
-            <div className="text-xs text-color-secondary text-center mb-2">{formatCurrency(kpi.gm)} de ganancia</div>
-            <ProgressBar value={kpi.gmPct} showValue={false} style={{ height: '8px' }}
-              color={kpi.gmPct >= 40 ? 'var(--green-500)' : kpi.gmPct >= 20 ? 'var(--yellow-500)' : 'var(--red-500)'} />
-            <div className="flex justify-content-between text-xs text-color-secondary mt-1">
-              <span>Costo: {formatCurrency(kpi.totalCosto)}</span>
-              <span>Ingreso: {formatCurrency(kpi.totalPrecio)}</span>
-            </div>
-          </Card>
-
-          {/* KPI: Saldo por cobrar */}
-          <Card className="flex-1 text-center" style={{ border: kpi.saldoCobrar > 0 ? '1px solid var(--red-300)' : '1px solid var(--green-300)' }}>
-            <div className="text-color-secondary text-sm mb-2">
-              <i className={`pi ${kpi.saldoCobrar > 0 ? 'pi-exclamation-triangle text-red-500' : 'pi-check-circle text-green-500'} mr-1`} />
-              Saldo por Cobrar
-            </div>
-            <div className={`text-2xl font-bold mb-1 ${kpi.saldoCobrar > 0 ? 'text-red-600' : 'text-green-600'}`}>
-              {formatCurrency(kpi.saldoCobrar)}
-            </div>
-            <div className="text-xs text-color-secondary">
-              {formatCurrency(kpi.totalPagado)} cobrado de {formatCurrency(kpi.totalFact)}
-            </div>
-            {kpi.totalFact > 0 && (
-              <ProgressBar value={kpi.pctCobrado} showValue={false} style={{ height: '6px', marginTop: '8px' }}
-                color="var(--green-500)" />
-            )}
-            {kpi.totalFact > 0 && (
-              <div className="text-xs text-green-600 mt-1">{kpi.pctCobrado}% cobrado</div>
-            )}
+      {/* Fila 1: pipeline de 5 KPIs */}
+      <div className="grid mb-3">
+        {/* 1. Proyectos */}
+        <div className="col-12 sm:col-6 lg:col-2">
+          <Card className="text-center h-full">
+            <div className="text-color-secondary text-xs mb-1"><i className="pi pi-briefcase mr-1" />Proyectos</div>
+            <div className="text-3xl font-bold text-primary">{kpi.totalCaso}</div>
+            {haySeleccion && <div className="text-xs text-color-secondary mt-1">de {casos.length} totales</div>}
           </Card>
         </div>
 
-        {/* Columna derecha: 2 gráficas */}
-        <div className="col-12 lg:col-9 flex flex-column gap-3">
+        {/* 2. Ingreso Estimado */}
+        <div className="col-12 sm:col-6 lg:col-2">
+          <Card className="h-full" style={{ borderTop: '3px solid #3b82f6' }}>
+            <div className="text-color-secondary text-xs mb-1"><i className="pi pi-dollar mr-1" />Ingreso Estimado</div>
+            <div className="text-xl font-bold text-blue-600">{formatCurrency(kpi.totalPrecio)}</div>
+            <div className="text-xs text-color-secondary mt-1">valor total de proyectos</div>
+          </Card>
+        </div>
 
-          {/* Gráfica 1: Pipeline financiero */}
-          <Card className="flex-1">
+        {/* 3. Facturado */}
+        <div className="col-12 sm:col-6 lg:col-2">
+          <Card className="h-full" style={{ borderTop: '3px solid #f59e0b' }}>
+            <div className="text-color-secondary text-xs mb-1"><i className="pi pi-file mr-1" />Facturado</div>
+            <div className="text-xl font-bold text-orange-500">{formatCurrency(kpi.totalFact)}</div>
+            <div className="text-xs text-color-secondary mt-1">{kpi.pctFacturado}% del estimado</div>
+            <ProgressBar value={Math.min(kpi.pctFacturado, 100)} showValue={false} style={{ height: '4px', marginTop: '6px' }}
+              color="var(--orange-400)" />
+          </Card>
+        </div>
+
+        {/* 4. Por Facturar */}
+        <div className="col-12 sm:col-6 lg:col-2">
+          <Card className="h-full" style={{ borderTop: `3px solid ${kpi.totalPrecio - kpi.totalFact > 0 ? '#ef4444' : '#22c55e'}` }}>
+            <div className="text-color-secondary text-xs mb-1"><i className="pi pi-clock mr-1" />Por Facturar</div>
+            <div className={`text-xl font-bold ${kpi.totalPrecio - kpi.totalFact > 0 ? 'text-red-500' : 'text-green-600'}`}>
+              {formatCurrency(Math.max(0, kpi.totalPrecio - kpi.totalFact))}
+            </div>
+            <div className="text-xs text-color-secondary mt-1">
+              {kpi.totalPrecio > 0 ? Math.round(((kpi.totalPrecio - kpi.totalFact) / kpi.totalPrecio) * 100) : 0}% sin facturar
+            </div>
+          </Card>
+        </div>
+
+        {/* 5. Cobrado */}
+        <div className="col-12 sm:col-6 lg:col-2">
+          <Card className="h-full" style={{ borderTop: '3px solid #22c55e' }}>
+            <div className="text-color-secondary text-xs mb-1"><i className="pi pi-check-circle mr-1" />Cobrado</div>
+            <div className="text-xl font-bold text-green-600">{formatCurrency(kpi.totalPagado)}</div>
+            <div className="text-xs text-color-secondary mt-1">{kpi.pctCobrado}% de lo facturado</div>
+            <ProgressBar value={Math.min(kpi.pctCobrado, 100)} showValue={false} style={{ height: '4px', marginTop: '6px' }}
+              color="var(--green-500)" />
+          </Card>
+        </div>
+
+        {/* 6. Saldo por Cobrar */}
+        <div className="col-12 sm:col-6 lg:col-2">
+          <Card className="h-full" style={{ borderTop: `3px solid ${kpi.saldoCobrar > 0 ? '#ef4444' : '#22c55e'}` }}>
+            <div className="text-color-secondary text-xs mb-1">
+              <i className={`pi ${kpi.saldoCobrar > 0 ? 'pi-exclamation-triangle text-red-500' : 'pi-check-circle text-green-500'} mr-1`} />
+              Saldo por Cobrar
+            </div>
+            <div className={`text-xl font-bold ${kpi.saldoCobrar > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {formatCurrency(kpi.saldoCobrar)}
+            </div>
+            <div className="text-xs text-color-secondary mt-1">facturado no cobrado</div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Fila 2: gráfica de pipeline */}
+      <div className="grid">
+        <div className="col-12">
+          <Card>
             <h3 className="m-0 mb-3 font-semibold text-sm">
               <i className="pi pi-chart-bar mr-2 text-blue-500" />
               Pipeline Financiero
@@ -372,41 +396,7 @@ export default function CasosNegocioPage() {
             {kpi.totalPrecio === 0 && kpi.totalFact === 0 ? (
               <p className="text-color-secondary text-sm m-0 text-center p-4">Sin datos financieros para mostrar</p>
             ) : (
-              <Chart type="bar" data={pipelineData} options={pipelineOptions} style={{ maxHeight: '160px' }} />
-            )}
-          </Card>
-
-          {/* Gráfica 2: Estado de cobro (donut) */}
-          <Card className="flex-1">
-            <h3 className="m-0 mb-3 font-semibold text-sm">
-              <i className="pi pi-chart-pie mr-2 text-green-500" />
-              Estado de Cobro
-              {haySeleccion && <Tag value="Selección" severity="info" className="ml-2" style={{ fontSize: '0.7rem' }} />}
-            </h3>
-            {kpi.totalFact === 0 ? (
-              <p className="text-color-secondary text-sm m-0 text-center p-4">Sin facturas registradas</p>
-            ) : (
-              <div className="flex align-items-center gap-4">
-                <Chart type="doughnut" data={cobroData} options={cobroOptions} style={{ maxHeight: '200px', maxWidth: '200px' }} />
-                <div className="flex flex-column gap-3 flex-1">
-                  <div>
-                    <div className="text-xs text-color-secondary mb-1">Total Facturado</div>
-                    <div className="text-xl font-bold text-orange-500">{formatCurrency(kpi.totalFact)}</div>
-                    <div className="text-xs text-color-secondary">{kpi.pctFacturado}% del ingreso estimado</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-color-secondary mb-1">Total Cobrado</div>
-                    <div className="text-xl font-bold text-green-600">{formatCurrency(kpi.totalPagado)}</div>
-                    <div className="text-xs text-color-secondary">{kpi.pctCobrado}% de lo facturado</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-color-secondary mb-1">Por Cobrar</div>
-                    <div className={`text-xl font-bold ${kpi.saldoCobrar > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {formatCurrency(kpi.saldoCobrar)}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <Chart type="bar" data={pipelineData} options={pipelineOptions} style={{ maxHeight: '130px' }} />
             )}
           </Card>
         </div>
