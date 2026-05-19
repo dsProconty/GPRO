@@ -113,10 +113,11 @@ model Proyecto {
   fechaCierre    DateTime? @map("fecha_cierre") @db.Date
   estadoId       Int       @map("id_estado")
   projectOnline  String?   @map("project_online") @db.VarChar(500)
-  codigo         String?   @unique @db.VarChar(20)
-  aplicativo     String?   @db.VarChar(100)
-  ot             String?   @db.VarChar(50)
-  createdAt      DateTime  @default(now()) @map("created_at")
+  codigo              String?   @unique @db.VarChar(20)
+  aplicativo          String?   @db.VarChar(100)
+  ot                  String?   @db.VarChar(50)
+  estadoPropuesta     String?   @map("estado_propuesta") @db.VarChar(30)
+  createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   // Relaciones

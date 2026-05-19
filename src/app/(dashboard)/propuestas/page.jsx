@@ -21,6 +21,7 @@ import { formatCurrency, formatDate } from '@/utils/format'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 import { Dialog } from 'primereact/dialog'
 import { InputNumber } from 'primereact/inputnumber'
+import { useSession } from 'next-auth/react'
 
 import axios from 'axios'
 
@@ -30,6 +31,9 @@ export default function PropuestasPage() {
   const toast = useRef(null)
   const router = useRouter()
   const { puede } = usePermisos()
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === 'admin'
+  const [migrating, setMigrating] = useState(false)
 
   const [propuestas, setPropuestas] = useState([])
   const [proyectosLegacy, setProyectosLegacy] = useState([])
@@ -106,11 +110,12 @@ export default function PropuestasPage() {
   const openQuickEdit = (p) => {
     setQuickEditProyecto(p)
     setQuickEditForm({
-      detalle:        p.detalle || '',
-      valor:          Number(p.valor) || 0,
-      aplicativo:     p.aplicativo || '',
-      ot:             p.ot || '',
-      estadoPropuesta: MAPA_PROYECTO_A_PROPUESTA[p.estado?.nombre] || 'Haciendo',
+      detalle:         p.detalle || '',
+      valor:           Number(p.valor) || 0,
+      aplicativo:      p.aplicativo || '',
+      ot:              p.ot || '',
+      // Si ya tiene estadoPropuesta guardado usarlo; sino inferir del estado de proyecto
+      estadoPropuesta: p.estadoPropuesta || MAPA_PROYECTO_A_PROPUESTA[p.estado?.nombre] || 'Haciendo',
     })
     setQuickEditVisible(true)
   }
@@ -130,16 +135,17 @@ export default function PropuestasPage() {
     setQuickEditLoading(true)
     try {
       await proyectoService.update(quickEditProyecto.id, {
-        detalle:       quickEditForm.detalle,
-        empresaId:     quickEditProyecto.empresaId,
-        valor:         quickEditForm.valor,
-        fechaCreacion: quickEditProyecto.fechaCreacion?.split('T')[0] || quickEditProyecto.fechaCreacion,
-        fechaCierre:   quickEditProyecto.fechaCierre ? (quickEditProyecto.fechaCierre?.split('T')[0] || quickEditProyecto.fechaCierre) : null,
-        estadoId:      estadoTarget.id,
-        aplicativo:    quickEditForm.aplicativo,
-        ot:            quickEditForm.ot,
-        clienteIds:    quickEditProyecto.clientes?.map((c) => c.clienteId) || [],
-        responsableIds: quickEditProyecto.responsables?.map((r) => r.userId) || [],
+        detalle:          quickEditForm.detalle,
+        empresaId:        quickEditProyecto.empresaId,
+        valor:            quickEditForm.valor,
+        fechaCreacion:    quickEditProyecto.fechaCreacion?.split('T')[0] || quickEditProyecto.fechaCreacion,
+        fechaCierre:      quickEditProyecto.fechaCierre ? (quickEditProyecto.fechaCierre?.split('T')[0] || quickEditProyecto.fechaCierre) : null,
+        estadoId:         estadoTarget.id,
+        estadoPropuesta:  quickEditForm.estadoPropuesta,
+        aplicativo:       quickEditForm.aplicativo,
+        ot:               quickEditForm.ot,
+        clienteIds:       quickEditProyecto.clientes?.map((c) => c.clienteId) || [],
+        responsableIds:   quickEditProyecto.responsables?.map((r) => r.userId) || [],
       })
       const msg = quickEditForm.estadoPropuesta === 'Aprobada'
         ? 'Propuesta aprobada — pasó al módulo de Proyectos como Adjudicado'
@@ -345,11 +351,36 @@ export default function PropuestasPage() {
 
       {proyectosLegacy.length > 0 && (
         <div className="mt-5">
-          <div className="mb-3">
-            <h2 className="text-xl font-semibold m-0">Propuestas históricas</h2>
-            <p className="text-color-secondary text-sm mt-1 mb-0">
-              Registros migrados desde PowerApps · {proyectosLegacy.length} propuesta(s)
-            </p>
+          <div className="flex align-items-center justify-content-between mb-3">
+            <div>
+              <h2 className="text-xl font-semibold m-0">Propuestas históricas</h2>
+              <p className="text-color-secondary text-sm mt-1 mb-0">
+                Registros migrados desde PowerApps · {proyectosLegacy.length} propuesta(s)
+              </p>
+            </div>
+            {isAdmin && (
+              <Button
+                label="Activar estados de propuesta"
+                icon="pi pi-database"
+                severity="secondary"
+                outlined
+                size="small"
+                loading={migrating}
+                tooltip="Ejecutar una vez para habilitar estados granulares en registros históricos"
+                tooltipOptions={{ position: 'left' }}
+                onClick={async () => {
+                  setMigrating(true)
+                  try {
+                    const res = await axios.post('/api/v1/admin/migrate-estado-propuesta')
+                    toast.current.show({ severity: 'success', summary: 'Migración OK', detail: res.data.message, life: 4000 })
+                  } catch (err) {
+                    toast.current.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'Error en migración', life: 5000 })
+                  } finally {
+                    setMigrating(false)
+                  }
+                }}
+              />
+            )}
           </div>
           <DataTable
             value={proyectosLegacy}
@@ -367,12 +398,15 @@ export default function PropuestasPage() {
             <Column field="aplicativo" header="Aplicativo" body={(r) => r.aplicativo || '—'} sortable style={{ width: '120px' }} />
             <Column field="valor" header="Valor" sortable dataType="numeric" style={{ textAlign: 'right', width: '130px' }}
               body={(r) => r.valor ? formatCurrency(r.valor) : '—'} />
-            <Column field="estado.nombre" header="Estado" sortable style={{ width: '180px' }} body={(r) => (
-              <Tag
-                value={r.estado?.nombre === 'Elaboracion_Propuesta' ? 'Elab. Propuesta' : r.estado?.nombre}
-                severity={r.estado?.nombre === 'Rechazado' ? 'danger' : 'info'}
-              />
-            )} />
+            <Column field="estadoPropuesta" header="Estado" sortable style={{ width: '190px' }} body={(r) => {
+              // Preferir estadoPropuesta (granular) sobre estado del proyecto (genérico)
+              const key = r.estadoPropuesta || MAPA_PROYECTO_A_PROPUESTA[r.estado?.nombre] || 'Haciendo'
+              const cfg = propuestaConfig[key]
+              if (cfg) return <Tag value={cfg.label} severity={cfg.severity} />
+              // Fallback si no hay config cargada aún
+              return <Tag value={r.estado?.nombre === 'Elaboracion_Propuesta' ? 'Elab. Propuesta' : r.estado?.nombre}
+                severity={r.estado?.nombre === 'Rechazado' ? 'danger' : 'info'} />
+            }} />
             <Column field="fechaCreacion" header="Fecha" sortable style={{ width: '110px' }} body={(r) => formatDate(r.fechaCreacion)} />
             <Column header="Acciones" style={{ width: '100px' }} body={(r) => (
               <div className="flex gap-1">
