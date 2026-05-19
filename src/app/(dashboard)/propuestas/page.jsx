@@ -370,14 +370,27 @@ export default function PropuestasPage() {
                   setMigrating(true)
                   try {
                     const res = await axios.post('/api/v1/admin/migrar-propuestas-legacy')
-                    const { migrados, omitidos, errores } = res.data.data
-                    const severity = errores > 0 ? 'warn' : 'success'
+                    const { migrados: mig, omitidos: om, errores: err, detalle } = res.data.data
+                    // Mostrar resumen
                     toast.current.show({
-                      severity,
+                      severity: err > 0 ? 'warn' : 'success',
                       summary: 'Migración completada',
-                      detail: `✓ ${migrados} migradas · ${omitidos} omitidas · ${errores} errores`,
-                      life: 6000,
+                      detail: `✓ ${mig} migradas · ${om} omitidas · ${err} errores`,
+                      life: 5000,
                     })
+                    // Mostrar omitidos con su razón
+                    if (detalle.omitidos?.length > 0) {
+                      setTimeout(() => {
+                        detalle.omitidos.forEach((o) => {
+                          toast.current.show({
+                            severity: 'warn',
+                            summary: `Omitida: ${o.detalle}`,
+                            detail: `Razón: ${o.razon}`,
+                            life: 12000,
+                          })
+                        })
+                      }, 500)
+                    }
                     loadAll()
                   } catch (err) {
                     toast.current.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'Error en migración', life: 5000 })

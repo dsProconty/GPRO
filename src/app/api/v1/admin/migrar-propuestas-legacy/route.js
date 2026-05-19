@@ -47,17 +47,12 @@ export async function POST() {
   const errores   = []
 
   for (const p of proyectosLegacy) {
-    // Verificar que no existe ya una propuesta con ese proyectoId o mismo título+empresa
+    // Verificar que no existe ya una propuesta vinculada a este proyecto
     const yaExiste = await prisma.propuesta.findFirst({
-      where: {
-        OR: [
-          { proyectoId: p.id },
-          { titulo: p.detalle, empresaId: p.empresaId },
-        ],
-      },
+      where: { proyectoId: p.id },
     })
     if (yaExiste) {
-      omitidos.push({ id: p.id, detalle: p.detalle, razon: 'Ya migrado' })
+      omitidos.push({ id: p.id, detalle: p.detalle, razon: 'Ya migrado (propuesta existente vinculada)' })
       continue
     }
 
