@@ -353,7 +353,7 @@ export default function PropuestasPage() {
                 <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Edición rápida" tooltipOptions={{ position: 'top' }}
                   onClick={() => openQuickEdit(r)} />
                 <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }}
-                  onClick={() => { setDetalleProyecto(r); setDetalleVisible(true) }} />
+                  onClick={() => router.push('/proyectos/' + r.id)} />
               </div>
             )} />
           </DataTable>
@@ -470,7 +470,7 @@ export default function PropuestasPage() {
             </label>
             <Dropdown
               value={quickEditForm.estadoId}
-              options={estadosAll.filter((e) => ESTADOS_PROPUESTA_VALIDOS.includes(e.nombre))}
+              options={estadosAll}
               optionLabel="nombre"
               optionValue="id"
               onChange={(e) => setQuickEditForm({ ...quickEditForm, estadoId: e.value })}
