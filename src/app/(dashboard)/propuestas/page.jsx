@@ -19,6 +19,10 @@ import { usuarioService } from '@/services/usuarioService'
 import { configuracionService, buildPropuestaConfig } from '@/services/configuracionService'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
+import { Dialog } from 'primereact/dialog'
+import { InputNumber } from 'primereact/inputnumber'
+
+import axios from 'axios'
 
 const ESTADOS_LEGACY = ['Elaboracion_Propuesta', 'Rechazado']
 
@@ -38,23 +42,32 @@ export default function PropuestasPage() {
   const [dialogVisible, setDialogVisible] = useState(false)
   const [selected, setSelected] = useState(null)
 
+  // Quick-edit dialog para propuestas históricas
+  const [quickEditVisible, setQuickEditVisible] = useState(false)
+  const [quickEditProyecto, setQuickEditProyecto] = useState(null)
+  const [quickEditForm, setQuickEditForm] = useState({})
+  const [quickEditLoading, setQuickEditLoading] = useState(false)
+  const [estadosAll, setEstadosAll] = useState([])
+
   useEffect(() => { loadAll() }, [])
 
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [propRes, empRes, usrRes, cfgRes, proyRes] = await Promise.all([
+      const [propRes, empRes, usrRes, cfgRes, proyRes, estRes] = await Promise.all([
         propuestaService.getAll(),
         empresaService.getAll(),
         usuarioService.getAll(),
         configuracionService.getAll(),
         proyectoService.getAll(),
+        axios.get('/api/v1/estados'),
       ])
       setPropuestas(propRes.data)
       setEmpresas(empRes.data)
       setUsuarios(usrRes.data)
       setPropuestaConfig(buildPropuestaConfig(cfgRes.data.data.estadosPropuesta))
       setProyectosLegacy(proyRes.data.filter((p) => ESTADOS_LEGACY.includes(p.estado?.nombre)))
+      setEstadosAll(estRes.data.data || [])
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar las propuestas', life: 4000 })
     } finally {
@@ -66,6 +79,47 @@ export default function PropuestasPage() {
     { label: 'Todos', value: null },
     ...Object.values(propuestaConfig).map((cfg) => ({ label: cfg.label, value: cfg.key })),
   ], [propuestaConfig])
+
+  const openQuickEdit = (p) => {
+    setQuickEditProyecto(p)
+    setQuickEditForm({
+      detalle:   p.detalle || '',
+      valor:     Number(p.valor) || 0,
+      aplicativo: p.aplicativo || '',
+      ot:        p.ot || '',
+      estadoId:  p.estadoId || null,
+    })
+    setQuickEditVisible(true)
+  }
+
+  const handleQuickEditSave = async () => {
+    if (!quickEditForm.estadoId) {
+      toast.current.show({ severity: 'warn', summary: 'Atención', detail: 'Selecciona un estado', life: 3000 })
+      return
+    }
+    setQuickEditLoading(true)
+    try {
+      await proyectoService.update(quickEditProyecto.id, {
+        detalle:      quickEditForm.detalle,
+        empresaId:    quickEditProyecto.empresaId,
+        valor:        quickEditForm.valor,
+        fechaCreacion: quickEditProyecto.fechaCreacion?.split('T')[0] || quickEditProyecto.fechaCreacion,
+        fechaCierre:   quickEditProyecto.fechaCierre ? (quickEditProyecto.fechaCierre?.split('T')[0] || quickEditProyecto.fechaCierre) : null,
+        estadoId:     quickEditForm.estadoId,
+        aplicativo:   quickEditForm.aplicativo,
+        ot:           quickEditForm.ot,
+        clienteIds:   quickEditProyecto.clientes?.map((c) => c.clienteId) || [],
+        responsableIds: quickEditProyecto.responsables?.map((r) => r.userId) || [],
+      })
+      toast.current.show({ severity: 'success', summary: 'Guardado', detail: 'Propuesta actualizada', life: 3000 })
+      setQuickEditVisible(false)
+      loadAll()
+    } catch (err) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'Error al guardar', life: 4000 })
+    } finally {
+      setQuickEditLoading(false)
+    }
+  }
 
   const ESTADOS_TERMINALES = ['Aprobada', 'Rechazada']
 
@@ -235,9 +289,13 @@ export default function PropuestasPage() {
               />
             )} />
             <Column field="fechaCreacion" header="Fecha" sortable style={{ width: '110px' }} body={(r) => formatDate(r.fechaCreacion)} />
-            <Column header="" style={{ width: '60px' }} body={(r) => (
-              <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }}
-                onClick={() => router.push('/proyectos/' + r.id)} />
+            <Column header="Acciones" style={{ width: '100px' }} body={(r) => (
+              <div className="flex gap-1">
+                <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Edición rápida" tooltipOptions={{ position: 'top' }}
+                  onClick={() => openQuickEdit(r)} />
+                <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }}
+                  onClick={() => router.push('/proyectos/' + r.id)} />
+              </div>
             )} />
           </DataTable>
         </div>
@@ -251,6 +309,92 @@ export default function PropuestasPage() {
         empresas={empresas}
         usuarios={usuarios}
       />
+
+      {/* ── Quick-edit dialog para propuestas históricas ─────────────────── */}
+      <Dialog
+        visible={quickEditVisible}
+        onHide={() => setQuickEditVisible(false)}
+        header={
+          <div>
+            <div className="font-bold text-lg">{quickEditProyecto?.empresa?.nombre}</div>
+            <div className="text-sm text-color-secondary font-normal mt-1" style={{ maxWidth: '480px' }}>
+              {quickEditProyecto?.detalle}
+            </div>
+          </div>
+        }
+        style={{ width: '540px' }}
+        modal
+        footer={
+          <div className="flex justify-content-end gap-2">
+            <Button label="Cancelar" icon="pi pi-times" severity="secondary" outlined onClick={() => setQuickEditVisible(false)} disabled={quickEditLoading} />
+            <Button label="Guardar cambios" icon="pi pi-check" onClick={handleQuickEditSave} loading={quickEditLoading} />
+          </div>
+        }
+      >
+        <div className="flex flex-column gap-4 pt-2">
+
+          {/* Estado — campo principal */}
+          <div className="field mb-0">
+            <label className="font-semibold block mb-2">
+              Estado <span className="text-red-500">*</span>
+            </label>
+            <Dropdown
+              value={quickEditForm.estadoId}
+              options={estadosAll}
+              optionLabel="nombre"
+              optionValue="id"
+              onChange={(e) => setQuickEditForm({ ...quickEditForm, estadoId: e.value })}
+              placeholder="Seleccionar estado"
+              className="w-full"
+              filter
+            />
+          </div>
+
+          {/* Nombre del proyecto */}
+          <div className="field mb-0">
+            <label className="font-semibold block mb-2">Nombre del proyecto</label>
+            <InputText
+              value={quickEditForm.detalle || ''}
+              onChange={(e) => setQuickEditForm({ ...quickEditForm, detalle: e.target.value })}
+              className="w-full"
+            />
+          </div>
+
+          {/* Valor + Aplicativo en fila */}
+          <div className="grid">
+            <div className="col-6 field mb-0">
+              <label className="font-semibold block mb-2">Valor</label>
+              <InputNumber
+                value={quickEditForm.valor}
+                onValueChange={(e) => setQuickEditForm({ ...quickEditForm, valor: e.value || 0 })}
+                mode="currency" currency="USD" locale="es-EC"
+                className="w-full"
+              />
+            </div>
+            <div className="col-6 field mb-0">
+              <label className="font-semibold block mb-2">Aplicativo</label>
+              <InputText
+                value={quickEditForm.aplicativo || ''}
+                onChange={(e) => setQuickEditForm({ ...quickEditForm, aplicativo: e.target.value })}
+                className="w-full"
+                placeholder="ej: CRV, TIPS"
+              />
+            </div>
+          </div>
+
+          {/* OT */}
+          <div className="field mb-0">
+            <label className="font-semibold block mb-2">OT (Orden de Trabajo)</label>
+            <InputText
+              value={quickEditForm.ot || ''}
+              onChange={(e) => setQuickEditForm({ ...quickEditForm, ot: e.target.value })}
+              className="w-full"
+              placeholder="ej: 35689 (opcional)"
+            />
+          </div>
+
+        </div>
+      </Dialog>
     </div>
   )
 }
