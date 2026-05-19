@@ -436,6 +436,15 @@ export default function PropuestasPage() {
               />
             )} />
             <Column field="fechaCreacion" header="Fecha" sortable style={{ width: '110px' }} body={(r) => formatDate(r.fechaCreacion)} />
+            <Column header="" style={{ width: '60px' }} body={(r) => (
+              <Button
+                icon="pi pi-external-link"
+                rounded text severity="secondary"
+                tooltip="Ver detalle del proyecto"
+                tooltipOptions={{ position: 'top' }}
+                onClick={() => router.push('/proyectos/' + r.id)}
+              />
+            )} />
           </DataTable>
         </div>
       )}
