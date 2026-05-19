@@ -12,6 +12,7 @@ import { Button } from 'primereact/button'
 import { Tag } from 'primereact/tag'
 import { SelectButton } from 'primereact/selectbutton'
 import axios from 'axios'
+import { configuracionService, buildPropuestaConfig } from '@/services/configuracionService'
 
 const EMPTY = {
   titulo: '',
@@ -35,13 +36,14 @@ const LINEA_VACIA = { perfilId: null, horas: null, empleadoId: null, precioHora:
 const fmt = (v) =>
   new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v ?? 0)
 
-export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta, empresas = [], usuarios = [], propuestaConfig = {} }) {
+export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta, empresas = [], usuarios = [], propuestaConfig: propuestaConfigProp = {} }) {
   const isEdit = !!propuesta
 
   // ── Formulario principal ──────────────────────────────────────
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
+  const [propuestaConfig, setPropuestaConfig] = useState(propuestaConfigProp)
 
   // ── Caso de negocio ───────────────────────────────────────────
   const [casoLineas, setCasoLineas] = useState([])          // líneas actuales
@@ -52,9 +54,26 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
   const [lineaEditIdx, setLineaEditIdx] = useState(null)    // null = nuevo, número = editar
   const [cargandoTarifario, setCargandoTarifario] = useState(false)
 
+  // ── Sync prop cuando llega desde el padre ────────────────────
+  useEffect(() => {
+    if (Object.keys(propuestaConfigProp).length > 0) {
+      setPropuestaConfig(propuestaConfigProp)
+    }
+  }, [propuestaConfigProp])
+
   // ── Carga al abrir ────────────────────────────────────────────
   useEffect(() => {
     if (!visible) return
+
+    // Si no hay config aún, cargarla desde la API
+    if (Object.keys(propuestaConfig).length === 0) {
+      configuracionService.getAll()
+        .then((res) => {
+          const cfg = buildPropuestaConfig(res.data.data.estadosPropuesta)
+          if (Object.keys(cfg).length > 0) setPropuestaConfig(cfg)
+        })
+        .catch(() => {})
+    }
 
     // Resetear estado
     setErrors({})
@@ -396,7 +415,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
             <InputText value={form.titulo} onChange={set('titulo')} placeholder="Nombre de la propuesta" className={errors.titulo ? 'p-invalid' : ''} />
             {errors.titulo && <small className="text-red-500">{errors.titulo}</small>}
           </div>
-          {isEdit && Object.keys(propuestaConfig).length > 0 && (
+          {isEdit && (
             <div className="flex flex-column gap-1">
               <label className="text-sm font-medium">Estado</label>
               <Dropdown
