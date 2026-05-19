@@ -87,38 +87,64 @@ export default function PropuestasPage() {
     ...Object.values(propuestaConfig).map((cfg) => ({ label: cfg.label, value: cfg.key })),
   ], [propuestaConfig])
 
+  // Mapeo propuesta-estado (string) ↔ proyecto-estado (estadoId FK)
+  // Al abrir: proyecto.estado.nombre → clave propuesta
+  const MAPA_PROYECTO_A_PROPUESTA = {
+    Elaboracion_Propuesta: 'Haciendo',
+    Rechazado:             'Rechazada',
+    Adjudicado:            'Aprobada',
+  }
+  // Al guardar: clave propuesta → nombre de estado en tabla `estados`
+  const MAPA_PROPUESTA_A_PROYECTO = {
+    Factibilidad: 'Elaboracion_Propuesta',
+    Haciendo:     'Elaboracion_Propuesta',
+    Enviada:      'Elaboracion_Propuesta',
+    Aprobada:     'Adjudicado',
+    Rechazada:    'Rechazado',
+  }
+
   const openQuickEdit = (p) => {
     setQuickEditProyecto(p)
     setQuickEditForm({
-      detalle:   p.detalle || '',
-      valor:     Number(p.valor) || 0,
-      aplicativo: p.aplicativo || '',
-      ot:        p.ot || '',
-      estadoId:  p.estadoId || null,
+      detalle:        p.detalle || '',
+      valor:          Number(p.valor) || 0,
+      aplicativo:     p.aplicativo || '',
+      ot:             p.ot || '',
+      estadoPropuesta: MAPA_PROYECTO_A_PROPUESTA[p.estado?.nombre] || 'Haciendo',
     })
     setQuickEditVisible(true)
   }
 
   const handleQuickEditSave = async () => {
-    if (!quickEditForm.estadoId) {
+    if (!quickEditForm.estadoPropuesta) {
       toast.current.show({ severity: 'warn', summary: 'Atención', detail: 'Selecciona un estado', life: 3000 })
+      return
+    }
+    // Resolver estadoId buscando el nombre correspondiente en estadosAll
+    const nombreEstadoProyecto = MAPA_PROPUESTA_A_PROYECTO[quickEditForm.estadoPropuesta] || 'Elaboracion_Propuesta'
+    const estadoTarget = estadosAll.find((e) => e.nombre === nombreEstadoProyecto)
+    if (!estadoTarget) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: `Estado "${nombreEstadoProyecto}" no encontrado en el sistema`, life: 4000 })
       return
     }
     setQuickEditLoading(true)
     try {
       await proyectoService.update(quickEditProyecto.id, {
-        detalle:      quickEditForm.detalle,
-        empresaId:    quickEditProyecto.empresaId,
-        valor:        quickEditForm.valor,
+        detalle:       quickEditForm.detalle,
+        empresaId:     quickEditProyecto.empresaId,
+        valor:         quickEditForm.valor,
         fechaCreacion: quickEditProyecto.fechaCreacion?.split('T')[0] || quickEditProyecto.fechaCreacion,
         fechaCierre:   quickEditProyecto.fechaCierre ? (quickEditProyecto.fechaCierre?.split('T')[0] || quickEditProyecto.fechaCierre) : null,
-        estadoId:     quickEditForm.estadoId,
-        aplicativo:   quickEditForm.aplicativo,
-        ot:           quickEditForm.ot,
-        clienteIds:   quickEditProyecto.clientes?.map((c) => c.clienteId) || [],
+        estadoId:      estadoTarget.id,
+        aplicativo:    quickEditForm.aplicativo,
+        ot:            quickEditForm.ot,
+        clienteIds:    quickEditProyecto.clientes?.map((c) => c.clienteId) || [],
         responsableIds: quickEditProyecto.responsables?.map((r) => r.userId) || [],
       })
-      toast.current.show({ severity: 'success', summary: 'Guardado', detail: 'Propuesta actualizada', life: 3000 })
+      const msg = quickEditForm.estadoPropuesta === 'Aprobada'
+        ? 'Propuesta aprobada — pasó al módulo de Proyectos como Adjudicado'
+        : 'Propuesta actualizada'
+      toast.current.show({ severity: 'success', summary: 'Guardado', detail: msg, life: 4000 })
       setQuickEditVisible(false)
       loadAll()
     } catch (err) {
@@ -469,15 +495,26 @@ export default function PropuestasPage() {
               Estado <span className="text-red-500">*</span>
             </label>
             <Dropdown
-              value={quickEditForm.estadoId}
-              options={estadosAll}
-              optionLabel="nombre"
-              optionValue="id"
-              onChange={(e) => setQuickEditForm({ ...quickEditForm, estadoId: e.value })}
+              value={quickEditForm.estadoPropuesta}
+              options={Object.values(propuestaConfig).map((cfg) => ({ label: cfg.label, value: cfg.key }))}
+              optionLabel="label"
+              optionValue="value"
+              onChange={(e) => setQuickEditForm({ ...quickEditForm, estadoPropuesta: e.value })}
               placeholder="Seleccionar estado"
               className="w-full"
-              filter
+              itemTemplate={(opt) => {
+                const cfg = propuestaConfig[opt.value]
+                return cfg ? (
+                  <span className={`p-tag p-tag-${cfg.severity}`} style={{ fontSize: '0.8rem' }}>{cfg.label}</span>
+                ) : opt.label
+              }}
             />
+            {quickEditForm.estadoPropuesta === 'Aprobada' && (
+              <small className="text-orange-500 mt-1 block">
+                <i className="pi pi-exclamation-triangle mr-1" />
+                Al guardar, esta propuesta pasará al módulo de Proyectos como <strong>Adjudicado</strong> y desaparecerá de aquí.
+              </small>
+            )}
           </div>
 
           {/* Nombre del proyecto */}
