@@ -108,47 +108,54 @@ export default function CasosNegocioPage() {
     return { totalCaso, totalHoras, totalCosto, totalPrecio, gm, gmPct, totalFact, totalPagado, saldoCobrar, pctCobrado, pctFacturado }
   }, [fuente])
 
-  // Gráfica pipeline: Estimado → Facturado → Por Facturar → Cobrado → Saldo
-  const pipelineData = useMemo(() => ({
-    labels: ['Ingreso Estimado', 'Facturado', 'Por Facturar', 'Cobrado', 'Saldo por Cobrar'],
-    datasets: [{
-      data: [
-        kpi.totalPrecio,
-        kpi.totalFact,
-        Math.max(0, kpi.totalPrecio - kpi.totalFact),
-        kpi.totalPagado,
-        kpi.saldoCobrar,
-      ],
-      backgroundColor: ['#3b82f6', '#f59e0b', '#f87171', '#22c55e', '#ef4444'],
-      borderRadius: 6,
-      borderSkipped: false,
-    }],
+  // Barra apilada horizontal: composición del ingreso estimado
+  const stackedData = useMemo(() => ({
+    labels: [''],
+    datasets: [
+      {
+        label: 'Cobrado',
+        data: [kpi.totalPagado],
+        backgroundColor: '#22c55e',
+        borderRadius: 0,
+      },
+      {
+        label: 'Facturado (saldo)',
+        data: [kpi.saldoCobrar],
+        backgroundColor: '#f59e0b',
+        borderRadius: 0,
+      },
+      {
+        label: 'Por Facturar',
+        data: [Math.max(0, kpi.totalPrecio - kpi.totalFact)],
+        backgroundColor: '#e5e7eb',
+        borderRadius: 0,
+      },
+    ],
   }), [kpi])
 
-  const pipelineOptions = useMemo(() => ({
+  const stackedOptions = useMemo(() => ({
     indexAxis: 'y',
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      legend: { display: false },
-      tooltip: { callbacks: { label: (ctx) => ` ${formatCurrency(ctx.raw)}` } },
+      legend: { position: 'bottom', labels: { boxWidth: 14, font: { size: 12 } } },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
+        },
+      },
     },
     scales: {
-      x: { ticks: { callback: (v) => '$' + Number(v).toLocaleString('es-EC') }, grid: { display: false } },
-      y: { grid: { display: false } },
+      x: {
+        stacked: true,
+        ticks: { callback: (v) => '$' + Number(v).toLocaleString('es-EC'), font: { size: 11 } },
+        grid: { color: '#f3f4f6' },
+      },
+      y: { stacked: true, grid: { display: false }, ticks: { display: false } },
     },
   }), [])
 
-  // Gráfica donut: estado de cobro
-  const cobroData = useMemo(() => ({
-    labels: ['Cobrado', 'Por cobrar'],
-    datasets: [{
-      data: [kpi.totalPagado, Math.max(0, kpi.saldoCobrar)],
-      backgroundColor: ['#22c55e', '#ef4444'],
-      hoverBackgroundColor: ['#16a34a', '#dc2626'],
-      borderWidth: 2,
-    }],
-  }), [kpi])
-
+  // Unused options placeholder kept for reference
   const cobroOptions = useMemo(() => ({
     responsive: true,
     plugins: {
@@ -388,15 +395,22 @@ export default function CasosNegocioPage() {
       <div className="grid">
         <div className="col-12">
           <Card>
-            <h3 className="m-0 mb-3 font-semibold text-sm">
-              <i className="pi pi-chart-bar mr-2 text-blue-500" />
-              Pipeline Financiero
-              {haySeleccion && <Tag value="Selección" severity="info" className="ml-2" style={{ fontSize: '0.7rem' }} />}
-            </h3>
-            {kpi.totalPrecio === 0 && kpi.totalFact === 0 ? (
+            <div className="flex align-items-center justify-content-between mb-3">
+              <h3 className="m-0 font-semibold text-sm">
+                <i className="pi pi-chart-bar mr-2 text-blue-500" />
+                Composición del Ingreso Estimado
+                {haySeleccion && <Tag value="Selección" severity="info" className="ml-2" style={{ fontSize: '0.7rem' }} />}
+              </h3>
+              <span className="text-xs text-color-secondary">
+                Total: <strong>{formatCurrency(kpi.totalPrecio)}</strong>
+              </span>
+            </div>
+            {kpi.totalPrecio === 0 ? (
               <p className="text-color-secondary text-sm m-0 text-center p-4">Sin datos financieros para mostrar</p>
             ) : (
-              <Chart type="bar" data={pipelineData} options={pipelineOptions} style={{ maxHeight: '130px' }} />
+              <div style={{ height: '100px' }}>
+                <Chart type="bar" data={stackedData} options={stackedOptions} />
+              </div>
             )}
           </Card>
         </div>
