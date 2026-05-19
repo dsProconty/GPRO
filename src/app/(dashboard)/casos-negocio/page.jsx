@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
 import { Button } from 'primereact/button'
+import { InputText } from 'primereact/inputtext'
 import { Card } from 'primereact/card'
 import { Tag } from 'primereact/tag'
 import { Calendar } from 'primereact/calendar'
@@ -56,6 +57,8 @@ export default function CasosNegocioPage() {
   const [estadoFiltro,  setEstadoFiltro]  = useState(null)
   const [expandedRows,  setExpandedRows]  = useState(null)
   const [selectedRows,  setSelectedRows]  = useState([])
+  const [visibleRows,   setVisibleRows]   = useState([])
+  const [globalFilter,  setGlobalFilter]  = useState('')
 
   useEffect(() => { loadData() }, [fechaDesde, fechaHasta, empresaFiltro, estadoFiltro])
 
@@ -88,7 +91,7 @@ export default function CasosNegocioPage() {
     setEstadoFiltro(null)
   }
 
-  const fuente = selectedRows.length > 0 ? selectedRows : casos
+  const fuente = selectedRows.length > 0 ? selectedRows : (visibleRows.length > 0 ? visibleRows : casos)
 
   const kpi = useMemo(() => {
     const totalCaso   = fuente.length
@@ -236,9 +239,24 @@ export default function CasosNegocioPage() {
           )}
         </div>
 
+        {/* Buscador global */}
+        <div className="mb-3">
+          <span className="p-input-icon-left w-full">
+            <i className="pi pi-search" />
+            <InputText
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              placeholder="Buscar proyecto, empresa, aplicativo..."
+              className="w-full"
+            />
+          </span>
+        </div>
+
         <DataTable
           value={casos}
           loading={loading}
+          globalFilter={globalFilter}
+          onValueChange={(rows) => setVisibleRows(rows)}
           selection={selectedRows}
           onSelectionChange={(e) => setSelectedRows(e.value)}
           selectionMode="multiple"
@@ -250,31 +268,33 @@ export default function CasosNegocioPage() {
           stripedRows
           paginator
           rows={15}
+          rowsPerPageOptions={[15, 30, 50]}
+          filterDisplay="menu"
           rowClassName={(row) => selectedRows.some((r) => r.id === row.id) ? 'bg-blue-50' : ''}
         >
           <Column selectionMode="multiple" style={{ width: '3rem' }} />
           <Column expander style={{ width: '3rem' }} />
-          <Column header="Código" body={(r) => r.codigo || '—'} style={{ width: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
-          <Column header="Empresa" body={(r) => <span className="font-medium">{r.empresa?.nombre}</span>} style={{ minWidth: '130px' }} />
-          <Column header="Aplicativo" body={(r) => r.aplicativo || '—'} style={{ width: '110px' }} />
-          <Column header="Proyecto" body={(r) => (
+          <Column field="codigo" header="Código" body={(r) => r.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
+          <Column field="empresa.nombre" header="Empresa" body={(r) => <span className="font-medium">{r.empresa?.nombre}</span>} sortable filter filterPlaceholder="Buscar empresa..." style={{ minWidth: '130px' }} />
+          <Column field="aplicativo" header="Aplicativo" body={(r) => r.aplicativo || '—'} sortable filter filterPlaceholder="Buscar aplicativo..." style={{ width: '110px' }} />
+          <Column field="nombre" header="Proyecto" body={(r) => (
             <Button label={r.nombre} link className="p-0 text-left text-sm"
               onClick={() => router.push(`/proyectos/${r.id}`)} />
-          )} style={{ minWidth: '180px' }} />
-          <Column header="Estado" style={{ width: '140px' }} body={(r) => (
+          )} sortable filter filterPlaceholder="Buscar proyecto..." style={{ minWidth: '180px' }} />
+          <Column field="estado.nombre" header="Estado" style={{ width: '140px' }} sortable filter filterPlaceholder="Buscar estado..." body={(r) => (
             <Tag value={r.estado?.nombre?.replace('_', ' ')} severity={ESTADO_SEVERITY[r.estado?.nombre] || 'secondary'} />
           )} />
-          <Column header="Fecha"       body={(r) => formatDate(r.fecha)}                      style={{ width: '95px' }} />
-          <Column header="Horas"       body={(r) => `${r.resumen.totalHoras}h`}               style={{ width: '65px', textAlign: 'right' }} />
-          <Column header="Ingreso Est." body={(r) => formatCurrency(r.resumen.totalPrecio)}   style={{ width: '120px', textAlign: 'right' }} sortable />
-          <Column header="Facturado"   body={(r) => formatCurrency(r.financiero.facturado)}   style={{ width: '110px', textAlign: 'right' }} />
-          <Column header="Cobrado"     body={(r) => formatCurrency(r.financiero.pagado)}      style={{ width: '110px', textAlign: 'right' }} />
-          <Column header="Saldo" style={{ width: '110px', textAlign: 'right' }} body={(r) => (
+          <Column field="fecha" header="Fecha" body={(r) => formatDate(r.fecha)} sortable style={{ width: '95px' }} />
+          <Column field="resumen.totalHoras" header="Horas" body={(r) => `${r.resumen.totalHoras}h`} sortable dataType="numeric" style={{ width: '75px', textAlign: 'right' }} />
+          <Column field="resumen.totalPrecio" header="Ingreso Est." body={(r) => formatCurrency(r.resumen.totalPrecio)} sortable dataType="numeric" style={{ width: '120px', textAlign: 'right' }} />
+          <Column field="financiero.facturado" header="Facturado" body={(r) => formatCurrency(r.financiero.facturado)} sortable dataType="numeric" style={{ width: '110px', textAlign: 'right' }} />
+          <Column field="financiero.pagado" header="Cobrado" body={(r) => formatCurrency(r.financiero.pagado)} sortable dataType="numeric" style={{ width: '110px', textAlign: 'right' }} />
+          <Column field="financiero.saldo" header="Saldo" sortable dataType="numeric" style={{ width: '110px', textAlign: 'right' }} body={(r) => (
             <span className={r.financiero.saldo > 0 ? 'font-bold text-red-600' : 'text-green-600'}>
               {formatCurrency(r.financiero.saldo)}
             </span>
           )} />
-          <Column header="%" style={{ width: '70px', textAlign: 'right' }} body={(r) => (
+          <Column field="resumen.gmPct" header="%" sortable dataType="numeric" style={{ width: '70px', textAlign: 'right' }} body={(r) => (
             <span className={`font-bold ${margenColor(r.resumen.gmPct)}`}>{r.resumen.gmPct}%</span>
           )} />
         </DataTable>
