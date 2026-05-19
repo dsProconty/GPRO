@@ -173,16 +173,68 @@ export default function PropuestasPage() {
     return <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}><ProgressSpinner /></div>
   }
 
+  // KPI chips — conteo por estado (propuestas nuevas + históricas)
+  const CHIP_CONFIG = {
+    // Estados de propuestas nuevas (SP8)
+    Factibilidad: { label: 'Factibilidad', bg: '#fef9c3', color: '#ca8a04', border: '#fde047' },
+    Haciendo:     { label: 'Haciendo',     bg: '#dbeafe', color: '#2563eb', border: '#93c5fd' },
+    Enviada:      { label: 'Enviada',      bg: '#ede9fe', color: '#7c3aed', border: '#c4b5fd' },
+    Aprobada:     { label: 'Aprobada',     bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
+    Rechazada:    { label: 'Rechazada',    bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
+    // Estados legacy (PowerApps)
+    Elaboracion_Propuesta: { label: 'Elab. Propuesta', bg: '#dbeafe', color: '#2563eb', border: '#93c5fd' },
+    Rechazado:             { label: 'Rechazado',       bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
+  }
+
+  const kpiConteo = (() => {
+    const conteo = {}
+    propuestas.forEach((p) => {
+      const k = p.estado || 'Sin estado'
+      conteo[k] = (conteo[k] || 0) + 1
+    })
+    proyectosLegacy.forEach((p) => {
+      const k = p.estado?.nombre || 'Sin estado'
+      conteo[k] = (conteo[k] || 0) + 1
+    })
+    return Object.entries(conteo)
+      .map(([estado, count]) => ({ estado, count, cfg: CHIP_CONFIG[estado] || { label: estado, bg: '#f3f4f6', color: '#6b7280', border: '#d1d5db' } }))
+      .sort((a, b) => b.count - a.count)
+  })()
+
+  const totalPropuestas = propuestas.length + proyectosLegacy.length
+
   return (
     <div className="p-4">
       <Toast ref={toast} />
       <ConfirmDialog />
 
-      <div className="flex justify-content-between align-items-center mb-4">
-        <div>
-          <h1 className="text-2xl font-bold m-0">Propuestas</h1>
-          <p className="text-color-secondary text-sm mt-1 mb-0">{propuestasFiltradas.length} propuesta(s)</p>
+      <div className="flex align-items-center gap-3 mb-4 flex-wrap">
+        <h1 className="text-2xl font-bold m-0 mr-2">Propuestas</h1>
+
+        {/* KPI chips */}
+        <div className="flex align-items-center gap-2 flex-1 flex-wrap">
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: '5px',
+            padding: '0 12px', height: '36px', borderRadius: '18px',
+            background: '#f3f4f6', border: '1px solid #d1d5db',
+            fontSize: '0.8rem', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap',
+          }}>
+            <i className="pi pi-send" style={{ fontSize: '0.75rem' }} />
+            {totalPropuestas} total
+          </span>
+          {kpiConteo.map(({ estado, count, cfg }) => (
+            <span key={estado} style={{
+              display: 'inline-flex', alignItems: 'center', gap: '5px',
+              padding: '0 12px', height: '36px', borderRadius: '18px',
+              background: cfg.bg, border: `1px solid ${cfg.border}`,
+              fontSize: '0.8rem', fontWeight: 600, color: cfg.color, whiteSpace: 'nowrap',
+            }}>
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: cfg.color, flexShrink: 0 }} />
+              {count} {cfg.label}
+            </span>
+          ))}
         </div>
+
         {puede(PERMISOS.PROPUESTAS.CREAR) && (
           <Button label="Nueva Propuesta" icon="pi pi-plus" onClick={openCreate} />
         )}
