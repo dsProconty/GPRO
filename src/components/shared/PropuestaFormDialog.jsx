@@ -22,6 +22,7 @@ const EMPTY = {
   aplicativo: '',
   responsableIds: [],
   tipoPropuesta: 'PorHoras',
+  estado: 'Factibilidad',
 }
 
 const TIPO_OPTIONS = [
@@ -34,7 +35,7 @@ const LINEA_VACIA = { perfilId: null, horas: null, empleadoId: null, precioHora:
 const fmt = (v) =>
   new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v ?? 0)
 
-export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta, empresas = [], usuarios = [] }) {
+export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta, empresas = [], usuarios = [], propuestaConfig = {} }) {
   const isEdit = !!propuesta
 
   // ── Formulario principal ──────────────────────────────────────
@@ -71,6 +72,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
         aplicativo:     propuesta.aplicativo || '',
         responsableIds: propuesta.responsables?.map((r) => r.userId) || [],
         tipoPropuesta:  propuesta.tipoPropuesta || 'PorHoras',
+        estado:         propuesta.estado || 'Factibilidad',
       })
       // Cargar líneas existentes
       axios.get(`/api/v1/propuestas/${propuesta.id}/caso-negocio`)
@@ -299,6 +301,10 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
       if (isEdit) {
         await axios.put(`/api/v1/propuestas/${propuesta.id}`, payload)
         propuestaId = propuesta.id
+        // Si el estado cambió, usar el endpoint PATCH (valida transiciones)
+        if (form.estado && form.estado !== propuesta.estado) {
+          await axios.patch(`/api/v1/propuestas/${propuesta.id}`, { estadoNuevo: form.estado })
+        }
         // Eliminar líneas que el usuario borró
         for (const perfilId of lineasEliminadas) {
           await axios.delete(`/api/v1/propuestas/${propuestaId}/caso-negocio?perfilId=${perfilId}`)
@@ -383,11 +389,35 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
           )}
         </div>
 
-        {/* Título */}
-        <div className="flex flex-column gap-1">
-          <label className="text-sm font-medium">Título <span className="text-red-500">*</span></label>
-          <InputText value={form.titulo} onChange={set('titulo')} placeholder="Nombre de la propuesta" className={errors.titulo ? 'p-invalid' : ''} />
-          {errors.titulo && <small className="text-red-500">{errors.titulo}</small>}
+        {/* Título + Estado en edición */}
+        <div style={{ display: 'grid', gridTemplateColumns: isEdit ? '1fr auto' : '1fr', gap: '12px', alignItems: 'end' }}>
+          <div className="flex flex-column gap-1">
+            <label className="text-sm font-medium">Título <span className="text-red-500">*</span></label>
+            <InputText value={form.titulo} onChange={set('titulo')} placeholder="Nombre de la propuesta" className={errors.titulo ? 'p-invalid' : ''} />
+            {errors.titulo && <small className="text-red-500">{errors.titulo}</small>}
+          </div>
+          {isEdit && Object.keys(propuestaConfig).length > 0 && (
+            <div className="flex flex-column gap-1">
+              <label className="text-sm font-medium">Estado</label>
+              <Dropdown
+                value={form.estado}
+                options={Object.values(propuestaConfig).map((cfg) => ({ label: cfg.label, value: cfg.key }))}
+                optionLabel="label"
+                optionValue="value"
+                onChange={(e) => setForm((p) => ({ ...p, estado: e.value }))}
+                style={{ minWidth: '180px' }}
+                itemTemplate={(opt) => {
+                  const cfg = propuestaConfig[opt.value]
+                  return cfg ? <Tag value={cfg.label} severity={cfg.severity} /> : opt.label
+                }}
+                valueTemplate={(opt) => {
+                  if (!opt) return null
+                  const cfg = propuestaConfig[opt.value]
+                  return cfg ? <Tag value={cfg.label} severity={cfg.severity} /> : opt.label
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Empresa */}

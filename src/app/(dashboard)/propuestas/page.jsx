@@ -456,6 +456,7 @@ export default function PropuestasPage() {
         propuesta={selected}
         empresas={empresas}
         usuarios={usuarios}
+        propuestaConfig={propuestaConfig}
       />
 
       {/* ── Detalle (solo lectura) para propuestas históricas ───────────── */}
