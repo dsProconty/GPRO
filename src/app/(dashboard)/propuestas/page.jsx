@@ -54,7 +54,7 @@ export default function PropuestasPage() {
   const [detalleProyecto, setDetalleProyecto] = useState(null)
 
   // Estados válidos para propuestas históricas
-  const ESTADOS_PROPUESTA_VALIDOS = ['Elaboracion_Propuesta', 'Rechazado', 'Adjudicado']
+  const ESTADOS_PROPUESTA_VALIDOS = ['Prefactibilidad', 'Elaboracion_Propuesta', 'Adjudicado', 'Rechazado', 'Cerrado']
 
   useEffect(() => { loadAll() }, [])
 
