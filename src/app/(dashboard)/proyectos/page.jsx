@@ -54,6 +54,7 @@ export default function ProyectosPage() {
   const [fechaRango, setFechaRango] = useState(null)
   const [dialogVisible, setDialogVisible] = useState(false)
   const [selectedProyecto, setSelectedProyecto] = useState(null)
+  const [visibleRows, setVisibleRows] = useState([])
 
   useEffect(() => {
     loadAll()
@@ -208,8 +209,9 @@ export default function ProyectosPage() {
   }, [proyectos, estadoFiltro, responsableFiltro, fechaRango, globalFilter])
 
   const kpiEstados = useMemo(() => {
+    const fuente = visibleRows.length > 0 ? visibleRows : proyectosFiltrados
     const conteo = {}
-    proyectosFiltrados.forEach((p) => {
+    fuente.forEach((p) => {
       const nombre = p.estado?.nombre
       if (!nombre) return
       conteo[nombre] = (conteo[nombre] || 0) + 1
@@ -217,7 +219,9 @@ export default function ProyectosPage() {
     return Object.entries(conteo)
       .map(([nombre, count]) => ({ nombre, count, cfg: ESTADO_CONFIG[nombre] || { severity: 'secondary', label: nombre } }))
       .sort((a, b) => b.count - a.count)
-  }, [proyectosFiltrados])
+  }, [visibleRows, proyectosFiltrados])
+
+  const kpiTotal = visibleRows.length > 0 ? visibleRows.length : proyectosFiltrados.length
 
   const SEVERITY_STYLE = {
     success:   { bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
@@ -283,7 +287,7 @@ export default function ProyectosPage() {
             whiteSpace: 'nowrap',
           }}>
             <i className="pi pi-briefcase" style={{ fontSize: '0.75rem' }} />
-            {proyectosFiltrados.length} total
+            {kpiTotal} total
           </span>
 
           {/* Por estado */}
@@ -356,6 +360,7 @@ export default function ProyectosPage() {
       <DataTable
         value={proyectosFiltrados}
         globalFilter={globalFilter}
+        onValueChange={(rows) => setVisibleRows(rows)}
         loading={loading}
         paginator
         rows={10}
