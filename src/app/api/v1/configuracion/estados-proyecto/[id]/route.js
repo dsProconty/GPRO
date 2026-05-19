@@ -38,14 +38,35 @@ export async function DELETE(request, { params }) {
   const id = parseInt(params.id)
   if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
 
+  // Verificar proyectos activos con este estado
   const usados = await prisma.proyecto.count({ where: { estadoId: id } })
   if (usados > 0) {
     return NextResponse.json({
       success: false,
-      message: `No se puede eliminar: ${usados} proyecto(s) usan este estado. Cambia su estado primero.`,
+      message: `No se puede eliminar: ${usados} proyecto(s) usan este estado. Cámbialos primero.`,
     }, { status: 422 })
   }
 
-  await prisma.estado.delete({ where: { id } })
-  return NextResponse.json({ success: true, data: null, message: 'Estado eliminado' })
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Limpiar referencias en historial de estados (SetNull en estadoAnterior, bloquear si es estadoNuevo)
+      const logsComoNuevo = await tx.proyectoEstadoLog.count({ where: { estadoNuevoId: id } })
+      if (logsComoNuevo > 0) {
+        // Estos logs quedarían sin estado destino — los eliminamos (son trazabilidad histórica)
+        await tx.proyectoEstadoLog.deleteMany({ where: { estadoNuevoId: id } })
+      }
+      // estadoAnteriorId es nullable — poner null
+      await tx.proyectoEstadoLog.updateMany({
+        where: { estadoAnteriorId: id },
+        data: { estadoAnteriorId: null },
+      })
+      await tx.estado.delete({ where: { id } })
+    })
+    return NextResponse.json({ success: true, data: null, message: 'Estado eliminado' })
+  } catch (error) {
+    return NextResponse.json({
+      success: false,
+      message: 'Error al eliminar el estado: ' + (error.message || 'Error desconocido'),
+    }, { status: 500 })
+  }
 }
