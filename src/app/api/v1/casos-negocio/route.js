@@ -77,7 +77,9 @@ export async function GET(request) {
     }))
 
     const totalCosto  = lineas.reduce((s, l) => s + l.costo, 0)
-    const totalPrecio = lineas.reduce((s, l) => s + l.precio, 0)
+    const totalPrecioLineas = lineas.reduce((s, l) => s + l.precio, 0)
+    // Si no hay líneas de caso de negocio, usar el valor del proyecto como ingreso estimado
+    const totalPrecio = totalPrecioLineas > 0 ? totalPrecioLineas : Number(p.valor) || 0
     const gm          = totalPrecio - totalCosto
     const gmPct       = totalPrecio > 0 ? Math.round((gm / totalPrecio) * 100) : 0
 
