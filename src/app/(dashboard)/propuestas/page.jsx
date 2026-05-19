@@ -355,24 +355,30 @@ export default function PropuestasPage() {
             <div>
               <h2 className="text-xl font-semibold m-0">Propuestas históricas</h2>
               <p className="text-color-secondary text-sm mt-1 mb-0">
-                Registros migrados desde PowerApps · {proyectosLegacy.length} propuesta(s)
+                {proyectosLegacy.length} registro(s) de PowerApps pendientes de migrar a propuestas
               </p>
             </div>
             {isAdmin && (
               <Button
-                label="Activar estados de propuesta"
-                icon="pi pi-database"
-                severity="secondary"
-                outlined
-                size="small"
+                label={`Migrar ${proyectosLegacy.length} propuestas al módulo`}
+                icon="pi pi-sync"
+                severity="warning"
                 loading={migrating}
-                tooltip="Ejecutar una vez para habilitar estados granulares en registros históricos"
+                tooltip="Mueve estos registros de la tabla de Proyectos a Propuestas (ejecutar una vez)"
                 tooltipOptions={{ position: 'left' }}
                 onClick={async () => {
                   setMigrating(true)
                   try {
-                    const res = await axios.post('/api/v1/admin/migrate-estado-propuesta')
-                    toast.current.show({ severity: 'success', summary: 'Migración OK', detail: res.data.message, life: 4000 })
+                    const res = await axios.post('/api/v1/admin/migrar-propuestas-legacy')
+                    const { migrados, omitidos, errores } = res.data.data
+                    const severity = errores > 0 ? 'warn' : 'success'
+                    toast.current.show({
+                      severity,
+                      summary: 'Migración completada',
+                      detail: `✓ ${migrados} migradas · ${omitidos} omitidas · ${errores} errores`,
+                      life: 6000,
+                    })
+                    loadAll()
                   } catch (err) {
                     toast.current.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'Error en migración', life: 5000 })
                   } finally {
@@ -382,6 +388,19 @@ export default function PropuestasPage() {
               />
             )}
           </div>
+
+          {/* Aviso explicativo */}
+          <div className="p-3 border-round mb-3" style={{ background: '#fefce8', border: '1px solid #fde047' }}>
+            <div className="flex align-items-start gap-2">
+              <i className="pi pi-info-circle text-yellow-600 mt-1" />
+              <div className="text-sm text-yellow-800">
+                <strong>¿Por qué están aquí?</strong> Estos registros fueron importados desde PowerApps directamente como "proyectos"
+                porque la tabla de propuestas aún no existía. El botón de arriba los mueve al lugar correcto:
+                aparecerán en la tabla principal de propuestas con todos sus datos y podrás gestionarlos normalmente.
+              </div>
+            </div>
+          </div>
+
           <DataTable
             value={proyectosLegacy}
             paginator rows={15} rowsPerPageOptions={[15, 50, 100]}
@@ -390,32 +409,20 @@ export default function PropuestasPage() {
             filterDisplay="menu"
           >
             <Column field="codigo" header="Código" body={(r) => r.codigo || '—'} sortable style={{ width: '130px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
-            <Column field="detalle" header="Proyecto" sortable body={(r) => (
-              <Button label={r.detalle} link className="p-0 text-left" style={{ fontWeight: 500 }}
-                onClick={() => router.push('/proyectos/' + r.id)} />
+            <Column field="detalle" header="Propuesta" sortable body={(r) => (
+              <span className="font-medium">{r.detalle}</span>
             )} style={{ minWidth: '200px' }} />
             <Column field="empresa.nombre" header="Empresa" body={(r) => r.empresa?.nombre} sortable />
             <Column field="aplicativo" header="Aplicativo" body={(r) => r.aplicativo || '—'} sortable style={{ width: '120px' }} />
             <Column field="valor" header="Valor" sortable dataType="numeric" style={{ textAlign: 'right', width: '130px' }}
               body={(r) => r.valor ? formatCurrency(r.valor) : '—'} />
-            <Column field="estadoPropuesta" header="Estado" sortable style={{ width: '190px' }} body={(r) => {
-              // Preferir estadoPropuesta (granular) sobre estado del proyecto (genérico)
-              const key = r.estadoPropuesta || MAPA_PROYECTO_A_PROPUESTA[r.estado?.nombre] || 'Haciendo'
-              const cfg = propuestaConfig[key]
-              if (cfg) return <Tag value={cfg.label} severity={cfg.severity} />
-              // Fallback si no hay config cargada aún
-              return <Tag value={r.estado?.nombre === 'Elaboracion_Propuesta' ? 'Elab. Propuesta' : r.estado?.nombre}
-                severity={r.estado?.nombre === 'Rechazado' ? 'danger' : 'info'} />
-            }} />
-            <Column field="fechaCreacion" header="Fecha" sortable style={{ width: '110px' }} body={(r) => formatDate(r.fechaCreacion)} />
-            <Column header="Acciones" style={{ width: '100px' }} body={(r) => (
-              <div className="flex gap-1">
-                <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Edición rápida" tooltipOptions={{ position: 'top' }}
-                  onClick={() => openQuickEdit(r)} />
-                <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }}
-                  onClick={() => router.push('/proyectos/' + r.id)} />
-              </div>
+            <Column header="Estado actual" style={{ width: '190px' }} body={(r) => (
+              <Tag
+                value={r.estado?.nombre === 'Elaboracion_Propuesta' ? 'Elab. Propuesta' : r.estado?.nombre}
+                severity={r.estado?.nombre === 'Rechazado' ? 'danger' : 'info'}
+              />
             )} />
+            <Column field="fechaCreacion" header="Fecha" sortable style={{ width: '110px' }} body={(r) => formatDate(r.fechaCreacion)} />
           </DataTable>
         </div>
       )}
