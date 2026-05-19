@@ -195,6 +195,26 @@ export default function ProyectosPage() {
     return lista
   }, [proyectos, estadoFiltro, responsableFiltro, fechaRango, globalFilter])
 
+  const kpiEstados = useMemo(() => {
+    const conteo = {}
+    proyectosFiltrados.forEach((p) => {
+      const nombre = p.estado?.nombre
+      if (!nombre) return
+      conteo[nombre] = (conteo[nombre] || 0) + 1
+    })
+    return Object.entries(conteo)
+      .map(([nombre, count]) => ({ nombre, count, cfg: ESTADO_CONFIG[nombre] || { severity: 'secondary', label: nombre } }))
+      .sort((a, b) => b.count - a.count)
+  }, [proyectosFiltrados])
+
+  const SEVERITY_STYLE = {
+    success:   { bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
+    info:      { bg: '#dbeafe', color: '#2563eb', border: '#93c5fd' },
+    warning:   { bg: '#fef9c3', color: '#ca8a04', border: '#fde047' },
+    danger:    { bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
+    secondary: { bg: '#f3f4f6', color: '#6b7280', border: '#d1d5db' },
+  }
+
   const exportarExcel = () => {
     const filas = proyectosFiltrados.map((p) => ({
       'ID': p.id,
@@ -237,12 +257,45 @@ export default function ProyectosPage() {
       <Toast ref={toast} />
       <ConfirmDialog />
 
-      <div className="flex justify-content-between align-items-center mb-4">
-        <div>
-          <h1 className="text-2xl font-bold m-0">Proyectos</h1>
-          <p className="text-color-secondary text-sm mt-1 mb-0">{proyectosFiltrados.length} proyecto(s) encontrado(s)</p>
+      <div className="flex align-items-center gap-3 mb-4 flex-wrap">
+        <h1 className="text-2xl font-bold m-0 mr-2">Proyectos</h1>
+
+        {/* KPI chips — misma altura que los botones */}
+        <div className="flex align-items-center gap-2 flex-1 flex-wrap">
+          {/* Total */}
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: '5px',
+            padding: '0 12px', height: '36px', borderRadius: '18px',
+            background: '#f3f4f6', border: '1px solid #d1d5db',
+            fontSize: '0.8rem', fontWeight: 600, color: '#374151',
+            whiteSpace: 'nowrap',
+          }}>
+            <i className="pi pi-briefcase" style={{ fontSize: '0.75rem' }} />
+            {proyectosFiltrados.length} total
+          </span>
+
+          {/* Por estado */}
+          {kpiEstados.map(({ nombre, count, cfg }) => {
+            const s = SEVERITY_STYLE[cfg.severity] || SEVERITY_STYLE.secondary
+            return (
+              <span key={nombre} style={{
+                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                padding: '0 12px', height: '36px', borderRadius: '18px',
+                background: s.bg, border: `1px solid ${s.border}`,
+                fontSize: '0.8rem', fontWeight: 600, color: s.color,
+                whiteSpace: 'nowrap',
+              }}>
+                <span style={{
+                  width: '7px', height: '7px', borderRadius: '50%',
+                  background: s.color, display: 'inline-block', flexShrink: 0,
+                }} />
+                {count} {cfg.label}
+              </span>
+            )
+          })}
         </div>
-        <div className="flex gap-2">
+
+        <div className="flex gap-2" style={{ flexShrink: 0 }}>
           <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined onClick={exportarExcel} disabled={proyectosFiltrados.length === 0} />
           {puede(PERMISOS.PROYECTOS.CREAR) && (
             <Button label="Nuevo Proyecto" icon="pi pi-plus" onClick={openCreate} />
