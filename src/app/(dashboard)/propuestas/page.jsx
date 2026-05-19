@@ -163,14 +163,8 @@ export default function PropuestasPage() {
   const ESTADOS_TERMINALES = ['Aprobada', 'Rechazada']
 
   const propuestasFiltradas = useMemo(() => {
-    let lista = propuestas
-    if (estadoFiltro) {
-      lista = lista.filter((p) => p.estado === estadoFiltro)
-    } else {
-      // Por defecto ocultar propuestas en estado terminal (Aprobada/Rechazada)
-      lista = lista.filter((p) => !ESTADOS_TERMINALES.includes(p.estado))
-    }
-    return lista
+    if (estadoFiltro) return propuestas.filter((p) => p.estado === estadoFiltro)
+    return propuestas
   }, [propuestas, estadoFiltro])
 
   const openCreate = () => { setSelected(null); setDialogVisible(true) }
@@ -212,19 +206,16 @@ export default function PropuestasPage() {
     return <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}><ProgressSpinner /></div>
   }
 
-  // KPI chips — conteo por estado (propuestas nuevas + históricas)
-  const CHIP_CONFIG = {
-    // Estados de propuestas nuevas (SP8)
-    Factibilidad: { label: 'Factibilidad', bg: '#fef9c3', color: '#ca8a04', border: '#fde047' },
-    Haciendo:     { label: 'Haciendo',     bg: '#dbeafe', color: '#2563eb', border: '#93c5fd' },
-    Enviada:      { label: 'Enviada',      bg: '#ede9fe', color: '#7c3aed', border: '#c4b5fd' },
-    Aprobada:     { label: 'Aprobada',     bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
-    Rechazada:    { label: 'Rechazada',    bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
-    // Estados legacy (PowerApps)
-    Elaboracion_Propuesta: { label: 'Elab. Propuesta', bg: '#dbeafe', color: '#2563eb', border: '#93c5fd' },
-    Rechazado:             { label: 'Rechazado',       bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
+  // Colores de severidad de PrimeReact → estilo inline para chips
+  const SEVERITY_CHIP = {
+    warning:   { bg: '#fef9c3', color: '#ca8a04', border: '#fde047' },
+    info:      { bg: '#dbeafe', color: '#2563eb', border: '#93c5fd' },
+    secondary: { bg: '#ede9fe', color: '#7c3aed', border: '#c4b5fd' },
+    success:   { bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
+    danger:    { bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
   }
 
+  // KPI chips — usa labels de propuestaConfig para mostrar nombres visibles correctos
   const kpiConteo = (() => {
     const conteo = {}
     propuestas.forEach((p) => {
@@ -236,7 +227,11 @@ export default function PropuestasPage() {
       conteo[k] = (conteo[k] || 0) + 1
     })
     return Object.entries(conteo)
-      .map(([estado, count]) => ({ estado, count, cfg: CHIP_CONFIG[estado] || { label: estado, bg: '#f3f4f6', color: '#6b7280', border: '#d1d5db' } }))
+      .map(([estado, count]) => {
+        const cfg = propuestaConfig[estado]
+        const colors = cfg ? (SEVERITY_CHIP[cfg.severity] || SEVERITY_CHIP.info) : { bg: '#f3f4f6', color: '#6b7280', border: '#d1d5db' }
+        return { estado, count, label: cfg?.label || estado, colors }
+      })
       .sort((a, b) => b.count - a.count)
   })()
 
@@ -261,15 +256,15 @@ export default function PropuestasPage() {
             <i className="pi pi-send" style={{ fontSize: '0.75rem' }} />
             {totalPropuestas} total
           </span>
-          {kpiConteo.map(({ estado, count, cfg }) => (
+          {kpiConteo.map(({ estado, count, label, colors }) => (
             <span key={estado} style={{
               display: 'inline-flex', alignItems: 'center', gap: '5px',
               padding: '0 12px', height: '36px', borderRadius: '18px',
-              background: cfg.bg, border: `1px solid ${cfg.border}`,
-              fontSize: '0.8rem', fontWeight: 600, color: cfg.color, whiteSpace: 'nowrap',
+              background: colors.bg, border: `1px solid ${colors.border}`,
+              fontSize: '0.8rem', fontWeight: 600, color: colors.color, whiteSpace: 'nowrap',
             }}>
-              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: cfg.color, flexShrink: 0 }} />
-              {count} {cfg.label}
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: colors.color, flexShrink: 0 }} />
+              {count} {label}
             </span>
           ))}
         </div>
