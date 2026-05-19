@@ -192,6 +192,18 @@ export default function ProyectosPage() {
       const hasta = new Date(fechaRango[1]); hasta.setHours(23, 59, 59, 999)
       lista = lista.filter((p) => new Date(p.fechaCreacion) <= hasta)
     }
+    if (globalFilter) {
+      const term = globalFilter.toLowerCase()
+      lista = lista.filter((p) =>
+        p.detalle?.toLowerCase().includes(term) ||
+        p.empresa?.nombre?.toLowerCase().includes(term) ||
+        p.aplicativo?.toLowerCase().includes(term) ||
+        p.ot?.toLowerCase().includes(term) ||
+        p.codigo?.toLowerCase().includes(term) ||
+        p.estado?.nombre?.toLowerCase().includes(term) ||
+        p.responsables?.some((r) => r.user?.name?.toLowerCase().includes(term))
+      )
+    }
     return lista
   }, [proyectos, estadoFiltro, responsableFiltro, fechaRango, globalFilter])
 
