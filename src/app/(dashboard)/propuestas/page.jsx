@@ -49,6 +49,13 @@ export default function PropuestasPage() {
   const [quickEditLoading, setQuickEditLoading] = useState(false)
   const [estadosAll, setEstadosAll] = useState([])
 
+  // Dialog de detalle (solo lectura)
+  const [detalleVisible, setDetalleVisible] = useState(false)
+  const [detalleProyecto, setDetalleProyecto] = useState(null)
+
+  // Estados válidos para propuestas históricas
+  const ESTADOS_PROPUESTA_VALIDOS = ['Elaboracion_Propuesta', 'Rechazado', 'Adjudicado']
+
   useEffect(() => { loadAll() }, [])
 
   const loadAll = async () => {
@@ -346,7 +353,7 @@ export default function PropuestasPage() {
                 <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Edición rápida" tooltipOptions={{ position: 'top' }}
                   onClick={() => openQuickEdit(r)} />
                 <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }}
-                  onClick={() => router.push('/proyectos/' + r.id)} />
+                  onClick={() => { setDetalleProyecto(r); setDetalleVisible(true) }} />
               </div>
             )} />
           </DataTable>
@@ -361,6 +368,77 @@ export default function PropuestasPage() {
         empresas={empresas}
         usuarios={usuarios}
       />
+
+      {/* ── Detalle (solo lectura) para propuestas históricas ───────────── */}
+      <Dialog
+        visible={detalleVisible}
+        onHide={() => setDetalleVisible(false)}
+        header={
+          <div>
+            <div className="font-bold text-lg">{detalleProyecto?.detalle}</div>
+            <div className="text-sm text-color-secondary font-normal mt-1">{detalleProyecto?.empresa?.nombre}</div>
+          </div>
+        }
+        style={{ width: '560px' }}
+        modal
+        footer={
+          <div className="flex justify-content-between align-items-center">
+            <Button label="Ir al proyecto" icon="pi pi-external-link" severity="secondary" text
+              onClick={() => router.push('/proyectos/' + detalleProyecto?.id)} />
+            <Button label="Cerrar" icon="pi pi-times" onClick={() => setDetalleVisible(false)} />
+          </div>
+        }
+      >
+        {detalleProyecto && (
+          <div className="flex flex-column gap-3 pt-2">
+            <div className="grid">
+              <div className="col-6">
+                <div className="text-xs text-color-secondary font-semibold uppercase mb-1">Código</div>
+                <div style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{detalleProyecto.codigo || '—'}</div>
+              </div>
+              <div className="col-6">
+                <div className="text-xs text-color-secondary font-semibold uppercase mb-1">Estado</div>
+                <Tag
+                  value={detalleProyecto.estado?.nombre === 'Elaboracion_Propuesta' ? 'Elab. Propuesta' : detalleProyecto.estado?.nombre}
+                  severity={detalleProyecto.estado?.nombre === 'Rechazado' ? 'danger' : 'info'}
+                />
+              </div>
+            </div>
+            <div className="grid">
+              <div className="col-6">
+                <div className="text-xs text-color-secondary font-semibold uppercase mb-1">Valor estimado</div>
+                <div className="font-semibold">{detalleProyecto.valor ? formatCurrency(detalleProyecto.valor) : '—'}</div>
+              </div>
+              <div className="col-6">
+                <div className="text-xs text-color-secondary font-semibold uppercase mb-1">Aplicativo</div>
+                <div>{detalleProyecto.aplicativo || '—'}</div>
+              </div>
+            </div>
+            <div className="grid">
+              <div className="col-6">
+                <div className="text-xs text-color-secondary font-semibold uppercase mb-1">OT</div>
+                <div style={{ fontFamily: 'monospace' }}>{detalleProyecto.ot || '—'}</div>
+              </div>
+              <div className="col-6">
+                <div className="text-xs text-color-secondary font-semibold uppercase mb-1">Fecha</div>
+                <div>{formatDate(detalleProyecto.fechaCreacion)}</div>
+              </div>
+            </div>
+            {detalleProyecto.clientes?.length > 0 && (
+              <div>
+                <div className="text-xs text-color-secondary font-semibold uppercase mb-1">Contactos</div>
+                <div className="text-sm">{detalleProyecto.clientes.map((c) => `${c.cliente?.nombre || ''} ${c.cliente?.apellido || ''}`).join(', ')}</div>
+              </div>
+            )}
+            {detalleProyecto.responsables?.length > 0 && (
+              <div>
+                <div className="text-xs text-color-secondary font-semibold uppercase mb-1">Responsables Proconty</div>
+                <div className="text-sm">{detalleProyecto.responsables.map((r) => r.user?.name).join(', ')}</div>
+              </div>
+            )}
+          </div>
+        )}
+      </Dialog>
 
       {/* ── Quick-edit dialog para propuestas históricas ─────────────────── */}
       <Dialog
@@ -392,7 +470,7 @@ export default function PropuestasPage() {
             </label>
             <Dropdown
               value={quickEditForm.estadoId}
-              options={estadosAll}
+              options={estadosAll.filter((e) => ESTADOS_PROPUESTA_VALIDOS.includes(e.nombre))}
               optionLabel="nombre"
               optionValue="id"
               onChange={(e) => setQuickEditForm({ ...quickEditForm, estadoId: e.value })}
