@@ -26,7 +26,11 @@ export async function GET(request) {
   const empresaId = searchParams.get('empresa_id')
   const estadoId  = searchParams.get('estado_id')
 
-  const where = {}
+  const ESTADOS_ACTIVOS = ['Ejecución', 'Entregado']
+
+  const where = {
+    estado: { nombre: { in: ESTADOS_ACTIVOS } },
+  }
   if (from || to) {
     where.fechaCreacion = {}
     if (from) where.fechaCreacion.gte = new Date(from)
@@ -52,7 +56,7 @@ export async function GET(request) {
       },
       orderBy: { fechaCreacion: 'desc' },
     }),
-    prisma.estado.findMany({ orderBy: { id: 'asc' } }),
+    prisma.estado.findMany({ where: { nombre: { in: ESTADOS_ACTIVOS } }, orderBy: { id: 'asc' } }),
     prisma.empresa.findMany({
       where: { proyectos: { some: {} } },
       select: { id: true, nombre: true },

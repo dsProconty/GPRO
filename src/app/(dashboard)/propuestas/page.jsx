@@ -13,11 +13,14 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { ProgressSpinner } from 'primereact/progressspinner'
 import PropuestaFormDialog from '@/components/shared/PropuestaFormDialog'
 import { propuestaService } from '@/services/propuestaService'
+import { proyectoService } from '@/services/proyectoService'
 import { empresaService } from '@/services/empresaService'
 import { usuarioService } from '@/services/usuarioService'
 import { configuracionService, buildPropuestaConfig } from '@/services/configuracionService'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
+
+const ESTADOS_LEGACY = ['Elaboracion_Propuesta', 'Rechazado']
 
 export default function PropuestasPage() {
   const toast = useRef(null)
@@ -25,6 +28,7 @@ export default function PropuestasPage() {
   const { puede } = usePermisos()
 
   const [propuestas, setPropuestas] = useState([])
+  const [proyectosLegacy, setProyectosLegacy] = useState([])
   const [empresas, setEmpresas] = useState([])
   const [usuarios, setUsuarios] = useState([])
   const [propuestaConfig, setPropuestaConfig] = useState({})
@@ -39,16 +43,18 @@ export default function PropuestasPage() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [propRes, empRes, usrRes, cfgRes] = await Promise.all([
+      const [propRes, empRes, usrRes, cfgRes, proyRes] = await Promise.all([
         propuestaService.getAll(),
         empresaService.getAll(),
         usuarioService.getAll(),
         configuracionService.getAll(),
+        proyectoService.getAll(),
       ])
       setPropuestas(propRes.data)
       setEmpresas(empRes.data)
       setUsuarios(usrRes.data)
       setPropuestaConfig(buildPropuestaConfig(cfgRes.data.data.estadosPropuesta))
+      setProyectosLegacy(proyRes.data.filter((p) => ESTADOS_LEGACY.includes(p.estado?.nombre)))
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar las propuestas', life: 4000 })
     } finally {
@@ -197,6 +203,45 @@ export default function PropuestasPage() {
           </div>
         )} />
       </DataTable>
+
+      {proyectosLegacy.length > 0 && (
+        <div className="mt-5">
+          <div className="mb-3">
+            <h2 className="text-xl font-semibold m-0">Propuestas históricas</h2>
+            <p className="text-color-secondary text-sm mt-1 mb-0">
+              Registros migrados desde PowerApps · {proyectosLegacy.length} propuesta(s)
+            </p>
+          </div>
+          <DataTable
+            value={proyectosLegacy}
+            paginator rows={15} rowsPerPageOptions={[15, 50, 100]}
+            emptyMessage="Sin datos"
+            stripedRows
+            filterDisplay="menu"
+          >
+            <Column field="codigo" header="Código" body={(r) => r.codigo || '—'} sortable style={{ width: '130px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
+            <Column field="detalle" header="Proyecto" sortable body={(r) => (
+              <Button label={r.detalle} link className="p-0 text-left" style={{ fontWeight: 500 }}
+                onClick={() => router.push('/proyectos/' + r.id)} />
+            )} style={{ minWidth: '200px' }} />
+            <Column field="empresa.nombre" header="Empresa" body={(r) => r.empresa?.nombre} sortable />
+            <Column field="aplicativo" header="Aplicativo" body={(r) => r.aplicativo || '—'} sortable style={{ width: '120px' }} />
+            <Column field="valor" header="Valor" sortable dataType="numeric" style={{ textAlign: 'right', width: '130px' }}
+              body={(r) => r.valor ? formatCurrency(r.valor) : '—'} />
+            <Column field="estado.nombre" header="Estado" sortable style={{ width: '180px' }} body={(r) => (
+              <Tag
+                value={r.estado?.nombre === 'Elaboracion_Propuesta' ? 'Elab. Propuesta' : r.estado?.nombre}
+                severity={r.estado?.nombre === 'Rechazado' ? 'danger' : 'info'}
+              />
+            )} />
+            <Column field="fechaCreacion" header="Fecha" sortable style={{ width: '110px' }} body={(r) => formatDate(r.fechaCreacion)} />
+            <Column header="" style={{ width: '60px' }} body={(r) => (
+              <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }}
+                onClick={() => router.push('/proyectos/' + r.id)} />
+            )} />
+          </DataTable>
+        </div>
+      )}
 
       <PropuestaFormDialog
         visible={dialogVisible}
