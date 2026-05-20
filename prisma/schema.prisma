@@ -22,16 +22,16 @@ model User {
   password          String
   role              String         @default("user") @db.VarChar(50)
   perfilUsuarioId   Int?           @map("id_perfil_usuario")
+  empleadoId        Int?           @unique @map("id_empleado")
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")
 
   // Relaciones
-  perfilUsuario          PerfilUsuario?        @relation(fields: [perfilUsuarioId], references: [id])
-  proyectosResponsable   ProyectoResponsable[]
-  observaciones          Observacion[]
-  estadoLogs             ProyectoEstadoLog[]
-  propuestaResponsables  PropuestaResponsable[]
-  propuestaLogs          PropuestaEstadoLog[]
+  perfilUsuario     PerfilUsuario?      @relation(fields: [perfilUsuarioId], references: [id])
+  empleado          Empleado?           @relation(fields: [empleadoId], references: [id])
+  observaciones     Observacion[]
+  estadoLogs        ProyectoEstadoLog[]
+  propuestaLogs     PropuestaEstadoLog[]
 
   @@map("users")
 }
@@ -148,15 +148,15 @@ model ProyectoCliente {
   @@map("proyecto_cliente")
 }
 
-// ─── PIVOT: PROYECTO ↔ RESPONSABLE (Usuario Proconty) ────────────────────────
+// ─── PIVOT: PROYECTO ↔ RESPONSABLE (Empleado Proconty) ──────────────────────
 model ProyectoResponsable {
   proyectoId Int @map("id_negocio")
-  userId     Int @map("id_user")
+  empleadoId Int @map("id_empleado")
 
   proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  empleado   Empleado @relation(fields: [empleadoId], references: [id], onDelete: Cascade)
 
-  @@id([proyectoId, userId])
+  @@id([proyectoId, empleadoId])
   @@map("proyecto_responsable")
 }
 
@@ -384,12 +384,12 @@ model CasoNegocioLinea {
 // ─── PIVOT: PROPUESTA ↔ RESPONSABLE ─────────────────────────────────────────
 model PropuestaResponsable {
   propuestaId Int @map("id_propuesta")
-  userId      Int @map("id_user")
+  empleadoId  Int @map("id_empleado")
 
   propuesta   Propuesta @relation(fields: [propuestaId], references: [id], onDelete: Cascade)
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  empleado    Empleado  @relation(fields: [empleadoId], references: [id], onDelete: Cascade)
 
-  @@id([propuestaId, userId])
+  @@id([propuestaId, empleadoId])
   @@map("propuesta_responsable")
 }
 
@@ -411,24 +411,27 @@ model PropuestaEstadoLog {
 }
 
 // ─── EMPLEADO / RECURSO ───────────────────────────────────────────────────────
-// Consultores de Proconty. Entidad separada de los usuarios del sistema.
-// Pueden existir como recurso sin tener acceso a GPRO.
+// Consultores de Proconty. Pueden o no tener acceso al sistema (users).
+// Cuando un usuario del sistema ES también un consultor, se vinculan via users.empleadoId.
 model Empleado {
-  id           Int              @id @default(autoincrement())
-  nombre       String           @db.VarChar(100)
-  apellido     String           @db.VarChar(100)
-  email        String?          @db.VarChar(200)
-  costoHora      Decimal          @map("costo_hora") @db.Decimal(10, 2)
-  salarioMensual Decimal?        @map("salario_mensual") @db.Decimal(10, 2)
-  perfilBaseId   Int?            @map("id_perfil_base")
-  activo         Boolean         @default(true)
-  createdAt    DateTime         @default(now()) @map("created_at")
-  updatedAt    DateTime         @updatedAt @map("updated_at")
+  id             Int      @id @default(autoincrement())
+  nombre         String   @db.VarChar(100)
+  apellido       String   @db.VarChar(100)
+  email          String?  @db.VarChar(200)
+  costoHora      Decimal  @map("costo_hora") @db.Decimal(10, 2)
+  salarioMensual Decimal? @map("salario_mensual") @db.Decimal(10, 2)
+  perfilBaseId   Int?     @map("id_perfil_base")
+  activo         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   perfilBase                PerfilConsultor?          @relation(fields: [perfilBaseId], references: [id])
   tarifarioLineas           TarifarioLinea[]
   casoNegocioLineas         CasoNegocioLinea[]
   proyectoCasoNegocioLineas ProyectoCasoNegocioLinea[]
+  proyectosResponsable      ProyectoResponsable[]
+  propuestasResponsable     PropuestaResponsable[]
+  usuario                   User?
 
   @@map("empleados")
 }

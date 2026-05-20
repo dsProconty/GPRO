@@ -7,7 +7,7 @@ import { generarCodigoPropuesta } from '@/lib/codigoHelper'
 
 const PROPUESTA_INCLUDE = {
   empresa: { select: { id: true, nombre: true } },
-  responsables: { include: { user: { select: { id: true, name: true } } } },
+  responsables: { include: { empleado: { select: { id: true, nombre: true, apellido: true } } } },
   _count: { select: { logs: true } },
 }
 
@@ -76,7 +76,7 @@ export async function POST(request) {
       tipoPropuesta: ['PorHoras', 'Mensualizada'].includes(tipoPropuesta) ? tipoPropuesta : 'PorHoras',
       estado: 'Factibilidad',
       responsables: {
-        create: responsableIds.map((uid) => ({ userId: parseInt(uid) })),
+        create: responsableIds.map((eid) => ({ empleadoId: parseInt(eid) })),
       },
       logs: {
         create: {

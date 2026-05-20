@@ -12,7 +12,7 @@ import { Toast } from 'primereact/toast'
 import { proyectoService } from '@/services/proyectoService'
 import { clienteService } from '@/services/clienteService'
 
-export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, empresas, estados, usuarios }) {
+export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, empresas, estados, empleados = [] }) {
   const toast = useRef(null)
 
   const emptyForm = {
@@ -118,7 +118,7 @@ export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, 
     </div>
   )
 
-  const usuariosOptions = usuarios.map((u) => ({ ...u, label: `${u.name} (${u.email})` }))
+  const empleadosOptions = empleados.map((e) => ({ ...e, label: `${e.nombre} ${e.apellido}` }))
   const clientesOptions = clientesFiltrados.map((c) => ({ ...c, label: `${c.nombre} ${c.apellido}` }))
 
   return (
@@ -240,7 +240,7 @@ export default function ProyectoFormDialog({ visible, onHide, onSave, proyecto, 
             <label className="font-semibold block mb-1">Responsables Proconty</label>
             <MultiSelect
               value={form.responsableIds}
-              options={usuariosOptions}
+              options={empleadosOptions}
               optionLabel="label"
               optionValue="id"
               onChange={(e) => setForm({ ...form, responsableIds: e.value })}

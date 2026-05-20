@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { tienePermiso, PERMISOS } from '@/lib/permisos'
+import { generarCodigoProyecto } from '@/lib/codigoHelper'
 
 // Transiciones de estado permitidas
 const TRANSICIONES = {
@@ -15,7 +16,7 @@ const TRANSICIONES = {
 
 const PROPUESTA_INCLUDE = {
   empresa: { select: { id: true, nombre: true } },
-  responsables: { include: { user: { select: { id: true, name: true } } } },
+  responsables: { include: { empleado: { select: { id: true, nombre: true, apellido: true } } } },
   proyecto: { select: { id: true, detalle: true, estadoId: true } },
   logs: {
     include: { user: { select: { id: true, name: true } } },
@@ -86,7 +87,7 @@ export async function PUT(request, { params }) {
       aplicativo: aplicativo?.trim() || null,
       ...(tipoPropuesta && ['PorHoras', 'Mensualizada'].includes(tipoPropuesta) && { tipoPropuesta }),
       responsables: {
-        create: responsableIds.map((uid) => ({ userId: parseInt(uid) })),
+        create: responsableIds.map((eid) => ({ empleadoId: parseInt(eid) })),
       },
     },
     include: PROPUESTA_INCLUDE,
@@ -111,7 +112,7 @@ export async function PATCH(request, { params }) {
 
   const propuesta = await prisma.propuesta.findUnique({
     where: { id },
-    include: { responsables: { select: { userId: true } } },
+    include: { responsables: { select: { empleadoId: true } } },
   })
   if (!propuesta) return NextResponse.json({ success: false, message: 'Propuesta no encontrada' }, { status: 404 })
 
@@ -138,10 +139,7 @@ export async function PATCH(request, { params }) {
       },
     })
 
-    // Auto-generar codigo PRO-YYYY-NNN para el nuevo proyecto
-    const anioProyecto = new Date().getFullYear()
-    const countProyecto = await prisma.proyecto.count({ where: { codigo: { startsWith: `PRO-${anioProyecto}-` } } })
-    const codigoProyecto = `PRO-${anioProyecto}-${String(countProyecto + 1).padStart(3, '0')}`
+    const codigoProyecto = await generarCodigoProyecto(propuesta.empresaId, new Date(), prisma)
 
     let proyectoCreado = null
     let propuestaActualizada = null
@@ -157,7 +155,7 @@ export async function PATCH(request, { params }) {
           estadoId: 3, // Adjudicado
           aplicativo: propuesta.aplicativo || null,
           responsables: {
-            create: propuesta.responsables.map((r) => ({ userId: r.userId })),
+            create: propuesta.responsables.map((r) => ({ empleadoId: r.empleadoId })),
           },
           ...(lineasCaso.length > 0 && {
             casoNegocio: {

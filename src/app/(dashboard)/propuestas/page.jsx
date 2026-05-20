@@ -15,7 +15,7 @@ import PropuestaFormDialog from '@/components/shared/PropuestaFormDialog'
 import { propuestaService } from '@/services/propuestaService'
 import { proyectoService } from '@/services/proyectoService'
 import { empresaService } from '@/services/empresaService'
-import { usuarioService } from '@/services/usuarioService'
+import { empleadoService } from '@/services/empleadoService'
 import { configuracionService, buildPropuestaConfig } from '@/services/configuracionService'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
@@ -38,7 +38,7 @@ export default function PropuestasPage() {
   const [propuestas, setPropuestas] = useState([])
   const [proyectosLegacy, setProyectosLegacy] = useState([])
   const [empresas, setEmpresas] = useState([])
-  const [usuarios, setUsuarios] = useState([])
+  const [empleados, setEmpleados] = useState([])
   const [propuestaConfig, setPropuestaConfig] = useState({})
   const [loading, setLoading] = useState(true)
   const [globalFilter, setGlobalFilter] = useState('')
@@ -65,17 +65,17 @@ export default function PropuestasPage() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [propRes, empRes, usrRes, cfgRes, proyRes, estRes] = await Promise.all([
+      const [propRes, empRes, emplRes, cfgRes, proyRes, estRes] = await Promise.all([
         propuestaService.getAll(),
         empresaService.getAll(),
-        usuarioService.getAll(),
+        empleadoService.getAll(),
         configuracionService.getAll(),
         proyectoService.getAll(),
         axios.get('/api/v1/estados'),
       ])
       setPropuestas(propRes.data)
       setEmpresas(empRes.data)
-      setUsuarios(usrRes.data)
+      setEmpleados(emplRes.data)
       setPropuestaConfig(buildPropuestaConfig(cfgRes.data.data.estadosPropuesta))
       setProyectosLegacy(proyRes.data.filter((p) => ESTADOS_LEGACY.includes(p.estado?.nombre)))
       setEstadosAll(estRes.data.data || [])
@@ -145,7 +145,7 @@ export default function PropuestasPage() {
         aplicativo:       quickEditForm.aplicativo,
         ot:               quickEditForm.ot,
         clienteIds:       quickEditProyecto.clientes?.map((c) => c.clienteId) || [],
-        responsableIds:   quickEditProyecto.responsables?.map((r) => r.userId) || [],
+        responsableIds:   quickEditProyecto.responsables?.map((r) => r.empleadoId) || [],
       })
       const msg = quickEditForm.estadoPropuesta === 'Aprobada'
         ? 'Propuesta aprobada — pasó al módulo de Proyectos como Adjudicado'
@@ -324,7 +324,7 @@ export default function PropuestasPage() {
         }} />
         <Column header="Responsables" body={(r) => (
           <span className="text-sm text-color-secondary">
-            {r.responsables?.map((res) => res.user?.name).join(', ') || '—'}
+            {r.responsables?.map((res) => res.empleado ? `${res.empleado.nombre} ${res.empleado.apellido}` : '').join(', ') || '—'}
           </span>
         )} />
         <Column header="Creada" sortable sortField="fechaCreacion" style={{ width: '110px' }} body={(r) => formatDate(r.fechaCreacion)} />
@@ -450,7 +450,7 @@ export default function PropuestasPage() {
         onSave={handleSave}
         propuesta={selected}
         empresas={empresas}
-        usuarios={usuarios}
+        empleadosResp={empleados}
         propuestaConfig={propuestaConfig}
       />
 
@@ -518,7 +518,7 @@ export default function PropuestasPage() {
             {detalleProyecto.responsables?.length > 0 && (
               <div>
                 <div className="text-xs text-color-secondary font-semibold uppercase mb-1">Responsables Proconty</div>
-                <div className="text-sm">{detalleProyecto.responsables.map((r) => r.user?.name).join(', ')}</div>
+                <div className="text-sm">{detalleProyecto.responsables.map((r) => r.empleado ? `${r.empleado.nombre} ${r.empleado.apellido}` : '').join(', ')}</div>
               </div>
             )}
           </div>

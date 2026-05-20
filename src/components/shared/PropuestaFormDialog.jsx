@@ -36,7 +36,7 @@ const LINEA_VACIA = { perfilId: null, horas: null, empleadoId: null, precioHora:
 const fmt = (v) =>
   new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v ?? 0)
 
-export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta, empresas = [], usuarios = [], propuestaConfig: propuestaConfigProp = {} }) {
+export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta, empresas = [], empleadosResp = [], propuestaConfig: propuestaConfigProp = {} }) {
   const isEdit = !!propuesta
 
   // ── Formulario principal ──────────────────────────────────────
@@ -89,7 +89,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
         valorEstimado:  propuesta.valorEstimado ?? null,
         fechaCreacion:  propuesta.fechaCreacion ? new Date(propuesta.fechaCreacion) : new Date(),
         aplicativo:     propuesta.aplicativo || '',
-        responsableIds: propuesta.responsables?.map((r) => r.userId) || [],
+        responsableIds: propuesta.responsables?.map((r) => r.empleadoId) || [],
         tipoPropuesta:  propuesta.tipoPropuesta || 'PorHoras',
         estado:         propuesta.estado || 'Factibilidad',
       })
@@ -480,7 +480,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Responsables Proconty</label>
           <MultiSelect
-            value={form.responsableIds} options={usuarios} optionLabel="name" optionValue="id"
+            value={form.responsableIds} options={empleadosResp.map(e => ({ ...e, label: `${e.nombre} ${e.apellido}` }))} optionLabel="label" optionValue="id"
             onChange={(e) => setForm((p) => ({ ...p, responsableIds: e.value }))}
             placeholder="Seleccionar responsables" display="chip"
             filter filterPlaceholder="Buscar responsable..."

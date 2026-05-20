@@ -15,7 +15,7 @@ import { ProgressSpinner } from 'primereact/progressspinner'
 import ProyectoFormDialog from '@/components/shared/ProyectoFormDialog'
 import { proyectoService } from '@/services/proyectoService'
 import { empresaService } from '@/services/empresaService'
-import { usuarioService } from '@/services/usuarioService'
+import { empleadoService } from '@/services/empleadoService'
 import { configuracionService } from '@/services/configuracionService'
 import axios from 'axios'
 import { formatCurrency, formatDate, calcTiempoVida } from '@/utils/format'
@@ -45,7 +45,7 @@ export default function ProyectosPage() {
   const [proyectos, setProyectos] = useState([])
   const [empresas, setEmpresas] = useState([])
   const [estados, setEstados] = useState([])
-  const [usuarios, setUsuarios] = useState([])
+  const [empleados, setEmpleados] = useState([])
   const [moneda, setMoneda] = useState('USD')
   const [loading, setLoading] = useState(true)
   const [globalFilter, setGlobalFilter] = useState('')
@@ -63,16 +63,16 @@ export default function ProyectosPage() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [proyRes, empRes, usrRes, estRes, cfgRes] = await Promise.all([
+      const [proyRes, empRes, emplRes, estRes, cfgRes] = await Promise.all([
         proyectoService.getAll(),
         empresaService.getAll(),
-        usuarioService.getAll(),
+        empleadoService.getAll(),
         axios.get('/api/v1/estados'),
         configuracionService.getAll(),
       ])
       setProyectos(proyRes.data)
       setEmpresas(empRes.data)
-      setUsuarios(usrRes.data)
+      setEmpleados(emplRes.data)
       setEstados(estRes.data.data)
       if (cfgRes.data.data?.empresa?.moneda) setMoneda(cfgRes.data.data.empresa.moneda)
     } catch {
@@ -182,7 +182,7 @@ export default function ProyectosPage() {
       lista = lista.filter((p) => p.estado?.nombre !== 'Cerrado')
     }
     if (responsableFiltro) {
-      lista = lista.filter((p) => p.responsables?.some((r) => r.userId === responsableFiltro))
+      lista = lista.filter((p) => p.responsables?.some((r) => r.empleadoId === responsableFiltro))
     }
     if (fechaRango && fechaRango[0]) {
       const desde = new Date(fechaRango[0]); desde.setHours(0, 0, 0, 0)
@@ -201,7 +201,7 @@ export default function ProyectosPage() {
         p.ot?.toLowerCase().includes(term) ||
         p.codigo?.toLowerCase().includes(term) ||
         p.estado?.nombre?.toLowerCase().includes(term) ||
-        p.responsables?.some((r) => r.user?.name?.toLowerCase().includes(term))
+        p.responsables?.some((r) => `${r.empleado?.nombre} ${r.empleado?.apellido}`.toLowerCase().includes(term))
       )
     }
     return lista
@@ -239,7 +239,7 @@ export default function ProyectosPage() {
       'ID': p.id,
       'Proyecto': p.detalle,
       'Cliente': p.empresa?.nombre || '',
-      'Responsable(s)': p.responsables?.map((r) => r.user?.name).join(', ') || '',
+      'Responsable(s)': p.responsables?.map((r) => r.empleado ? `${r.empleado.nombre} ${r.empleado.apellido}` : '').join(', ') || '',
       'Estado': p.estado?.nombre?.replace('_', ' ') || '',
       'Aplicativo': p.aplicativo || '',
       'OT': p.ot || '',
@@ -339,8 +339,8 @@ export default function ProyectosPage() {
         />
         <Dropdown
           value={responsableFiltro}
-          options={[{ id: null, name: 'Todos los responsables' }, ...usuarios]}
-          optionLabel="name"
+          options={[{ id: null, nombre: 'Todos los responsables', apellido: '' }, ...empleados]}
+          optionLabel="nombre"
           optionValue="id"
           onChange={(e) => setResponsableFiltro(e.value)}
           placeholder="Filtrar por responsable"
@@ -395,7 +395,7 @@ export default function ProyectosPage() {
         proyecto={selectedProyecto}
         empresas={empresas}
         estados={estados}
-        usuarios={usuarios}
+        empleados={empleados}
       />
     </div>
   )

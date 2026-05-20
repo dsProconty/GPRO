@@ -8,7 +8,7 @@ const PROYECTO_INCLUDE = {
   empresa: { select: { id: true, nombre: true } },
   estado: { select: { id: true, nombre: true, color: true } },
   clientes: { include: { cliente: { select: { id: true, nombre: true, apellido: true } } } },
-  responsables: { include: { user: { select: { id: true, name: true, email: true } } } },
+  responsables: { include: { empleado: { select: { id: true, nombre: true, apellido: true } } } },
   facturas: { select: { valor: true, pagos: { select: { valor: true } } } },
   propuesta: { select: { id: true, titulo: true } },
 }
@@ -32,7 +32,7 @@ function calcularCampos(proyecto) {
     saldo,
     tiempoVida,
     clienteIds: proyecto.clientes.map((c) => c.clienteId),
-    responsableIds: proyecto.responsables.map((r) => r.userId),
+    responsableIds: proyecto.responsables.map((r) => r.empleadoId),
   }
 }
 
@@ -104,7 +104,7 @@ export async function PUT(request, { params }) {
           create: clienteIds.map((cid) => ({ clienteId: parseInt(cid) })),
         },
         responsables: {
-          create: responsableIds.map((uid) => ({ userId: parseInt(uid) })),
+          create: responsableIds.map((eid) => ({ empleadoId: parseInt(eid) })),
         },
       },
       include: PROYECTO_INCLUDE,

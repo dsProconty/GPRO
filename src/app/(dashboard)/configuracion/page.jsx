@@ -630,7 +630,28 @@ export default function ConfiguracionPage() {
         <div className="flex flex-column gap-3">
           <div className="flex align-items-center justify-content-between p-3 surface-100 border-round">
             <div>
-              <p className="m-0 font-semibold text-sm">1. Agregar columna código cliente</p>
+              <p className="m-0 font-semibold text-sm">1. Migrar responsables de usuarios a empleados</p>
+              <p className="m-0 text-color-secondary text-xs mt-1">Crea empleados por cada usuario, vincula los responsables de proyectos/propuestas a la tabla empleados y elimina referencias a users</p>
+            </div>
+            <Button
+              label="Ejecutar migración"
+              icon="pi pi-users"
+              severity="danger"
+              size="small"
+              onClick={async () => {
+                try {
+                  const res = await axios.post('/api/v1/admin/migrar-responsables-a-empleados')
+                  const pasos = res.data.data?.log?.join('\n') || res.data.message
+                  toast.current.show({ severity: res.data.success ? 'success' : 'warn', summary: 'Migración usuarios→empleados', detail: pasos, life: 15000 })
+                } catch (e) {
+                  toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 8000 })
+                }
+              }}
+            />
+          </div>
+          <div className="flex align-items-center justify-content-between p-3 surface-100 border-round">
+            <div>
+              <p className="m-0 font-semibold text-sm">2. Agregar columna código cliente</p>
               <p className="m-0 text-color-secondary text-xs mt-1">Ejecutar una sola vez para habilitar el campo "Código cliente" en empresas</p>
             </div>
             <Button
@@ -650,7 +671,7 @@ export default function ConfiguracionPage() {
           </div>
           <div className="flex align-items-center justify-content-between p-3 surface-100 border-round">
             <div>
-              <p className="m-0 font-semibold text-sm">2. Fusionar empresas duplicadas</p>
+              <p className="m-0 font-semibold text-sm">3. Fusionar empresas duplicadas</p>
               <p className="m-0 text-color-secondary text-xs mt-1">Detecta empresas con el mismo nombre y las consolida en un solo registro, reasignando proyectos y propuestas</p>
             </div>
             <Button
@@ -670,7 +691,7 @@ export default function ConfiguracionPage() {
           </div>
           <div className="flex align-items-center justify-content-between p-3 surface-100 border-round">
             <div>
-              <p className="m-0 font-semibold text-sm">3. Generar códigos retroactivos</p>
+              <p className="m-0 font-semibold text-sm">4. Generar códigos retroactivos</p>
               <p className="m-0 text-color-secondary text-xs mt-1">Asigna códigos PRO/PRP a todos los registros sin código, ordenados por fecha de creación</p>
             </div>
             <Button
