@@ -208,7 +208,7 @@ export default function ClientesPage() {
         onRowClick={(e) => router.push(`/clientes/${e.data.id}`)}
         rowClassName={() => 'cursor-pointer'}
       >
-        <Column field="id" header="ID" sortable style={{ width: '70px' }} />
+        <Column header="#" body={(_, { rowIndex }) => <span className="text-color-secondary font-semibold">{rowIndex + 1}</span>} style={{ width: '55px' }} />
         <Column field="nombre" header="Cliente" sortable filter filterPlaceholder="Buscar cliente..." />
         <Column header="Código" body={codigoTemplate} style={{ width: '100px' }} />
         <Column field="ciudad" header="Ciudad" sortable filter filterPlaceholder="Buscar ciudad..." body={(row) => row.ciudad || '—'} style={{ width: '130px' }} />
