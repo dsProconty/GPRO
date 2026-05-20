@@ -22,6 +22,17 @@ export async function POST(request) {
   const log = []
 
   try {
+    // ── Verificar si la migración ya se completó (id_user ya no existe) ────────
+    const [yaCompletada] = await prisma.$queryRaw`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'proyecto_responsable' AND column_name = 'id_user'
+      LIMIT 1
+    `
+    if (!yaCompletada) {
+      log.push('ℹ️  Migración ya completada anteriormente (id_user no existe en las tablas pivot)')
+      return NextResponse.json({ success: true, data: { log }, message: 'La migración ya estaba completa' })
+    }
+
     // ── PASO 1: Agregar columnas id_empleado (idempotente con IF NOT EXISTS) ──
     await prisma.$executeRaw`ALTER TABLE users ADD COLUMN IF NOT EXISTS id_empleado INTEGER`
     await prisma.$executeRaw`ALTER TABLE proyecto_responsable ADD COLUMN IF NOT EXISTS id_empleado INTEGER`
