@@ -11,10 +11,20 @@ export async function GET() {
     return NextResponse.json({ success: false, message: 'Sin permiso para ver empresas' }, { status: 403 })
   }
 
-  const empresas = await prisma.empresa.findMany({
-    orderBy: { nombre: 'asc' },
+  const todas = await prisma.empresa.findMany({
+    orderBy: [{ nombre: 'asc' }, { id: 'asc' }],
     include: { _count: { select: { clientes: true } } },
   })
+
+  // Deduplicar por nombre (conservar el registro con menor id por nombre)
+  const seen = new Set()
+  const empresas = todas.filter((e) => {
+    const key = e.nombre.toLowerCase().trim()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
   return NextResponse.json({ success: true, data: empresas, message: '' })
 }
 

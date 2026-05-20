@@ -650,7 +650,27 @@ export default function ConfiguracionPage() {
           </div>
           <div className="flex align-items-center justify-content-between p-3 surface-100 border-round">
             <div>
-              <p className="m-0 font-semibold text-sm">2. Generar códigos retroactivos</p>
+              <p className="m-0 font-semibold text-sm">2. Fusionar empresas duplicadas</p>
+              <p className="m-0 text-color-secondary text-xs mt-1">Detecta empresas con el mismo nombre y las consolida en un solo registro, reasignando proyectos y propuestas</p>
+            </div>
+            <Button
+              label="Fusionar duplicados"
+              icon="pi pi-sitemap"
+              severity="danger"
+              size="small"
+              onClick={async () => {
+                try {
+                  const res = await axios.post('/api/v1/admin/fusionar-empresas-duplicadas')
+                  toast.current.show({ severity: 'success', summary: 'Fusión completada', detail: res.data.message, life: 8000 })
+                } catch (e) {
+                  toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 6000 })
+                }
+              }}
+            />
+          </div>
+          <div className="flex align-items-center justify-content-between p-3 surface-100 border-round">
+            <div>
+              <p className="m-0 font-semibold text-sm">3. Generar códigos retroactivos</p>
               <p className="m-0 text-color-secondary text-xs mt-1">Asigna códigos PRO/PRP a todos los registros sin código, ordenados por fecha de creación</p>
             </div>
             <Button
