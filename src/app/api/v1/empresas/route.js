@@ -13,7 +13,10 @@ export async function GET() {
 
   const todas = await prisma.empresa.findMany({
     orderBy: [{ nombre: 'asc' }, { id: 'asc' }],
-    include: { _count: { select: { clientes: true } } },
+    include: {
+      _count: { select: { clientes: true } },
+      clientes: { select: { id: true, nombre: true, apellido: true }, orderBy: { apellido: 'asc' } },
+    },
   })
 
   // Deduplicar por nombre (conservar el registro con menor id por nombre)
