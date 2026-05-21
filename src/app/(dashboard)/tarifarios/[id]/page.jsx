@@ -150,7 +150,12 @@ export default function TarifarioDetallePage() {
   const perfilesOpts = perfiles.map((p) => ({ label: `${p.nombre} ${p.nivel}`, value: p.id }))
 
   if (loading) {
-    return <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}><ProgressSpinner /></div>
+    return (
+      <>
+        <Toast ref={toast} />
+        <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}><ProgressSpinner /></div>
+      </>
+    )
   }
 
   if (!tarifario) return null

@@ -265,9 +265,12 @@ export default function ProyectosPage() {
 
   if (loading && proyectos.length === 0) {
     return (
-      <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}>
-        <ProgressSpinner />
-      </div>
+      <>
+        <Toast ref={toast} />
+        <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}>
+          <ProgressSpinner />
+        </div>
+      </>
     )
   }
 

@@ -153,7 +153,12 @@ export default function EmpleadosPage() {
   const perfilesOptions = perfiles.map((p) => ({ label: `${p.nombre} ${p.nivel}`, value: p.id }))
 
   if (loading && empleados.length === 0) {
-    return <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}><ProgressSpinner /></div>
+    return (
+      <>
+        <Toast ref={toast} />
+        <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}><ProgressSpinner /></div>
+      </>
+    )
   }
 
   // Preview de margen en el form

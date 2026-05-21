@@ -96,7 +96,12 @@ export default function TarifariosPage() {
   }
 
   if (loading && tarifarios.length === 0) {
-    return <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}><ProgressSpinner /></div>
+    return (
+      <>
+        <Toast ref={toast} />
+        <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}><ProgressSpinner /></div>
+      </>
+    )
   }
 
   return (

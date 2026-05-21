@@ -203,7 +203,12 @@ export default function PropuestasPage() {
   }
 
   if (loading && propuestas.length === 0) {
-    return <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}><ProgressSpinner /></div>
+    return (
+      <>
+        <Toast ref={toast} />
+        <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}><ProgressSpinner /></div>
+      </>
+    )
   }
 
   // Colores de severidad de PrimeReact → estilo inline para chips
