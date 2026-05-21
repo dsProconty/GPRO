@@ -6,6 +6,8 @@ import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
 import { Button } from 'primereact/button'
 import { InputText } from 'primereact/inputtext'
+import { IconField } from 'primereact/iconfield'
+import { InputIcon } from 'primereact/inputicon'
 import { Dropdown } from 'primereact/dropdown'
 import { Calendar } from 'primereact/calendar'
 import { Tag } from 'primereact/tag'
@@ -64,18 +66,18 @@ export default function ProyectosPage() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [proyRes, empRes, emplRes, estRes, cfgRes] = await Promise.all([
+      const [proyRes, empRes, estRes, cfgRes] = await Promise.all([
         proyectoService.getAll(),
         empresaService.getAll(),
-        empleadoService.getAll(),
         axios.get('/api/v1/estados'),
         configuracionService.getAll(),
       ])
       setProyectos(proyRes.data)
       setEmpresas(empRes.data)
-      setEmpleados(emplRes.data)
       setEstados(estRes.data.data)
       if (cfgRes.data.data?.empresa?.moneda) setMoneda(cfgRes.data.data.empresa.moneda)
+      // Empleados se cargan aparte para no bloquear si el endpoint falla
+      empleadoService.getAll().then((r) => setEmpleados(r.data)).catch(() => {})
     } catch {
       toast.current.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los proyectos', life: 4000 })
     } finally {
@@ -337,10 +339,10 @@ export default function ProyectosPage() {
       </div>
 
       <div className="flex flex-wrap gap-3 mb-3">
-        <span className="p-input-icon-left flex-1" style={{ minWidth: '200px' }}>
-          <i className="pi pi-search" />
+        <IconField iconPosition="left" className="flex-1" style={{ minWidth: '200px' }}>
+          <InputIcon className="pi pi-search" />
           <InputText value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Buscar proyecto..." className="w-full" />
-        </span>
+        </IconField>
         <Dropdown
           value={estadoFiltro}
           options={estadosFiltroOptions}

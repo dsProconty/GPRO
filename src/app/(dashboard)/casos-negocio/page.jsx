@@ -6,6 +6,8 @@ import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
 import { Button } from 'primereact/button'
 import { InputText } from 'primereact/inputtext'
+import { IconField } from 'primereact/iconfield'
+import { InputIcon } from 'primereact/inputicon'
 import { Card } from 'primereact/card'
 import { Tag } from 'primereact/tag'
 import { Calendar } from 'primereact/calendar'
@@ -254,15 +256,15 @@ export default function CasosNegocioPage() {
 
         {/* Buscador global */}
         <div className="mb-3">
-          <span className="p-input-icon-left w-full">
-            <i className="pi pi-search" />
+          <IconField iconPosition="left" className="w-full">
+            <InputIcon className="pi pi-search" />
             <InputText
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               placeholder="Buscar proyecto, empresa, aplicativo..."
               className="w-full"
             />
-          </span>
+          </IconField>
         </div>
 
         <DataTable

@@ -6,6 +6,8 @@ import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
 import { Button } from 'primereact/button'
 import { InputText } from 'primereact/inputtext'
+import { IconField } from 'primereact/iconfield'
+import { InputIcon } from 'primereact/inputicon'
 import { Toast } from 'primereact/toast'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { ProgressSpinner } from 'primereact/progressspinner'
@@ -183,15 +185,15 @@ export default function ClientesPage() {
       </div>
 
       <div className="mb-3">
-        <span className="p-input-icon-left w-full md:w-4">
-          <i className="pi pi-search" />
+        <IconField iconPosition="left" className="w-full md:w-4">
+          <InputIcon className="pi pi-search" />
           <InputText
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
             placeholder="Buscar cliente..."
             className="w-full"
           />
-        </span>
+        </IconField>
       </div>
 
       <DataTable

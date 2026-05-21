@@ -6,6 +6,8 @@ import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
 import { Button } from 'primereact/button'
 import { InputText } from 'primereact/inputtext'
+import { IconField } from 'primereact/iconfield'
+import { InputIcon } from 'primereact/inputicon'
 import { Dropdown } from 'primereact/dropdown'
 import { Tag } from 'primereact/tag'
 import { Toast } from 'primereact/toast'
@@ -280,10 +282,10 @@ export default function PropuestasPage() {
       </div>
 
       <div className="flex flex-wrap gap-3 mb-3">
-        <span className="p-input-icon-left flex-1" style={{ minWidth: '200px' }}>
-          <i className="pi pi-search" />
+        <IconField iconPosition="left" className="flex-1" style={{ minWidth: '200px' }}>
+          <InputIcon className="pi pi-search" />
           <InputText value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Buscar propuesta..." className="w-full" />
-        </span>
+        </IconField>
         <Dropdown
           value={estadoFiltro}
           options={estadosFiltro}
