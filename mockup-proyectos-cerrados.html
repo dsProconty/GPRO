@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GPRO – Proyectos</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 14px;
+      color: #495057;
+      background: #f8f9fa;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 240px;
+      background: #1e2d3d;
+      color: #ced4da;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar-logo {
+      padding: 20px 24px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      letter-spacing: .5px;
+    }
+    .sidebar-logo span { color: #4da6ff; }
+    .sidebar-nav { padding: 12px 0; flex: 1; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 24px;
+      cursor: pointer;
+      transition: background .15s;
+      border-radius: 0;
+      color: #adb5bd;
+      font-size: 13.5px;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.06); color: #fff; }
+    .nav-item.active { background: rgba(77,166,255,.15); color: #4da6ff; font-weight: 600; }
+    .nav-icon { width: 18px; text-align: center; font-style: normal; }
+
+    /* ── Main content ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      height: 56px;
+      background: #fff;
+      border-bottom: 1px solid #dee2e6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      flex-shrink: 0;
+    }
+    .topbar-title { font-size: 16px; font-weight: 600; color: #343a40; }
+    .topbar-user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #6c757d;
+      font-size: 13px;
+    }
+    .avatar {
+      width: 32px; height: 32px;
+      background: #4da6ff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: 13px;
+    }
+
+    /* ── Page body ── */
+    .page-body { flex: 1; overflow-y: auto; padding: 24px; }
+
+    /* ── KPI chips ── */
+    .kpi-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .kpi-chip {
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: default;
+      transition: box-shadow .15s;
+    }
+    .kpi-chip:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    .kpi-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .kpi-label { color: #6c757d; }
+    .kpi-val { font-weight: 700; color: #343a40; }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 8px 8px 0 0;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .toolbar-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #343a40;
+      margin-right: auto;
+    }
+    .search-box {
+      display: flex;
+      align-items: center;
+      border: 1px solid #ced4da;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .search-box input {
+      border: none;
+      outline: none;
+      padding: 7px 12px;
+      font-size: 13px;
+      width: 220px;
+      color: #495057;
+    }
+    .search-icon {
+      padding: 7px 10px;
+      color: #6c757d;
+      font-style: normal;
+      font-size: 14px;
+    }
+    .filter-select {
+      border: 1px solid #ced4da;
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 13px;
+      color: #495057;
+      background: #fff;
+      outline: none;
+      cursor: pointer;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: filter .15s, box-shadow .15s;
+    }
+    .btn:hover { filter: brightness(.93); }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-secondary { background: #fff; color: #495057; border-color: #ced4da; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .btn-icon { padding: 4px 8px; }
+
+    /* ── DataTable ── */
+    .table-wrap {
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 900px;
+    }
+    thead tr {
+      background: #f8f9fa;
+      border-bottom: 2px solid #dee2e6;
+    }
+    thead th {
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      color: #6c757d;
+      white-space: nowrap;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+    tbody tr {
+      border-bottom: 1px solid #f1f3f5;
+      transition: background .1s;
+    }
+    tbody tr:hover { background: #f8f9fa; }
+    tbody td {
+      padding: 10px 14px;
+      vertical-align: middle;
+      color: #343a40;
+      white-space: nowrap;
+    }
+
+    /* muted rows for closed projects */
+    .row-muted td {
+      color: #868e96;
+      opacity: .82;
+    }
+    .row-muted:hover { background: #f1f3f5 !important; }
+
+    .code-cell { color: #6c757d; font-size: 12px; font-family: monospace; }
+    .project-name { font-weight: 500; color: #2563eb; cursor: pointer; }
+    .project-name:hover { text-decoration: underline; }
+
+    /* Tags */
+    .tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .3px;
+    }
+    .tag-success { background: #d1fae5; color: #065f46; }
+    .tag-info    { background: #dbeafe; color: #1e40af; }
+    .tag-warning { background: #fef3c7; color: #92400e; }
+    .tag-secondary { background: #e9ecef; color: #495057; }
+    .tag-danger  { background: #fee2e2; color: #991b1b; }
+
+    .saldo-neg { color: #dc2626; font-weight: 600; }
+    .saldo-ok  { color: #059669; font-weight: 600; }
+
+    /* Action buttons */
+    .action-group { display: flex; gap: 4px; }
+    .icon-btn {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      border: 1px solid #dee2e6;
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #6c757d;
+      font-size: 13px;
+      transition: background .12s, color .12s;
+    }
+    .icon-btn:hover { background: #e9ecef; color: #343a40; }
+    .icon-btn.danger:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+
+    /* ── Collapsible closed section ── */
+    .closed-section { margin-top: 24px; }
+
+    .collapsed-header {
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: background .15s;
+    }
+    .collapsed-header:hover { background: #f8f9fa; }
+    .collapsed-header.open { border-radius: 8px 8px 0 0; }
+
+    .closed-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #495057;
+      flex: 1;
+    }
+    .count-badge {
+      background: #e9ecef;
+      color: #495057;
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .chevron {
+      font-style: normal;
+      font-size: 13px;
+      color: #6c757d;
+      transition: transform .2s;
+      display: inline-block;
+    }
+    .chevron.open { transform: rotate(180deg); }
+
+    .closed-body {
+      display: none;
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      overflow-x: auto;
+    }
+    .closed-body.open { display: block; }
+
+    /* muted table header */
+    .closed-body thead tr { background: #f1f3f5; }
+    .closed-body thead th { color: #868e96; }
+
+    /* ── Pagination stub ── */
+    .pagination-bar {
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #6c757d;
+    }
+    .page-btns { display: flex; gap: 4px; }
+    .page-btn {
+      width: 28px; height: 28px;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 12px;
+      color: #495057;
+      transition: background .1s;
+    }
+    .page-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .page-btn:hover:not(.active) { background: #e9ecef; }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<nav class="sidebar">
+  <div class="sidebar-logo">G<span>PRO</span></div>
+  <div class="sidebar-nav">
+    <div class="nav-item"><i class="nav-icon">⊞</i> Dashboard</div>
+    <div class="nav-item"><i class="nav-icon">◈</i> Propuestas</div>
+    <div class="nav-item active"><i class="nav-icon">◉</i> Proyectos</div>
+    <div class="nav-item"><i class="nav-icon">🏢</i> Empresas</div>
+    <div class="nav-item"><i class="nav-icon">👥</i> Clientes</div>
+    <div class="nav-item"><i class="nav-icon">👤</i> Usuarios</div>
+  </div>
+  <div style="padding:16px 24px; font-size:12px; color:#6c757d; border-top:1px solid rgba(255,255,255,.06);">
+    GPRO v1.0 · Proconty
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <span class="topbar-title">Proyectos</span>
+    <div class="topbar-user">
+      <span>Admin Proconty</span>
+      <div class="avatar">AP</div>
+    </div>
+  </header>
+
+  <!-- Page body -->
+  <div class="page-body">
+
+    <!-- KPI chips -->
+    <div class="kpi-row">
+      <div class="kpi-chip">
+        <div class="kpi-dot" style="background:#2563eb"></div>
+        <span class="kpi-label">Total</span>
+        <span class="kpi-val">19</span>
+      </div>
+      <div class="kpi-chip">
+        <div class="kpi-dot" style="background:#f59e0b"></div>
+        <span class="kpi-label">Prefactibilidad</span>
+        <span class="kpi-val">3</span>
+      </div>
+      <div class="kpi-chip">
+        <div class="kpi-dot" style="background:#3b82f6"></div>
+        <span class="kpi-label">Elab. Propuesta</span>
+        <span class="kpi-val">2</span>
+      </div>
+      <div class="kpi-chip">
+        <div class="kpi-dot" style="background:#10b981"></div>
+        <span class="kpi-label">Adjudicado</span>
+        <span class="kpi-val">2</span>
+      </div>
+      <div class="kpi-chip">
+        <div class="kpi-dot" style="background:#ef4444"></div>
+        <span class="kpi-label">Rechazado</span>
+        <span class="kpi-val">0</span>
+      </div>
+      <div class="kpi-chip">
+        <div class="kpi-dot" style="background:#6b7280"></div>
+        <span class="kpi-label">Cerrados</span>
+        <span class="kpi-val">12</span>
+      </div>
+    </div>
+
+    <!-- ── Active projects ── -->
+    <div class="toolbar">
+      <span class="toolbar-title">Proyectos activos</span>
+      <div class="search-box">
+        <i class="search-icon">🔍</i>
+        <input type="text" placeholder="Buscar proyecto…" value="" />
+      </div>
+      <select class="filter-select">
+        <option>Todos los estados</option>
+        <option>Prefactibilidad</option>
+        <option>Elab. Propuesta</option>
+        <option selected>Adjudicado</option>
+        <option>Rechazado</option>
+      </select>
+      <select class="filter-select">
+        <option>Todos los responsables</option>
+        <option>Carlos Mendoza</option>
+        <option>Ana Torres</option>
+      </select>
+      <button class="btn btn-secondary">⬇ Exportar Excel</button>
+      <button class="btn btn-primary">＋ Nuevo Proyecto</button>
+    </div>
+
+    <div class="table-wrap" style="border-radius:0;">
+      <table>
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Proyecto</th>
+            <th>Cliente</th>
+            <th>Estado</th>
+            <th style="text-align:right">Valor</th>
+            <th style="text-align:right">Facturado</th>
+            <th style="text-align:right">Pagado</th>
+            <th style="text-align:right">Saldo</th>
+            <th>Fecha Inicio</th>
+            <th>Fecha Cierre</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="code-cell">#0021</td>
+            <td><span class="project-name">Auditoría Financiera Q2 2026</span></td>
+            <td>Corporación Andina S.A.</td>
+            <td><span class="tag tag-success">Adjudicado</span></td>
+            <td style="text-align:right">$48,000.00</td>
+            <td style="text-align:right">$24,000.00</td>
+            <td style="text-align:right">$18,000.00</td>
+            <td style="text-align:right" class="saldo-neg">$6,000.00</td>
+            <td>15/01/2026</td>
+            <td>—</td>
+            <td>
+              <div class="action-group">
+                <button class="icon-btn" title="Ver detalle">👁</button>
+                <button class="icon-btn" title="Editar">✏️</button>
+                <button class="icon-btn danger" title="Eliminar">🗑</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="code-cell">#0019</td>
+            <td><span class="project-name">Consultoría Estratégica Norte</span></td>
+            <td>Grupo Pacífico Ltda.</td>
+            <td><span class="tag tag-info">Elab. Propuesta</span></td>
+            <td style="text-align:right">$32,500.00</td>
+            <td style="text-align:right">$0.00</td>
+            <td style="text-align:right">$0.00</td>
+            <td style="text-align:right" class="saldo-neg">$0.00</td>
+            <td>03/03/2026</td>
+            <td>—</td>
+            <td>
+              <div class="action-group">
+                <button class="icon-btn" title="Ver detalle">👁</button>
+                <button class="icon-btn" title="Editar">✏️</button>
+                <button class="icon-btn danger" title="Eliminar">🗑</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="code-cell">#0018</td>
+            <td><span class="project-name">Diseño Org. Recursos Humanos</span></td>
+            <td>Textiles del Sur S.A.</td>
+            <td><span class="tag tag-warning">Prefactibilidad</span></td>
+            <td style="text-align:right">$15,200.00</td>
+            <td style="text-align:right">$0.00</td>
+            <td style="text-align:right">$0.00</td>
+            <td style="text-align:right">$0.00</td>
+            <td>22/04/2026</td>
+            <td>—</td>
+            <td>
+              <div class="action-group">
+                <button class="icon-btn" title="Ver detalle">👁</button>
+                <button class="icon-btn" title="Editar">✏️</button>
+                <button class="icon-btn danger" title="Eliminar">🗑</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="code-cell">#0017</td>
+            <td><span class="project-name">Implementación ERP Fase 2</span></td>
+            <td>Industrias Quito S.A.</td>
+            <td><span class="tag tag-success">Adjudicado</span></td>
+            <td style="text-align:right">$95,000.00</td>
+            <td style="text-align:right">$65,000.00</td>
+            <td style="text-align:right">$65,000.00</td>
+            <td style="text-align:right" class="saldo-ok">$0.00</td>
+            <td>10/11/2025</td>
+            <td>—</td>
+            <td>
+              <div class="action-group">
+                <button class="icon-btn" title="Ver detalle">👁</button>
+                <button class="icon-btn" title="Editar">✏️</button>
+                <button class="icon-btn danger" title="Eliminar">🗑</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination (active) -->
+    <div class="pagination-bar">
+      <span>Mostrando 1–4 de 7 proyectos activos</span>
+      <div class="page-btns">
+        <button class="page-btn">‹</button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn">2</button>
+        <button class="page-btn">›</button>
+      </div>
+    </div>
+
+    <!-- ── Closed projects (collapsible) ── -->
+    <div class="closed-section">
+
+      <div class="collapsed-header" id="closedToggle" onclick="toggleClosed()">
+        <i class="chevron" id="closedChevron">▼</i>
+        <span class="closed-title">Proyectos cerrados</span>
+        <span class="count-badge">12 proyectos</span>
+        <span style="font-size:12px; color:#6c757d; margin-left:8px;">— Haz clic para expandir</span>
+      </div>
+
+      <div class="closed-body" id="closedBody">
+        <table>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Proyecto</th>
+              <th>Cliente</th>
+              <th>Estado</th>
+              <th style="text-align:right">Valor</th>
+              <th style="text-align:right">Facturado</th>
+              <th style="text-align:right">Pagado</th>
+              <th style="text-align:right">Saldo</th>
+              <th>Fecha Inicio</th>
+              <th>Fecha Cierre</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="row-muted">
+              <td class="code-cell">#0016</td>
+              <td><span class="project-name" style="color:#6c757d;">Reestructuración Operativa 2025</span></td>
+              <td>Grupo Pacífico Ltda.</td>
+              <td><span class="tag tag-secondary">Cerrado</span></td>
+              <td style="text-align:right">$72,000.00</td>
+              <td style="text-align:right">$72,000.00</td>
+              <td style="text-align:right">$72,000.00</td>
+              <td style="text-align:right; color:#6c757d;">$0.00</td>
+              <td>05/02/2025</td>
+              <td>28/11/2025</td>
+              <td>
+                <div class="action-group">
+                  <button class="icon-btn" title="Ver detalle">👁</button>
+                  <button class="icon-btn" title="Editar" style="opacity:.5; cursor:not-allowed;" disabled>✏️</button>
+                  <button class="icon-btn danger" style="opacity:.5; cursor:not-allowed;" disabled title="No eliminable">🗑</button>
+                </div>
+              </td>
+            </tr>
+            <tr class="row-muted">
+              <td class="code-cell">#0014</td>
+              <td><span class="project-name" style="color:#6c757d;">Diagnóstico Clima Laboral</span></td>
+              <td>Corporación Andina S.A.</td>
+              <td><span class="tag tag-secondary">Cerrado</span></td>
+              <td style="text-align:right">$18,500.00</td>
+              <td style="text-align:right">$18,500.00</td>
+              <td style="text-align:right">$18,500.00</td>
+              <td style="text-align:right; color:#6c757d;">$0.00</td>
+              <td>14/06/2024</td>
+              <td>30/09/2024</td>
+              <td>
+                <div class="action-group">
+                  <button class="icon-btn" title="Ver detalle">👁</button>
+                  <button class="icon-btn" style="opacity:.5; cursor:not-allowed;" disabled>✏️</button>
+                  <button class="icon-btn danger" style="opacity:.5; cursor:not-allowed;" disabled>🗑</button>
+                </div>
+              </td>
+            </tr>
+            <tr class="row-muted">
+              <td class="code-cell">#0011</td>
+              <td><span class="project-name" style="color:#6c757d;">Auditoría de Procesos Logísticos</span></td>
+              <td>Industrias Quito S.A.</td>
+              <td><span class="tag tag-secondary">Cerrado</span></td>
+              <td style="text-align:right">$41,000.00</td>
+              <td style="text-align:right">$41,000.00</td>
+              <td style="text-align:right">$38,500.00</td>
+              <td style="text-align:right; color:#dc2626; opacity:.75;">$2,500.00</td>
+              <td>01/01/2024</td>
+              <td>15/07/2024</td>
+              <td>
+                <div class="action-group">
+                  <button class="icon-btn" title="Ver detalle">👁</button>
+                  <button class="icon-btn" style="opacity:.5; cursor:not-allowed;" disabled>✏️</button>
+                  <button class="icon-btn danger" style="opacity:.5; cursor:not-allowed;" disabled>🗑</button>
+                </div>
+              </td>
+            </tr>
+            <tr class="row-muted">
+              <td class="code-cell">#0008</td>
+              <td><span class="project-name" style="color:#6c757d;">Plan Estratégico 2023–2025</span></td>
+              <td>Textiles del Sur S.A.</td>
+              <td><span class="tag tag-secondary">Cerrado</span></td>
+              <td style="text-align:right">$55,000.00</td>
+              <td style="text-align:right">$55,000.00</td>
+              <td style="text-align:right">$55,000.00</td>
+              <td style="text-align:right; color:#6c757d;">$0.00</td>
+              <td>10/03/2023</td>
+              <td>20/12/2023</td>
+              <td>
+                <div class="action-group">
+                  <button class="icon-btn" title="Ver detalle">👁</button>
+                  <button class="icon-btn" style="opacity:.5; cursor:not-allowed;" disabled>✏️</button>
+                  <button class="icon-btn danger" style="opacity:.5; cursor:not-allowed;" disabled>🗑</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Pagination (closed) -->
+        <div class="pagination-bar" style="border-radius:0; border-top:1px solid #dee2e6;">
+          <span>Mostrando 1–4 de 12 proyectos cerrados</span>
+          <div class="page-btns">
+            <button class="page-btn">‹</button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">3</button>
+            <button class="page-btn">›</button>
+          </div>
+        </div>
+      </div><!-- /closed-body -->
+
+    </div><!-- /closed-section -->
+
+  </div><!-- /page-body -->
+</div><!-- /main -->
+
+<script>
+  function toggleClosed() {
+    const body    = document.getElementById('closedBody');
+    const chevron = document.getElementById('closedChevron');
+    const header  = document.getElementById('closedToggle');
+    const isOpen  = body.classList.toggle('open');
+    chevron.classList.toggle('open', isOpen);
+    header.classList.toggle('open', isOpen);
+    header.querySelector('span:last-child').textContent =
+      isOpen ? '— Haz clic para colapsar' : '— Haz clic para expandir';
+  }
+</script>
+
+</body>
+</html>
