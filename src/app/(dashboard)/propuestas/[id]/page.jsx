@@ -85,7 +85,7 @@ export default function PropuestaDetallePage({ params }) {
       setCasoResumen(casoRes.data.resumen)
       setCasoTarifario(casoRes.data.tarifario)
       setPerfilesActivos(pfRes.data.data)
-      setEmpleados(emplRes.data.data || [])
+      setEmpleados(emplRes.data || [])
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar la propuesta', life: 4000 })
     } finally {

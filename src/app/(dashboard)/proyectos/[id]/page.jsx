@@ -125,7 +125,7 @@ export default function ProyectoDetallePage({ params }) {
       setRecordatorios(recRes.data)
       if (cfgRes.data.data?.empresa?.moneda) setMoneda(cfgRes.data.data.empresa.moneda)
       setPerfilesConsultor(perfilesRes.data.data || [])
-      setEmpleados(emplRes.data.data || [])
+      setEmpleados(emplRes.data || [])
       // Historial de estado (no bloquea si falla)
       axios.get(`/api/v1/proyectos/${id}/estado-logs`)
         .then((r) => setEstadoLogs(r.data.data || []))

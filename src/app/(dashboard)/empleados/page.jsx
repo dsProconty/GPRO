@@ -50,7 +50,7 @@ export default function EmpleadosPage() {
         empleadoService.getAll(),
         axios.get('/api/v1/perfiles-consultor'),
       ])
-      setEmpleados(empRes.data.data || [])
+      setEmpleados(empRes.data || [])
       setPerfiles(perRes.data.data || [])
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los empleados' })

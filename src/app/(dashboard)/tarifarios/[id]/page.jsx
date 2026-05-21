@@ -55,7 +55,7 @@ export default function TarifarioDetallePage() {
         axios.get('/api/v1/perfiles-consultor?activo=true'),
       ])
       setTarifario(tarRes.data.data)
-      setEmpleados(empRes.data.data || [])
+      setEmpleados(empRes.data || [])
       setPerfiles(perRes.data.data || [])
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar el tarifario' })
