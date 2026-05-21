@@ -55,6 +55,7 @@ export default function ProyectosPage() {
   const [dialogVisible, setDialogVisible] = useState(false)
   const [selectedProyecto, setSelectedProyecto] = useState(null)
   const [visibleRows, setVisibleRows] = useState([])
+  const [cerradosExpanded, setCerradosExpanded] = useState(false)
 
   useEffect(() => {
     loadAll()
@@ -172,15 +173,25 @@ export default function ProyectosPage() {
     </div>
   )
 
+  // Proyectos cerrados — siempre separados, aplica solo el buscador global
+  const proyectosCerrados = useMemo(() => {
+    let lista = proyectos.filter((p) => p.estado?.nombre === 'Cerrado')
+    if (globalFilter) {
+      const term = globalFilter.toLowerCase()
+      lista = lista.filter((p) =>
+        p.detalle?.toLowerCase().includes(term) ||
+        p.empresa?.nombre?.toLowerCase().includes(term) ||
+        p.codigo?.toLowerCase().includes(term)
+      )
+    }
+    return lista
+  }, [proyectos, globalFilter])
+
   // Filtrado avanzado en frontend (SP7-05)
   const proyectosFiltrados = useMemo(() => {
     let lista = proyectos
-    // Siempre excluir estados que pertenecen al módulo de Propuestas
-    lista = lista.filter((p) => !ESTADOS_PROPUESTAS.includes(p.estado?.nombre))
-    // Ocultar Cerrados por defecto, salvo que haya búsqueda de texto activa o se elija "Cerrado"
-    if (!estadoFiltro && !globalFilter) {
-      lista = lista.filter((p) => p.estado?.nombre !== 'Cerrado')
-    }
+    // Siempre excluir estados de Propuestas y proyectos Cerrados (van en tabla propia)
+    lista = lista.filter((p) => !ESTADOS_PROPUESTAS.includes(p.estado?.nombre) && p.estado?.nombre !== 'Cerrado')
     if (responsableFiltro) {
       lista = lista.filter((p) => p.responsables?.some((r) => r.empleadoId === responsableFiltro))
     }
@@ -260,7 +271,7 @@ export default function ProyectosPage() {
 
   const estadosFiltroOptions = [
     { id: null, nombre: 'Todos los estados' },
-    ...estados.filter((e) => !ESTADOS_PROPUESTAS.includes(e.nombre)).map((e) => ({ id: e.id, nombre: e.nombre })),
+    ...estados.filter((e) => !ESTADOS_PROPUESTAS.includes(e.nombre) && e.nombre !== 'Cerrado').map((e) => ({ id: e.id, nombre: e.nombre })),
   ]
 
   if (loading && proyectos.length === 0) {
@@ -390,6 +401,52 @@ export default function ProyectosPage() {
         <Column field="estado.nombre" header="Estado" body={estadoTemplate} sortable filter filterPlaceholder="Buscar estado..." style={{ width: '140px' }} />
         <Column header="Acciones" body={accionesTemplate} style={{ width: '120px' }} />
       </DataTable>
+
+      {/* ── Proyectos Cerrados ─────────────────────────────────────────── */}
+      <div className="mt-4">
+        <div
+          className="flex align-items-center justify-content-between px-3 py-2 border-round cursor-pointer select-none"
+          style={{ background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: cerradosExpanded ? '6px 6px 0 0' : '6px' }}
+          onClick={() => setCerradosExpanded((v) => !v)}
+        >
+          <div className="flex align-items-center gap-2">
+            <i className="pi pi-folder" style={{ color: '#6b7280' }} />
+            <span className="font-semibold" style={{ color: '#374151' }}>Proyectos cerrados</span>
+            <span className="ml-1 px-2 py-0 border-round-xl text-sm font-bold" style={{ background: '#e5e7eb', color: '#6b7280' }}>
+              {proyectosCerrados.length}
+            </span>
+          </div>
+          <i className={`pi ${cerradosExpanded ? 'pi-chevron-up' : 'pi-chevron-down'}`} style={{ color: '#9ca3af', fontSize: '0.85rem' }} />
+        </div>
+
+        {cerradosExpanded && (
+          <div style={{ border: '1px solid #d1d5db', borderTop: 'none', borderRadius: '0 0 6px 6px', opacity: 0.85 }}>
+            <DataTable
+              value={proyectosCerrados}
+              paginator
+              rows={10}
+              rowsPerPageOptions={[10, 25, 50]}
+              emptyMessage="No hay proyectos cerrados"
+              stripedRows
+              scrollable
+              size="small"
+            >
+              <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable style={{ width: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
+              <Column field="detalle" header="Proyecto" body={detalleTemplate} sortable style={{ minWidth: '180px' }} />
+              <Column field="empresa.nombre" header="Cliente" body={(row) => row.empresa?.nombre} sortable />
+              <Column field="valor" header="Valor" body={valorTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
+              <Column field="facturado" header="Facturado" body={facturadoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
+              <Column field="pagado" header="Pagado" body={pagadoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
+              <Column field="saldo" header="Saldo" body={saldoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
+              <Column field="fechaCreacion" header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable style={{ width: '115px' }} />
+              <Column field="fechaCierre" header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable style={{ width: '115px' }} />
+              <Column header="Acciones" body={(row) => (
+                <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
+              )} style={{ width: '80px' }} />
+            </DataTable>
+          </div>
+        )}
+      </div>
 
       <ProyectoFormDialog
         visible={dialogVisible}
