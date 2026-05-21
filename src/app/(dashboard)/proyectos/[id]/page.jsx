@@ -586,11 +586,11 @@ export default function ProyectoDetallePage({ params }) {
           {proyecto.responsables.length === 0
             ? <p className="text-color-secondary text-sm">Sin responsables asignados</p>
             : proyecto.responsables.map((r) => (
-                <div key={r.userId} className="flex align-items-center gap-2 mb-2">
+                <div key={r.empleadoId} className="flex align-items-center gap-2 mb-2">
                   <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, color: 'var(--primary-color)', flexShrink: 0 }}>
-                    {r.user.name.split(' ').map(w => w[0]).slice(0, 2).join('')}
+                    {r.empleado?.nombre?.[0]}{r.empleado?.apellido?.[0]}
                   </div>
-                  <span className="text-sm">{r.user.name}</span>
+                  <span className="text-sm">{r.empleado?.nombre} {r.empleado?.apellido}</span>
                 </div>
               ))
           }
