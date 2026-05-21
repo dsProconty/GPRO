@@ -422,9 +422,12 @@ export default function ProyectoDetallePage({ params }) {
   )
 
   if (loadingProyecto) return (
-    <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}>
-      <ProgressSpinner />
-    </div>
+    <>
+      <Toast ref={toast} />
+      <div className="flex justify-content-center align-items-center" style={{ height: '60vh' }}>
+        <ProgressSpinner />
+      </div>
+    </>
   )
 
   if (!proyecto) return (
@@ -537,7 +540,22 @@ export default function ProyectoDetallePage({ params }) {
               onClick={() => handleEstadoChange(PIPELINE_STEPS[pipelineIdx + 1]?.id)}
             />
           ) : (
-            <span className="text-sm text-color-secondary font-semibold">✓ Proyecto finalizado</span>
+            <div className="flex align-items-center gap-3">
+              <span className="text-sm text-color-secondary font-semibold">✓ Proyecto cerrado</span>
+              {puede(PERMISOS.PROYECTOS.CAMBIAR_ESTADO) && (
+                <Button
+                  label="Reabrir proyecto"
+                  icon="pi pi-refresh"
+                  severity="warning"
+                  outlined
+                  size="small"
+                  loading={savingEstado}
+                  tooltip="Volver a En Ejecución"
+                  tooltipOptions={{ position: 'top' }}
+                  onClick={() => handleEstadoChange(PIPELINE_STEPS[PIPELINE_STEPS.length - 2]?.id)}
+                />
+              )}
+            </div>
           )}
           {proyecto.projectOnline && (
             <Button label="Project Online" icon="pi pi-external-link" severity="secondary" text size="small"
