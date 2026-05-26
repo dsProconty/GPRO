@@ -1,0 +1,72 @@
+name: Deploy to Azure App Service
+
+# Dispara solo en pushes a main-azure — main sigue conectado a Vercel sin cambios
+on:
+  push:
+    branches: [main-azure]
+
+env:
+  NODE_VERSION: '20'
+
+# Secrets requeridos en GitHub → Settings → Secrets → Actions:
+#   AZURE_WEBAPP_NAME          Nombre del App Service (ej: gpro-proconty)
+#   AZURE_WEBAPP_PUBLISH_PROFILE  XML del Publish Profile descargado desde Azure Portal
+#   DATABASE_URL               postgresql://...  (Azure PostgreSQL Flexible Server)
+#   NEXTAUTH_SECRET            Igual al valor actual en Vercel
+#   NEXTAUTH_URL               https://<AZURE_WEBAPP_NAME>.azurewebsites.net  (o dominio custom)
+#   RESEND_API_KEY             Igual al valor actual en Vercel
+#   CRON_SECRET                Igual al valor actual en Vercel
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Generar Prisma Client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Ejecutar pre-deploy (migraciones idempotentes)
+        run: node prisma/pre-deploy.js
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Push schema a la BD
+        run: npx prisma db push --accept-data-loss
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Build Next.js (standalone)
+        run: npx next build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+      - name: Copiar assets estáticos al directorio standalone
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+
+      - name: Deploy a Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: .next/standalone
+          startup-command: node server.js

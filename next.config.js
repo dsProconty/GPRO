@@ -13,6 +13,7 @@ const securityHeaders = [
 ]
 
 const nextConfig = {
+  output: 'standalone',
   reactStrictMode: true,
   experimental: {
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],

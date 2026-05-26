@@ -1,0 +1,33 @@
+name: Cron - Recordatorios de Facturación
+
+# Reemplaza el cron de vercel.json → "0 8 * * *"
+# Se ejecuta diariamente a las 8:00 UTC (03:00 hora Ecuador)
+# workflow_dispatch permite ejecución manual desde GitHub Actions UI
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+# Secrets requeridos:
+#   CRON_SECRET   Igual al valor configurado en Azure App Service y Vercel
+#   NEXTAUTH_URL  URL base de la app en Azure (ej: https://gpro-proconty.azurewebsites.net)
+
+jobs:
+  trigger-recordatorios:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Llamar endpoint /api/cron/recordatorios
+        run: |
+          HTTP_STATUS=$(curl -s -o /tmp/cron_response.json -w "%{http_code}" \
+            -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.NEXTAUTH_URL }}/api/cron/recordatorios")
+
+          echo "Respuesta HTTP: $HTTP_STATUS"
+          cat /tmp/cron_response.json
+
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "ERROR: El endpoint retornó $HTTP_STATUS"
+            exit 1
+          fi
