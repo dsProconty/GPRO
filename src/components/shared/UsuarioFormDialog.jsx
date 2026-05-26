@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Dialog } from 'primereact/dialog'
-import { InputText } from 'primereact/inputtext'
+import { InputText } from '@/components/shared/InputText'
 import { Dropdown } from 'primereact/dropdown'
 import { Button } from 'primereact/button'
 import axios from 'axios'

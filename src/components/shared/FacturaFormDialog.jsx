@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Dialog } from 'primereact/dialog'
 import { Button } from 'primereact/button'
-import { InputText } from 'primereact/inputtext'
+import { InputText } from '@/components/shared/InputText'
 import { InputNumber } from 'primereact/inputnumber'
 import { Calendar } from 'primereact/calendar'
-import { InputTextarea } from 'primereact/inputtextarea'
+import { InputTextarea } from '@/components/shared/InputTextarea'
 import { Toast } from 'primereact/toast'
 import { facturaService } from '@/services/facturaService'
 

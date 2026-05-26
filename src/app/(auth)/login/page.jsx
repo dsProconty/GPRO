@@ -8,7 +8,7 @@
 import { useState, useRef } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { InputText } from 'primereact/inputtext'
+import { InputText } from '@/components/shared/InputText'
 import { Password } from 'primereact/password'
 import { Button } from 'primereact/button'
 import { Toast } from 'primereact/toast'

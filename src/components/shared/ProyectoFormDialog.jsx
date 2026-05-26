@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Dialog } from 'primereact/dialog'
 import { Button } from 'primereact/button'
-import { InputText } from 'primereact/inputtext'
+import { InputText } from '@/components/shared/InputText'
 import { InputNumber } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
 import { MultiSelect } from 'primereact/multiselect'

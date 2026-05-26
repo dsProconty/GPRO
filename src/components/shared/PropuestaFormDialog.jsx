@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { Dialog } from 'primereact/dialog'
-import { InputText } from 'primereact/inputtext'
-import { InputTextarea } from 'primereact/inputtextarea'
+import { InputText } from '@/components/shared/InputText'
+import { InputTextarea } from '@/components/shared/InputTextarea'
 import { InputNumber } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
 import { MultiSelect } from 'primereact/multiselect'

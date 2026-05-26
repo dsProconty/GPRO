@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card } from 'primereact/card'
-import { InputText } from 'primereact/inputtext'
+import { InputText } from '@/components/shared/InputText'
 import { Button } from 'primereact/button'
 import { Toast } from 'primereact/toast'
 import axios from 'axios'

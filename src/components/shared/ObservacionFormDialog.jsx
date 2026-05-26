@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Dialog } from 'primereact/dialog'
 import { Button } from 'primereact/button'
-import { InputTextarea } from 'primereact/inputtextarea'
+import { InputTextarea } from '@/components/shared/InputTextarea'
 import { Toast } from 'primereact/toast'
 import { observacionService } from '@/services/observacionService'
 

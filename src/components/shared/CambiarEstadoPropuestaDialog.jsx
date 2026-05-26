@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Dialog } from 'primereact/dialog'
-import { InputTextarea } from 'primereact/inputtextarea'
+import { InputTextarea } from '@/components/shared/InputTextarea'
 import { Button } from 'primereact/button'
 import { Tag } from 'primereact/tag'
 
