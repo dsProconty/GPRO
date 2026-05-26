@@ -1,9 +1,9 @@
 name: Deploy to Azure App Service
 
-# Dispara solo en pushes a main-azure — main sigue conectado a Vercel sin cambios
+# PENDIENTE CONFIGURACIÓN: trigger cambiado a solo manual hasta que los secrets
+# de Azure estén configurados en GitHub. Luego se restaura el trigger push.
 on:
-  push:
-    branches: [main-azure]
+  workflow_dispatch:
 
 env:
   NODE_VERSION: '20'
