@@ -62,37 +62,43 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'Error de validación', errors }, { status: 422 })
   }
 
-  const codigo = await generarCodigoPropuesta(parseInt(empresaId), new Date(fechaCreacion), prisma)
+  try {
+    const codigo = await generarCodigoPropuesta(parseInt(empresaId), new Date(fechaCreacion), prisma)
 
-  const propuesta = await prisma.propuesta.create({
-    data: {
-      codigo,
-      titulo: titulo.trim(),
-      descripcion: descripcion?.trim() || null,
-      empresaId: parseInt(empresaId),
-      valorEstimado: valorEstimado ? parseFloat(valorEstimado) : null,
-      fechaCreacion: new Date(fechaCreacion),
-      aplicativo: aplicativo?.trim() || null,
-      tipoPropuesta: ['PorHoras', 'Mensualizada'].includes(tipoPropuesta) ? tipoPropuesta : 'PorHoras',
-      estado: 'Factibilidad',
-      responsables: {
-        create: responsableIds.map((eid) => ({ empleadoId: parseInt(eid) })),
-      },
-      logs: {
-        create: {
-          estadoAnterior: null,
-          estadoNuevo: 'Factibilidad',
-          userId: parseInt(session.user.id),
-          nota: 'Propuesta creada',
+    const propuesta = await prisma.propuesta.create({
+      data: {
+        codigo,
+        titulo: titulo.trim(),
+        descripcion: descripcion?.trim() || null,
+        empresaId: parseInt(empresaId),
+        valorEstimado: valorEstimado ? parseFloat(valorEstimado) : null,
+        fechaCreacion: new Date(fechaCreacion),
+        aplicativo: aplicativo?.trim() || null,
+        tipoPropuesta: ['PorHoras', 'Mensualizada'].includes(tipoPropuesta) ? tipoPropuesta : 'PorHoras',
+        estado: 'Factibilidad',
+        responsables: {
+          create: responsableIds.map((eid) => ({ empleadoId: parseInt(eid) })),
+        },
+        logs: {
+          create: {
+            estadoAnterior: null,
+            estadoNuevo: 'Factibilidad',
+            userId: parseInt(session.user.id),
+            nota: 'Propuesta creada',
+          },
         },
       },
-    },
-    include: PROPUESTA_INCLUDE,
-  })
+      include: PROPUESTA_INCLUDE,
+    })
 
-  return NextResponse.json({
-    success: true,
-    data: { ...propuesta, valorEstimado: propuesta.valorEstimado ? Number(propuesta.valorEstimado) : null },
-    message: 'Propuesta creada exitosamente',
-  }, { status: 201 })
+    return NextResponse.json({
+      success: true,
+      data: { ...propuesta, valorEstimado: propuesta.valorEstimado ? Number(propuesta.valorEstimado) : null },
+      message: 'Propuesta creada exitosamente',
+    }, { status: 201 })
+  } catch (e) {
+    if (e.code === 'P2003') return NextResponse.json({ success: false, message: 'La empresa o responsable indicado no existe' }, { status: 422 })
+    console.error('POST /propuestas error:', e.message)
+    return NextResponse.json({ success: false, message: 'Error interno al crear la propuesta' }, { status: 500 })
+  }
 }

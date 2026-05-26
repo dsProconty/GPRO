@@ -67,7 +67,7 @@ export default function PagoFormDialog({ visible, onHide, onSave, pago, factura 
       onSave()
     } catch (error) {
       const msg = error.response?.data?.message || 'Error al guardar el pago'
-      toast.current.show({ severity: 'error', summary: 'Error', detail: msg, life: 4000 })
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: msg, life: 4000 })
     } finally {
       setLoading(false)
     }

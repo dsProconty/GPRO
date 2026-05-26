@@ -30,7 +30,7 @@ export async function enviarRecordatorio({ proyecto, recordatorio }) {
 }
 
 function plantillaEmail({ proyecto, recordatorio }) {
-  const appUrl = process.env.NEXTAUTH_URL || 'https://gpro.vercel.app'
+  const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || ''
   const fecha = new Date().toLocaleDateString('es-EC', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })

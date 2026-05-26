@@ -17,6 +17,7 @@ export async function GET(request, { params }) {
   }
 
   const id = parseInt(params.id)
+  if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
   const factura = await prisma.factura.findUnique({
     where: { id },
     include: { pagos: { orderBy: { fecha: 'asc' } } },
@@ -33,6 +34,7 @@ export async function PUT(request, { params }) {
   }
 
   const id = parseInt(params.id)
+  if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
   const body = await request.json()
   const { numFactura, ordenCompra, valor, fechaFactura, observacion } = body
 
@@ -75,6 +77,7 @@ export async function DELETE(request, { params }) {
   }
 
   const id = parseInt(params.id)
+  if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
   try {
     await prisma.factura.delete({ where: { id } })
     return NextResponse.json({ success: true, data: null, message: 'Factura eliminada' })
