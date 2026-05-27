@@ -242,13 +242,63 @@ export default function DashboardPage() {
   }
 
   const donutData = kpis?.porEstado?.length ? {
-    labels: kpis.porEstado.map((e) => e.nombre.replace('_', ' ')),
-    datasets: [{ data: kpis.porEstado.map((e) => e.total), backgroundColor: kpis.porEstado.map((e) => ESTADO_COLORS[e.nombre] || '#6b7280'), borderWidth: 3, borderColor: '#fff' }],
+    labels: kpis.porEstado.map((e) => {
+      const pct = kpis.totalProyectos > 0 ? Math.round((e.total / kpis.totalProyectos) * 100) : 0
+      return `${e.nombre.replace('_', ' ')}  ${e.total} (${pct}%)`
+    }),
+    datasets: [{
+      data: kpis.porEstado.map((e) => e.total),
+      backgroundColor: kpis.porEstado.map((e) => ESTADO_COLORS[e.nombre] || '#6b7280'),
+      borderWidth: 4,
+      borderColor: '#fff',
+      hoverBorderWidth: 4,
+      hoverOffset: 6,
+    }],
   } : null
 
   const donutOptions = {
-    responsive: true, maintainAspectRatio: false, cutout: '68%',
-    plugins: { legend: { position: 'right', labels: { usePointStyle: true, padding: 12, font: { size: 12 } } } },
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '72%',
+    animation: { animateRotate: true, duration: 700 },
+    plugins: {
+      legend: {
+        position: 'right',
+        labels: {
+          usePointStyle: true,
+          pointStyle: 'circle',
+          padding: 16,
+          font: { size: 12, weight: '500' },
+          color: '#374151',
+          generateLabels: (chart) => {
+            const data = chart.data
+            return data.labels.map((label, i) => ({
+              text: label,
+              fillStyle: data.datasets[0].backgroundColor[i],
+              strokeStyle: data.datasets[0].backgroundColor[i],
+              pointStyle: 'circle',
+              hidden: false,
+              index: i,
+            }))
+          },
+        },
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const total = ctx.dataset.data.reduce((a, b) => a + b, 0)
+            const pct = total > 0 ? Math.round((ctx.raw / total) * 100) : 0
+            return `  ${ctx.raw} proyectos (${pct}%)`
+          },
+          title: (items) => items[0].label.split('  ')[0],
+        },
+        backgroundColor: '#1e293b',
+        titleColor: '#f8fafc',
+        bodyColor: '#cbd5e1',
+        cornerRadius: 8,
+        padding: 10,
+      },
+    },
   }
 
   // ── Filtro alertas (sin cambios) ───────────────────────────────────────────
@@ -387,8 +437,16 @@ export default function DashboardPage() {
 
         {/* Donut */}
         <div style={card}>
-          <div style={{ marginBottom: '14px' }}>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>Proyectos por estado</h3>
+          <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>Proyectos por estado</h3>
+              <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94a3b8' }}>Distribución actual</p>
+            </div>
+            {kpis?.proyectosActivos > 0 && (
+              <span style={{ background: '#eff6ff', color: '#2563eb', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: 700 }}>
+                {kpis.proyectosActivos} activos
+              </span>
+            )}
           </div>
           {loadingKpis ? (
             <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -398,9 +456,9 @@ export default function DashboardPage() {
             <div style={{ position: 'relative', height: '260px' }}>
               <Chart type="doughnut" data={donutData} options={donutOptions} style={{ height: '100%' }} />
               {kpis?.totalProyectos > 0 && (
-                <div style={{ position: 'absolute', top: '50%', left: '32%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none' }}>
-                  <div style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a' }}>{kpis.totalProyectos}</div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8' }}>Total</div>
+                <div style={{ position: 'absolute', top: '50%', left: '30%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none' }}>
+                  <div style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{kpis.totalProyectos}</div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Total</div>
                 </div>
               )}
             </div>
