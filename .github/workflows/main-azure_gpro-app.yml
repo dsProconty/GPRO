@@ -34,14 +34,16 @@ jobs:
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
 
-      - name: Install production dependencies only
-        run: npm install --omit=dev
+      - name: Copy static assets into standalone output
+        run: |
+          cp -r public .next/standalone/public
+          cp -r .next/static .next/standalone/.next/static
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: .next/standalone
           include-hidden-files: true
 
   deploy:
