@@ -29,8 +29,8 @@ export async function GET() {
     ])
 
     // ── KPIs básicos ────────────────────────────────────────────
-    const ESTADOS_ACTIVOS = [1, 2, 3]
-    const proyectosActivos = proyectos.filter((p) => ESTADOS_ACTIVOS.includes(p.estadoId)).length
+    const ESTADOS_INACTIVOS = new Set(['Cerrado'])
+    const proyectosActivos = proyectos.filter((p) => !ESTADOS_INACTIVOS.has(p.estado.nombre)).length
     const totalProyectos = proyectos.length
     const facturadoTotal = facturas.reduce((s, f) => s + Number(f.valor), 0)
     const cobradoTotal = pagos.reduce((s, p) => s + Number(p.valor), 0)
@@ -46,7 +46,7 @@ export async function GET() {
     const porMes = generarUltimos12Meses(facturas, pagos)
 
     // ── Top 5 Clientes por facturado ─────────────────────────────
-    const topClientes = await obtenerTopClientes()
+    const { top: topClientes, totalActivas: totalEmpresasActivas } = await obtenerTopClientes()
 
     return NextResponse.json({
       success: true,
@@ -60,6 +60,7 @@ export async function GET() {
         porEstado,
         porMes,
         topClientes,
+        totalEmpresasActivas,
       },
       message: '',
     })
@@ -80,14 +81,14 @@ function generarUltimos12Meses(facturas, pagos) {
     const facturado = facturas
       .filter((f) => {
         const d = new Date(f.fechaFactura)
-        return d.getFullYear() === anio && d.getMonth() === mes
+        return d.getUTCFullYear() === anio && d.getUTCMonth() === mes
       })
       .reduce((s, f) => s + Number(f.valor), 0)
 
     const cobrado = pagos
       .filter((p) => {
         const d = new Date(p.fecha)
-        return d.getFullYear() === anio && d.getMonth() === mes
+        return d.getUTCFullYear() === anio && d.getUTCMonth() === mes
       })
       .reduce((s, p) => s + Number(p.valor), 0)
 
@@ -114,7 +115,7 @@ async function obtenerTopClientes() {
     },
   })
 
-  return empresas
+  const todas = empresas
     .map((e) => ({
       nombre: e.nombre,
       total: e.proyectos.reduce(
@@ -124,5 +125,6 @@ async function obtenerTopClientes() {
     }))
     .filter((e) => e.total > 0)
     .sort((a, b) => b.total - a.total)
-    .slice(0, 5)
+
+  return { top: todas.slice(0, 5), totalActivas: todas.length }
 }

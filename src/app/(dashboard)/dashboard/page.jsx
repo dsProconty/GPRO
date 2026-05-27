@@ -11,11 +11,18 @@ import { formatCurrency, formatDate } from '@/utils/format'
 
 // ── Colores de estado ──────────────────────────────────────────────────────────
 const ESTADO_COLORS = {
-  Prefactibilidad:       '#f59e0b',
-  Elaboracion_Propuesta: '#3b82f6',
-  Adjudicado:            '#22c55e',
-  Rechazado:             '#ef4444',
-  Cerrado:               '#6b7280',
+  // Nombres reales en BD (migrados desde Neon)
+  'Ejecución':             '#3b82f6',
+  'Entregado':             '#f59e0b',
+  'Facturado':             '#8b5cf6',
+  'Cerrado':               '#6b7280',
+  // Nombres seed.js (por compatibilidad)
+  'En Ejecución':          '#3b82f6',
+  'Por Facturar':          '#f59e0b',
+  'Adjudicado':            '#22c55e',
+  'Rechazado':             '#ef4444',
+  'Prefactibilidad':       '#f59e0b',
+  'Elaboracion_Propuesta': '#3b82f6',
 }
 
 // ── Sparkline SVG ──────────────────────────────────────────────────────────────
@@ -261,11 +268,16 @@ export default function DashboardPage() {
 
   // ── Estado labels ──────────────────────────────────────────────────────────
   const ESTADO_LABEL = {
-    Prefactibilidad:       'Prefactibilidad',
-    Elaboracion_Propuesta: 'Elab. Propuesta',
-    Adjudicado:            'Adjudicado',
-    Rechazado:             'Rechazado',
-    Cerrado:               'Cerrado',
+    'Ejecución':             'En Ejecución',
+    'Entregado':             'Entregado',
+    'Facturado':             'Facturado',
+    'Cerrado':               'Cerrado',
+    'En Ejecución':          'En Ejecución',
+    'Por Facturar':          'Por Facturar',
+    'Adjudicado':            'Adjudicado',
+    'Rechazado':             'Rechazado',
+    'Prefactibilidad':       'Prefactibilidad',
+    'Elaboracion_Propuesta': 'Elab. Propuesta',
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -355,7 +367,7 @@ export default function DashboardPage() {
         {/* Líneas */}
         <div style={card}>
           <div style={{ marginBottom: '14px' }}>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>Facturación vs Costos</h3>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>Facturación vs Cobrado</h3>
             <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94a3b8' }}>Últimos 12 meses</p>
           </div>
           {loadingKpis ? (
@@ -572,10 +584,10 @@ export default function DashboardPage() {
       {/* ─── ROW 5: KPIs SECUNDARIOS ─────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px' }}>
         {[
-          { icon: 'pi-sync',         color: '#8b5cf6', bg: '#f5f3ff', label: 'MRR (ingresos rec.)',  value: loadingKpis ? '—' : formatCurrency(mesActual?.facturado ?? 0), sub: `+${deltaFact !== null ? Math.abs(deltaFact).toFixed(1) : '—'}% vs mes ant.`, deltaUp: deltaFact > 0 },
-          { icon: 'pi-users',        color: '#0ea5e9', bg: '#f0f9ff', label: 'Clientes activos',     value: loadingKpis ? '—' : String(kpis?.topClientes?.length ?? '—'), sub: 'con facturación' },
-          { icon: 'pi-briefcase',    color: '#10b981', bg: '#f0fdf4', label: 'Proyectos activos',    value: loadingKpis ? '—' : String(kpis?.proyectosActivos ?? '—'),     sub: '+ 1 vs mes anterior' },
-          { icon: 'pi-check-square', color: '#f59e0b', bg: '#fffbeb', label: 'Proyectos finalizados',value: loadingKpis ? '—' : String(kpis?.porEstado?.find((e) => e.nombre === 'Cerrado')?.total ?? 0), sub: '+ 2 vs mes anterior' },
+          { icon: 'pi-sync',         color: '#8b5cf6', bg: '#f5f3ff', label: 'MRR (ingresos rec.)',  value: loadingKpis ? '—' : formatCurrency(mesActual?.facturado ?? 0), sub: `${deltaFact !== null ? (deltaFact > 0 ? '▲ ' : '▼ ') + Math.abs(deltaFact).toFixed(1) + '% vs mes ant.' : 'Sin datos ant.'}`, deltaUp: deltaFact > 0 },
+          { icon: 'pi-users',        color: '#0ea5e9', bg: '#f0f9ff', label: 'Clientes activos',     value: loadingKpis ? '—' : String(kpis?.totalEmpresasActivas ?? '—'), sub: 'con facturación' },
+          { icon: 'pi-alert-circle', color: '#ef4444', bg: '#fef2f2', label: 'Proyectos con mora',   value: loadingAlertas ? '—' : String(new Set(alertas.map((a) => a.proyecto?.id)).size), sub: 'con facturas > 30 días' },
+          { icon: 'pi-check-square', color: '#f59e0b', bg: '#fffbeb', label: 'Proyectos finalizados',value: loadingKpis ? '—' : String(kpis?.porEstado?.find((e) => e.nombre === 'Cerrado')?.total ?? 0), sub: 'total cerrados' },
         ].map((c) => (
           <div key={c.label}
             style={{ ...card, display: 'flex', alignItems: 'center', gap: '14px' }}
