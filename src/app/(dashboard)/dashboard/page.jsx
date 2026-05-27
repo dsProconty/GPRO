@@ -453,14 +453,29 @@ export default function DashboardPage() {
               <ProgressSpinner style={{ width: '32px', height: '32px' }} />
             </div>
           ) : donutData ? (
-            <div style={{ position: 'relative', height: '260px' }}>
-              <Chart type="doughnut" data={donutData} options={donutOptions} style={{ height: '100%' }} />
-              {kpis?.totalProyectos > 0 && (
-                <div style={{ position: 'absolute', top: '50%', left: '30%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none' }}>
-                  <div style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{kpis.totalProyectos}</div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Total</div>
-                </div>
-              )}
+            <div style={{ height: '260px' }}>
+              <Chart type="doughnut" data={donutData} options={donutOptions}
+                plugins={[{
+                  id: 'centerLabel',
+                  afterDraw(chart) {
+                    const { ctx, chartArea } = chart
+                    if (!chartArea || !kpis?.totalProyectos) return
+                    const cx = (chartArea.left + chartArea.right) / 2
+                    const cy = (chartArea.top + chartArea.bottom) / 2
+                    ctx.save()
+                    ctx.textAlign = 'center'
+                    ctx.textBaseline = 'middle'
+                    ctx.font = 'bold 28px system-ui, -apple-system, sans-serif'
+                    ctx.fillStyle = '#0f172a'
+                    ctx.fillText(String(kpis.totalProyectos), cx, cy - 9)
+                    ctx.font = '500 11px system-ui, -apple-system, sans-serif'
+                    ctx.fillStyle = '#94a3b8'
+                    ctx.fillText('TOTAL', cx, cy + 13)
+                    ctx.restore()
+                  }
+                }]}
+                style={{ height: '100%' }}
+              />
             </div>
           ) : (
             <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>
