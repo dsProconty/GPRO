@@ -29,7 +29,7 @@ export async function GET() {
     ])
 
     // ── KPIs básicos ────────────────────────────────────────────
-    const ESTADOS_INACTIVOS = new Set(['Cerrado'])
+    const ESTADOS_INACTIVOS = new Set(['Cerrado', 'Rechazado'])
     const proyectosActivos = proyectos.filter((p) => !ESTADOS_INACTIVOS.has(p.estado.nombre)).length
     const totalProyectos = proyectos.length
     const facturadoTotal = facturas.reduce((s, f) => s + Number(f.valor), 0)
