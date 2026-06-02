@@ -1,11 +1,10 @@
 name: Cron - Recordatorios de Facturación
 
-# Reemplaza el cron de vercel.json → "0 8 * * *"
-# Se ejecuta diariamente a las 8:00 UTC (03:00 hora Ecuador)
+# Se ejecuta diariamente a las 8:00 hora Ecuador (UTC-5 = 13:00 UTC)
 # workflow_dispatch permite ejecución manual desde GitHub Actions UI
 on:
   schedule:
-    - cron: '0 8 * * *'
+    - cron: '0 13 * * *'
   workflow_dispatch:
 
 # Secrets requeridos:
