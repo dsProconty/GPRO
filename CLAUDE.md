@@ -237,6 +237,13 @@ GPRO/
 - Si no hay `fecha_cierre`, usar la fecha actual.
 - Mostrar en días: "X días".
 
+### RN-07: Versionado — OBLIGATORIO en cada deploy ⚠️
+- **Antes de cada push a `main-azure`, incrementar la versión en `package.json`.**
+- Esquema: `1.MAYOR.MENOR` → cada fix o mejora sube el MENOR (`1.0.1 → 1.0.2`), cambios grandes suben el MAYOR (`1.0.x → 1.1.0`).
+- La versión se muestra automáticamente en el sidebar inferior izquierdo vía `NEXT_PUBLIC_APP_VERSION`.
+- Comando: editar `"version"` en `package.json` antes del commit final.
+- **No hay excepción:** cualquier commit que llegue a producción debe tener versión actualizada.
+
 ---
 
 ## 6. CONVENCIONES DE CÓDIGO
