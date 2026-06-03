@@ -61,9 +61,11 @@ export default function ProyectosPage() {
   const [estadoFiltro, setEstadoFiltro] = useState(null)
   const [responsableFiltro, setResponsableFiltro] = useState(null)
   const [fechaRango, setFechaRango] = useState(null)
+  const filtrosListos = useRef(false)
 
-  // Guardar filtros en sessionStorage al cambiar
+  // Guardar filtros — solo después de que la restauración inicial haya ocurrido
   useEffect(() => {
+    if (!filtrosListos.current) return
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({
       globalFilter,
       estadoFiltro,
@@ -82,6 +84,7 @@ export default function ProyectosPage() {
     if (saved.estadoFiltro)      setEstadoFiltro(saved.estadoFiltro)
     if (saved.responsableFiltro) setResponsableFiltro(saved.responsableFiltro)
     if (saved.fechaRango)        setFechaRango(saved.fechaRango.map((d) => (d ? new Date(d) : null)))
+    filtrosListos.current = true
     loadAll(saved.estadoFiltro || null)
   }, [])
 
