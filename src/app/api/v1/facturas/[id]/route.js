@@ -47,8 +47,10 @@ export async function PUT(request, { params }) {
   if (Object.keys(errors).length > 0)
     return NextResponse.json({ success: false, message: 'Error de validación', errors }, { status: 422 })
 
-  const dup = await prisma.factura.findFirst({ where: { numFactura: numFactura.trim(), NOT: { id } } })
-  if (dup) return NextResponse.json({ success: false, message: 'Número de factura duplicado', errors: { numFactura: ['Ya existe una factura con ese número'] } }, { status: 422 })
+  const facturaActual = await prisma.factura.findUnique({ where: { id }, select: { proyectoId: true } })
+  if (!facturaActual) return NextResponse.json({ success: false, message: 'Factura no encontrada' }, { status: 404 })
+  const dup = await prisma.factura.findFirst({ where: { numFactura: numFactura.trim(), proyectoId: facturaActual.proyectoId, NOT: { id } } })
+  if (dup) return NextResponse.json({ success: false, message: 'Número de factura duplicado en este proyecto', errors: { numFactura: ['Esta factura ya está registrada en este proyecto'] } }, { status: 422 })
 
   try {
     const factura = await prisma.factura.update({
