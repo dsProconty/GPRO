@@ -218,14 +218,14 @@ export default function ProyectosPage() {
   const openFacturas = (row) => { setProyectoParaFacturas(row); setFacturasDialogVisible(true) }
 
   const accionesTemplate = (row) => (
-    <div className="flex gap-1">
-      <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
-      <Button icon="pi pi-file" rounded text severity="info" tooltip="Facturas" tooltipOptions={{ position: 'top' }} onClick={() => openFacturas(row)} />
+    <div className="flex align-items-center" style={{ gap: '2px' }}>
+      <Button icon="pi pi-eye" rounded severity="success" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
+      <Button icon="pi pi-file" rounded severity="info" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Facturas" tooltipOptions={{ position: 'top' }} onClick={() => openFacturas(row)} />
       {(puede(PERMISOS.PROYECTOS.EDITAR) && puedeEditarProyecto(row.estadoId)) && (
-        <Button icon="pi pi-pencil" rounded text severity="secondary" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => openEdit(row)} />
+        <Button icon="pi pi-pencil" rounded text severity="secondary" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => openEdit(row)} />
       )}
       {puede(PERMISOS.PROYECTOS.ELIMINAR) && (
-        <Button icon="pi pi-trash" rounded text severity="danger" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => confirmDelete(row)} />
+        <Button icon="pi pi-trash" rounded text severity="danger" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => confirmDelete(row)} />
       )}
     </div>
   )
@@ -457,7 +457,7 @@ export default function ProyectosPage() {
         <Column field="fechaCreacion" header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable style={{ width: '115px' }} />
         <Column field="fechaCierre" header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable style={{ width: '115px' }} />
         <Column field="estado.nombre" header="Estado" body={estadoTemplate} sortable filter filterPlaceholder="Buscar estado..." style={{ width: '140px' }} />
-        <Column header="Acciones" body={accionesTemplate} style={{ width: '150px' }} />
+        <Column header="Acciones" body={accionesTemplate} style={{ width: '125px' }} />
         <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '130px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
       </DataTable>
 
@@ -503,10 +503,10 @@ export default function ProyectosPage() {
               <Column field="saldo" header="Saldo" body={saldoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
               <Column field="fechaCreacion" header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable style={{ width: '115px' }} />
               <Column field="fechaCierre" header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable style={{ width: '115px' }} />
-              <Column header="Acciones" style={{ width: '100px' }} body={(row) => (
-                <div className="flex gap-1">
-                  <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
-                  <Button icon="pi pi-file" rounded text severity="info" tooltip="Facturas" tooltipOptions={{ position: 'top' }} onClick={() => openFacturas(row)} />
+              <Column header="Acciones" style={{ width: '70px' }} body={(row) => (
+                <div className="flex align-items-center" style={{ gap: '2px' }}>
+                  <Button icon="pi pi-eye" rounded severity="success" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
+                  <Button icon="pi pi-file" rounded severity="info" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Facturas" tooltipOptions={{ position: 'top' }} onClick={() => openFacturas(row)} />
                 </div>
               )} />
               <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '130px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
