@@ -16,6 +16,7 @@ import { Toast } from 'primereact/toast'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { ProgressSpinner } from 'primereact/progressspinner'
 import ProyectoFormDialog from '@/components/shared/ProyectoFormDialog'
+import ProyectoFacturasDialog from '@/components/shared/ProyectoFacturasDialog'
 import { proyectoService } from '@/services/proyectoService'
 import { empresaService } from '@/services/empresaService'
 import { empleadoService } from '@/services/empleadoService'
@@ -97,6 +98,8 @@ export default function ProyectosPage() {
   }, [globalFilter, estadoFiltro, responsableFiltro, fechaRango, tableFilters, tableFiltersCerrados])
   const [dialogVisible, setDialogVisible] = useState(false)
   const [selectedProyecto, setSelectedProyecto] = useState(null)
+  const [facturasDialogVisible, setFacturasDialogVisible] = useState(false)
+  const [proyectoParaFacturas, setProyectoParaFacturas] = useState(null)
   const [visibleRows, setVisibleRows] = useState([])
   const [cerradosExpanded, setCerradosExpanded] = useState(false)
 
@@ -212,11 +215,14 @@ export default function ProyectosPage() {
   const tiempoVidaTemplate = (row) =>
     calcTiempoVida(row.fechaCreacion, row.fechaCierre)
 
+  const openFacturas = (row) => { setProyectoParaFacturas(row); setFacturasDialogVisible(true) }
+
   const accionesTemplate = (row) => (
     <div className="flex gap-1">
       <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
+      <Button icon="pi pi-file" rounded text severity="info" tooltip="Facturas" tooltipOptions={{ position: 'top' }} onClick={() => openFacturas(row)} />
       {(puede(PERMISOS.PROYECTOS.EDITAR) && puedeEditarProyecto(row.estadoId)) && (
-        <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => openEdit(row)} />
+        <Button icon="pi pi-pencil" rounded text severity="secondary" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => openEdit(row)} />
       )}
       {puede(PERMISOS.PROYECTOS.ELIMINAR) && (
         <Button icon="pi pi-trash" rounded text severity="danger" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => confirmDelete(row)} />
@@ -440,7 +446,6 @@ export default function ProyectosPage() {
         scrollable
         filterDisplay="menu"
       >
-        <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
         <Column field="detalle" header="Proyecto" body={detalleTemplate} sortable filter filterPlaceholder="Buscar proyecto..." style={{ minWidth: '180px' }} />
         <Column field="empresa.nombre" header="Cliente" body={(row) => row.empresa?.nombre} sortable filter filterPlaceholder="Buscar cliente..." />
         <Column field="aplicativo" header="Aplicativo" body={(row) => row.aplicativo || '—'} sortable filter filterPlaceholder="Buscar aplicativo..." style={{ width: '120px' }} />
@@ -452,7 +457,8 @@ export default function ProyectosPage() {
         <Column field="fechaCreacion" header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable style={{ width: '115px' }} />
         <Column field="fechaCierre" header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable style={{ width: '115px' }} />
         <Column field="estado.nombre" header="Estado" body={estadoTemplate} sortable filter filterPlaceholder="Buscar estado..." style={{ width: '140px' }} />
-        <Column header="Acciones" body={accionesTemplate} style={{ width: '120px' }} />
+        <Column header="Acciones" body={accionesTemplate} style={{ width: '150px' }} />
+        <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '130px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
       </DataTable>
 
       {/* ── Proyectos Cerrados ─────────────────────────────────────────── */}
@@ -487,7 +493,6 @@ export default function ProyectosPage() {
               size="small"
               filterDisplay="menu"
             >
-              <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
               <Column field="detalle" header="Proyecto" body={detalleTemplate} sortable filter filterPlaceholder="Buscar proyecto..." style={{ minWidth: '180px' }} />
               <Column field="empresa.nombre" header="Cliente" body={(row) => row.empresa?.nombre} sortable filter filterPlaceholder="Buscar cliente..." />
               <Column field="aplicativo" header="Aplicativo" body={(row) => row.aplicativo || '—'} sortable filter filterPlaceholder="Buscar aplicativo..." style={{ width: '130px' }} />
@@ -498,9 +503,13 @@ export default function ProyectosPage() {
               <Column field="saldo" header="Saldo" body={saldoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
               <Column field="fechaCreacion" header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable style={{ width: '115px' }} />
               <Column field="fechaCierre" header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable style={{ width: '115px' }} />
-              <Column header="Acciones" body={(row) => (
-                <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
-              )} style={{ width: '80px' }} />
+              <Column header="Acciones" style={{ width: '100px' }} body={(row) => (
+                <div className="flex gap-1">
+                  <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
+                  <Button icon="pi pi-file" rounded text severity="info" tooltip="Facturas" tooltipOptions={{ position: 'top' }} onClick={() => openFacturas(row)} />
+                </div>
+              )} />
+              <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '130px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
             </DataTable>
           </div>
         )}
@@ -514,6 +523,12 @@ export default function ProyectosPage() {
         empresas={empresas}
         estados={estados}
         empleados={empleados}
+      />
+
+      <ProyectoFacturasDialog
+        visible={facturasDialogVisible}
+        onHide={() => setFacturasDialogVisible(false)}
+        proyecto={proyectoParaFacturas}
       />
     </div>
   )
