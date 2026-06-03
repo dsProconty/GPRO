@@ -10,13 +10,13 @@ import { InputTextarea } from '@/components/shared/InputTextarea'
 import { Toast } from 'primereact/toast'
 import { facturaService } from '@/services/facturaService'
 
-export default function FacturaFormDialog({ visible, onHide, onSave, factura, proyectoId }) {
+export default function FacturaFormDialog({ visible, onHide, onSave, factura, proyectoId, valorDefault = 0 }) {
   const toast = useRef(null)
 
   const emptyForm = {
     numFactura: '',
     ordenCompra: '',
-    valor: 0,
+    valor: valorDefault,
     fechaFactura: new Date(),
     observacion: '',
   }
@@ -36,7 +36,7 @@ export default function FacturaFormDialog({ visible, onHide, onSave, factura, pr
           observacion: factura.observacion || '',
         })
       } else {
-        setForm(emptyForm)
+        setForm({ ...emptyForm, valor: valorDefault ?? 0 })
       }
       setErrors({})
     }
