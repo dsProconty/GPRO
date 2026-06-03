@@ -236,6 +236,7 @@ export default function ProyectoFacturasDialog({ visible, onHide, proyecto }) {
         onSave={handleSaveFactura}
         factura={selectedFactura}
         proyectoId={proyecto?.id}
+        valorDefault={proyecto?.valorMensual ? Number(proyecto.valorMensual) : Number(proyecto?.valor ?? 0)}
       />
 
       <PagoFormDialog
