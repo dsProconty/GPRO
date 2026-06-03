@@ -407,8 +407,8 @@ export default function ProyectosPage() {
         onValueChange={(rows) => setVisibleRows(rows)}
         loading={loading}
         paginator
-        rows={10}
-        rowsPerPageOptions={[10, 25, 50]}
+        rows={50}
+        rowsPerPageOptions={[25, 50, 100]}
         emptyMessage="No hay proyectos registrados"
         stripedRows
         scrollable
@@ -451,8 +451,8 @@ export default function ProyectosPage() {
             <DataTable
               value={proyectosCerrados}
               paginator
-              rows={10}
-              rowsPerPageOptions={[10, 25, 50]}
+              rows={50}
+              rowsPerPageOptions={[25, 50, 100]}
               emptyMessage="No hay proyectos cerrados"
               stripedRows
               scrollable
