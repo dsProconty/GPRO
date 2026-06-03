@@ -5,6 +5,12 @@ import { prisma } from '@/lib/prisma'
 import { tienePermiso, PERMISOS } from '@/lib/permisos'
 import { generarCodigoPropuesta } from '@/lib/codigoHelper'
 
+const serializePropuesta = (p) => ({
+  ...p,
+  valorEstimado: p.valorEstimado ? Number(p.valorEstimado) : null,
+  valorMensual:  p.valorMensual  ? Number(p.valorMensual)  : null,
+})
+
 const PROPUESTA_INCLUDE = {
   empresa: { select: { id: true, nombre: true } },
   responsables: { include: { empleado: { select: { id: true, nombre: true, apellido: true } } } },
@@ -36,10 +42,7 @@ export async function GET(request) {
 
   return NextResponse.json({
     success: true,
-    data: propuestas.map((p) => ({
-      ...p,
-      valorEstimado: p.valorEstimado ? Number(p.valorEstimado) : null,
-    })),
+    data: propuestas.map(serializePropuesta),
     message: '',
   })
 }
@@ -52,7 +55,7 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'No tiene permiso para crear propuestas' }, { status: 403 })
   }
 
-  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, aplicativo, responsableIds = [], clienteIds = [], tipoPropuesta = 'PorHoras' } = await request.json()
+  const { titulo, descripcion, empresaId, valorEstimado, valorMensual, mesesContrato, fechaCreacion, aplicativo, responsableIds = [], clienteIds = [], tipoPropuesta = 'PorHoras' } = await request.json()
 
   const errors = {}
   if (!titulo?.trim()) errors.titulo = ['El título es requerido']
@@ -66,16 +69,25 @@ export async function POST(request) {
   try {
     const codigo = await generarCodigoPropuesta(parseInt(empresaId), new Date(fechaCreacion), prisma)
 
+    const tipoValido = ['PorHoras', 'Mensualizada'].includes(tipoPropuesta) ? tipoPropuesta : 'PorHoras'
+    const vMensual = valorMensual ? parseFloat(valorMensual) : null
+    const meses    = mesesContrato ? parseInt(mesesContrato) : null
+    const vEstimado = tipoValido === 'Mensualizada' && vMensual && meses
+      ? vMensual * meses
+      : (valorEstimado ? parseFloat(valorEstimado) : null)
+
     const propuesta = await prisma.propuesta.create({
       data: {
         codigo,
         titulo: titulo.trim(),
         descripcion: descripcion?.trim() || null,
         empresaId: parseInt(empresaId),
-        valorEstimado: valorEstimado ? parseFloat(valorEstimado) : null,
+        valorEstimado: vEstimado,
+        valorMensual:  vMensual,
+        mesesContrato: meses,
         fechaCreacion: new Date(fechaCreacion),
         aplicativo: aplicativo?.trim() || null,
-        tipoPropuesta: ['PorHoras', 'Mensualizada'].includes(tipoPropuesta) ? tipoPropuesta : 'PorHoras',
+        tipoPropuesta: tipoValido,
         estado: 'Factibilidad',
         responsables: {
           create: responsableIds.map((eid) => ({ empleadoId: parseInt(eid) })),
@@ -97,7 +109,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
-      data: { ...propuesta, valorEstimado: propuesta.valorEstimado ? Number(propuesta.valorEstimado) : null },
+      data: serializePropuesta(propuesta),
       message: 'Propuesta creada exitosamente',
     }, { status: 201 })
   } catch (e) {

@@ -20,6 +20,8 @@ const EMPTY = {
   descripcion: '',
   empresaId: null,
   valorEstimado: null,
+  valorMensual: null,
+  mesesContrato: null,
   fechaCreacion: new Date(),
   aplicativo: '',
   responsableIds: [],
@@ -92,6 +94,8 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
         descripcion:    propuesta.descripcion || '',
         empresaId:      propuesta.empresaId || null,
         valorEstimado:  propuesta.valorEstimado ?? null,
+        valorMensual:   propuesta.valorMensual ?? null,
+        mesesContrato:  propuesta.mesesContrato ?? null,
         fechaCreacion:  propuesta.fechaCreacion ? new Date(propuesta.fechaCreacion) : new Date(),
         aplicativo:     propuesta.aplicativo || '',
         responsableIds: propuesta.responsables?.map((r) => r.empleadoId) || [],
@@ -327,6 +331,8 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
         descripcion:    form.descripcion?.trim() || null,
         empresaId:      form.empresaId,
         valorEstimado:  form.valorEstimado ?? null,
+        valorMensual:   form.valorMensual ?? null,
+        mesesContrato:  form.mesesContrato ?? null,
         fechaCreacion:  form.fechaCreacion instanceof Date
           ? form.fechaCreacion.toISOString().slice(0, 10)
           : form.fechaCreacion,
@@ -486,31 +492,74 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
           />
         </div>
 
-        {/* Valor estimado + Fecha */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          <div className="flex flex-column gap-1">
-            <label className="text-sm font-medium">Valor estimado (USD)</label>
-            <InputNumber
-              value={form.valorEstimado}
-              onValueChange={(e) => { setForm((p) => ({ ...p, valorEstimado: e.value })); setErrors((p) => ({ ...p, valorEstimado: null })) }}
-              mode="decimal" minFractionDigits={2} maxFractionDigits={2} placeholder="0.00"
-              pt={{ input: { onPaste: (e) => {
-                const text = e.clipboardData.getData('text').replace(/[$,\s]/g, '')
-                const num = parseFloat(text)
-                if (!isNaN(num)) {
-                  e.preventDefault()
-                  setForm((p) => ({ ...p, valorEstimado: num }))
-                  setErrors((p) => ({ ...p, valorEstimado: null }))
-                }
-              }}}}
-            />
+        {/* Valor — depende del tipo */}
+        {form.tipoPropuesta === 'Mensualizada' ? (
+          <div className="flex flex-column gap-2">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+              <div className="flex flex-column gap-1">
+                <label className="text-sm font-medium">Valor mensual (USD) <span className="text-red-500">*</span></label>
+                <InputNumber
+                  value={form.valorMensual}
+                  onValueChange={(e) => setForm((p) => ({ ...p, valorMensual: e.value }))}
+                  mode="decimal" minFractionDigits={2} maxFractionDigits={2} placeholder="0.00"
+                />
+              </div>
+              <div className="flex flex-column gap-1">
+                <label className="text-sm font-medium">Nº de meses <span className="text-red-500">*</span></label>
+                <InputNumber
+                  value={form.mesesContrato}
+                  onValueChange={(e) => setForm((p) => ({ ...p, mesesContrato: e.value }))}
+                  min={1} minFractionDigits={0} maxFractionDigits={0} placeholder="0"
+                />
+              </div>
+              <div className="flex flex-column gap-1">
+                <label className="text-sm font-medium">Fecha de inicio <span className="text-red-500">*</span></label>
+                <Calendar value={form.fechaCreacion} onChange={set('fechaCreacion')} dateFormat="dd/mm/yy" className={errors.fechaCreacion ? 'p-invalid' : ''} />
+                {errors.fechaCreacion && <small className="text-red-500">{errors.fechaCreacion}</small>}
+              </div>
+            </div>
+            {/* Valor total calculado */}
+            {form.valorMensual > 0 && form.mesesContrato > 0 && (
+              <div style={{ background: 'linear-gradient(135deg,#EFF6FF,#F0FDF4)', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#6B7280', marginBottom: '2px' }}>Valor total del contrato</div>
+                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#15803d' }}>
+                    {fmt(form.valorMensual * form.mesesContrato)}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', fontSize: '12px', color: '#6B7280' }}>
+                  <div>{fmt(form.valorMensual)} / mes</div>
+                  <div>× {form.mesesContrato} meses</div>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="flex flex-column gap-1">
-            <label className="text-sm font-medium">Fecha de inicio <span className="text-red-500">*</span></label>
-            <Calendar value={form.fechaCreacion} onChange={set('fechaCreacion')} dateFormat="dd/mm/yy" className={errors.fechaCreacion ? 'p-invalid' : ''} />
-            {errors.fechaCreacion && <small className="text-red-500">{errors.fechaCreacion}</small>}
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="flex flex-column gap-1">
+              <label className="text-sm font-medium">Valor estimado (USD)</label>
+              <InputNumber
+                value={form.valorEstimado}
+                onValueChange={(e) => { setForm((p) => ({ ...p, valorEstimado: e.value })); setErrors((p) => ({ ...p, valorEstimado: null })) }}
+                mode="decimal" minFractionDigits={2} maxFractionDigits={2} placeholder="0.00"
+                pt={{ input: { onPaste: (e) => {
+                  const text = e.clipboardData.getData('text').replace(/[$,\s]/g, '')
+                  const num = parseFloat(text)
+                  if (!isNaN(num)) {
+                    e.preventDefault()
+                    setForm((p) => ({ ...p, valorEstimado: num }))
+                    setErrors((p) => ({ ...p, valorEstimado: null }))
+                  }
+                }}}}
+              />
+            </div>
+            <div className="flex flex-column gap-1">
+              <label className="text-sm font-medium">Fecha de inicio <span className="text-red-500">*</span></label>
+              <Calendar value={form.fechaCreacion} onChange={set('fechaCreacion')} dateFormat="dd/mm/yy" className={errors.fechaCreacion ? 'p-invalid' : ''} />
+              {errors.fechaCreacion && <small className="text-red-500">{errors.fechaCreacion}</small>}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Responsables */}
         <div className="flex flex-column gap-1">

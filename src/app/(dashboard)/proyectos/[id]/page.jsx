@@ -481,23 +481,34 @@ export default function ProyectoDetallePage({ params }) {
       </div>
 
       {/* ── KPI Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '10px', marginBottom: '14px' }}>
-        {[
+      {(() => {
+        const esMensual = !!proyecto.valorMensual
+        const cols = esMensual ? 'repeat(7,1fr)' : 'repeat(5,1fr)'
+        const cards = [
           { icon: '🏢', bg: '#EFF6FF', label: 'Empresa', value: proyecto.empresa?.nombre || '—', valueColor: '#1e293b' },
           { icon: '📅', bg: '#F1F5F9', label: 'Fecha inicio', value: formatDate(proyecto.fechaCreacion), valueColor: '#1e293b' },
           { icon: '🏁', bg: '#FFF7ED', label: 'Fecha de cierre', value: formatDate(proyecto.fechaCierre) || 'Sin definir', valueColor: proyecto.fechaCierre ? '#1e293b' : '#94a3b8' },
           { icon: '🖥️', bg: '#F5F3FF', label: 'Aplicativo', value: proyecto.aplicativo || '—', valueColor: '#1e293b' },
-          { icon: '💰', bg: '#F0FDF4', label: 'Valor contrato', value: formatCurrency(proyecto.valor, moneda), valueColor: '#15803D' },
-        ].map((k) => (
-          <div key={k.label} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 1px 2px rgba(0,0,0,.04)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: k.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>{k.icon}</div>
-            <div>
-              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '3px' }}>{k.label}</div>
-              <div style={{ fontSize: '14.5px', fontWeight: 700, color: k.valueColor }}>{k.value}</div>
-            </div>
+          ...(esMensual ? [
+            { icon: '📅', bg: '#EFF6FF', label: 'Valor mensual', value: formatCurrency(proyecto.valorMensual, moneda), valueColor: '#2563eb' },
+            { icon: '🔢', bg: '#F0F9FF', label: 'Meses', value: `${proyecto.mesesContrato} meses`, valueColor: '#0369a1' },
+          ] : []),
+          { icon: '💰', bg: '#F0FDF4', label: esMensual ? 'Valor total' : 'Valor contrato', value: formatCurrency(proyecto.valor, moneda), valueColor: '#15803D' },
+        ]
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: cols, gap: '10px', marginBottom: '14px' }}>
+            {cards.map((k) => (
+              <div key={k.label} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 1px 2px rgba(0,0,0,.04)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: k.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>{k.icon}</div>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '3px' }}>{k.label}</div>
+                  <div style={{ fontSize: '14.5px', fontWeight: 700, color: k.valueColor }}>{k.value}</div>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        )
+      })()}
 
       {/* ── Pipeline de estado ── */}
       <Card className="mb-3">

@@ -26,7 +26,11 @@ const PROPUESTA_INCLUDE = {
 }
 
 function serializePropuesta(p) {
-  return { ...p, valorEstimado: p.valorEstimado ? Number(p.valorEstimado) : null }
+  return {
+    ...p,
+    valorEstimado: p.valorEstimado ? Number(p.valorEstimado) : null,
+    valorMensual:  p.valorMensual  ? Number(p.valorMensual)  : null,
+  }
 }
 
 // GET /api/v1/propuestas/:id
@@ -63,7 +67,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, message: 'No se puede editar una propuesta en estado terminal' }, { status: 422 })
   }
 
-  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, aplicativo, responsableIds = [], clienteIds = [], tipoPropuesta } = await request.json()
+  const { titulo, descripcion, empresaId, valorEstimado, valorMensual, mesesContrato, fechaCreacion, aplicativo, responsableIds = [], clienteIds = [], tipoPropuesta } = await request.json()
 
   const errors = {}
   if (!titulo?.trim()) errors.titulo = ['El título es requerido']
@@ -73,6 +77,13 @@ export async function PUT(request, { params }) {
   if (Object.keys(errors).length > 0) {
     return NextResponse.json({ success: false, message: 'Error de validación', errors }, { status: 422 })
   }
+
+  const tipoValido = tipoPropuesta && ['PorHoras', 'Mensualizada'].includes(tipoPropuesta) ? tipoPropuesta : undefined
+  const vMensual   = valorMensual ? parseFloat(valorMensual) : null
+  const meses      = mesesContrato ? parseInt(mesesContrato) : null
+  const vEstimado  = tipoValido === 'Mensualizada' && vMensual && meses
+    ? vMensual * meses
+    : (valorEstimado != null ? parseFloat(valorEstimado) : null)
 
   // Sync responsables y clientes
   await prisma.propuestaResponsable.deleteMany({ where: { propuestaId: id } })
@@ -84,10 +95,12 @@ export async function PUT(request, { params }) {
       titulo: titulo.trim(),
       descripcion: descripcion?.trim() || null,
       empresaId: parseInt(empresaId),
-      valorEstimado: valorEstimado != null ? parseFloat(valorEstimado) : null,
+      valorEstimado: vEstimado,
+      valorMensual:  vMensual,
+      mesesContrato: meses,
       fechaCreacion: new Date(fechaCreacion),
       aplicativo: aplicativo?.trim() || null,
-      ...(tipoPropuesta && ['PorHoras', 'Mensualizada'].includes(tipoPropuesta) && { tipoPropuesta }),
+      ...(tipoValido && { tipoPropuesta: tipoValido }),
       responsables: {
         create: responsableIds.map((eid) => ({ empleadoId: parseInt(eid) })),
       },
@@ -156,6 +169,8 @@ export async function PATCH(request, { params }) {
           detalle: propuesta.titulo,
           empresaId: propuesta.empresaId,
           valor: propuesta.valorEstimado ?? 0,
+          valorMensual:  propuesta.valorMensual  ? propuesta.valorMensual  : null,
+          mesesContrato: propuesta.mesesContrato ? propuesta.mesesContrato : null,
           fechaCreacion: new Date(),
           estadoId: 3, // Adjudicado
           aplicativo: propuesta.aplicativo || null,
