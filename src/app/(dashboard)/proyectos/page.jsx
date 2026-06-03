@@ -26,6 +26,13 @@ import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
 const ESTADOS_PROPUESTAS = ['Elaboracion_Propuesta', 'Rechazado']
 
+const SESSION_KEY = 'gpro_proyectos_filtros'
+
+const leerFiltrosGuardados = () => {
+  if (typeof window === 'undefined') return {}
+  try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}') } catch { return {} }
+}
+
 const ESTADO_CONFIG = {
   Adjudicado:            { severity: 'success',   label: 'Adjudicado'        },
   'En Ejecución':        { severity: 'info',      label: 'En Ejecución'      },
@@ -54,20 +61,35 @@ export default function ProyectosPage() {
   const [estadoFiltro, setEstadoFiltro] = useState(null)
   const [responsableFiltro, setResponsableFiltro] = useState(null)
   const [fechaRango, setFechaRango] = useState(null)
+
+  // Guardar filtros en sessionStorage al cambiar
+  useEffect(() => {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      globalFilter,
+      estadoFiltro,
+      responsableFiltro,
+      fechaRango: fechaRango ? fechaRango.map((d) => (d ? d.toISOString() : null)) : null,
+    }))
+  }, [globalFilter, estadoFiltro, responsableFiltro, fechaRango])
   const [dialogVisible, setDialogVisible] = useState(false)
   const [selectedProyecto, setSelectedProyecto] = useState(null)
   const [visibleRows, setVisibleRows] = useState([])
   const [cerradosExpanded, setCerradosExpanded] = useState(false)
 
   useEffect(() => {
-    loadAll()
+    const saved = leerFiltrosGuardados()
+    if (saved.globalFilter)      setGlobalFilter(saved.globalFilter)
+    if (saved.estadoFiltro)      setEstadoFiltro(saved.estadoFiltro)
+    if (saved.responsableFiltro) setResponsableFiltro(saved.responsableFiltro)
+    if (saved.fechaRango)        setFechaRango(saved.fechaRango.map((d) => (d ? new Date(d) : null)))
+    loadAll(saved.estadoFiltro || null)
   }, [])
 
-  const loadAll = async () => {
+  const loadAll = async (estadoId = null) => {
     setLoading(true)
     try {
       const [proyRes, empRes, estRes, cfgRes] = await Promise.all([
-        proyectoService.getAll(),
+        estadoId ? proyectoService.getAll({ estado_id: estadoId }) : proyectoService.getAll(),
         empresaService.getAll(),
         axios.get('/api/v1/estados'),
         configuracionService.getAll(),
