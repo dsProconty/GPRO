@@ -119,6 +119,8 @@ model Proyecto {
   aplicativo          String?   @db.VarChar(100)
   ot                  String?   @db.VarChar(50)
   estadoPropuesta     String?   @map("estado_propuesta") @db.VarChar(30)
+  valorMensual        Decimal?  @map("valor_mensual") @db.Decimal(12, 2)
+  mesesContrato       Int?      @map("meses_contrato")
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
@@ -345,6 +347,8 @@ model Propuesta {
   descripcion    String?   @db.Text
   empresaId      Int       @map("id_empresa")
   valorEstimado  Decimal?  @map("valor_estimado") @db.Decimal(12, 2)
+  valorMensual   Decimal?  @map("valor_mensual")  @db.Decimal(12, 2)
+  mesesContrato  Int?      @map("meses_contrato")
   fechaCreacion  DateTime  @map("fecha_creacion") @db.Date
   fechaEnvio     DateTime? @map("fecha_envio")    @db.Date
   estado         String    @default("Factibilidad") @db.VarChar(30)

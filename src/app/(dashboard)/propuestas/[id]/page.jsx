@@ -321,15 +321,39 @@ export default function PropuestaDetallePage({ params }) {
             </div>
           </div>
         </div>
-        <div className="col-12 md:col-3">
-          <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>💰</div>
-            <div>
-              <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Valor estimado</div>
-              <div className="font-bold text-sm" style={{ color: '#15803d' }}>{propuesta.valorEstimado ? formatCurrency(propuesta.valorEstimado) : '—'}</div>
+        {propuesta.tipoPropuesta === 'Mensualizada' && propuesta.valorMensual ? (
+          <>
+            <div className="col-12 md:col-3">
+              <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
+                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>📅</div>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Valor mensual</div>
+                  <div className="font-bold text-sm" style={{ color: '#2563eb' }}>{formatCurrency(propuesta.valorMensual)}</div>
+                  {propuesta.mesesContrato && <div style={{ fontSize: '11px', color: '#94a3b8' }}>× {propuesta.mesesContrato} meses</div>}
+                </div>
+              </div>
+            </div>
+            <div className="col-12 md:col-3">
+              <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
+                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>💰</div>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Valor total</div>
+                  <div className="font-bold text-sm" style={{ color: '#15803d' }}>{formatCurrency(propuesta.valorEstimado)}</div>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="col-12 md:col-3">
+            <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
+              <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>💰</div>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Valor estimado</div>
+                <div className="font-bold text-sm" style={{ color: '#15803d' }}>{propuesta.valorEstimado ? formatCurrency(propuesta.valorEstimado) : '—'}</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
         {propuesta.clientes?.length > 0 && (
           <div className="col-12 md:col-6">
             <div className="surface-card border-round p-3 shadow-1 flex align-items-start gap-3">
