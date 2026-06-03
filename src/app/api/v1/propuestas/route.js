@@ -8,6 +8,7 @@ import { generarCodigoPropuesta } from '@/lib/codigoHelper'
 const PROPUESTA_INCLUDE = {
   empresa: { select: { id: true, nombre: true } },
   responsables: { include: { empleado: { select: { id: true, nombre: true, apellido: true } } } },
+  clientes: { include: { cliente: { select: { id: true, nombre: true, apellido: true } } } },
   _count: { select: { logs: true } },
 }
 
@@ -51,7 +52,7 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'No tiene permiso para crear propuestas' }, { status: 403 })
   }
 
-  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, aplicativo, responsableIds = [], tipoPropuesta = 'PorHoras' } = await request.json()
+  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, aplicativo, responsableIds = [], clienteIds = [], tipoPropuesta = 'PorHoras' } = await request.json()
 
   const errors = {}
   if (!titulo?.trim()) errors.titulo = ['El título es requerido']
@@ -78,6 +79,9 @@ export async function POST(request) {
         estado: 'Factibilidad',
         responsables: {
           create: responsableIds.map((eid) => ({ empleadoId: parseInt(eid) })),
+        },
+        clientes: {
+          create: clienteIds.map((cid) => ({ clienteId: parseInt(cid) })),
         },
         logs: {
           create: {

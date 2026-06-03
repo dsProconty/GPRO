@@ -84,6 +84,7 @@ model Cliente {
   // Relaciones
   empresa   Empresa           @relation(fields: [empresaId], references: [id])
   proyectos ProyectoCliente[]
+  propuestas PropuestaCliente[]
 
   @@map("clientes")
 }
@@ -357,6 +358,7 @@ model Propuesta {
   empresa      Empresa              @relation(fields: [empresaId], references: [id])
   proyecto     Proyecto?            @relation(fields: [proyectoId], references: [id])
   responsables PropuestaResponsable[]
+  clientes     PropuestaCliente[]
   logs         PropuestaEstadoLog[]
   casoNegocio  CasoNegocioLinea[]
 
@@ -379,6 +381,18 @@ model CasoNegocioLinea {
 
   @@id([propuestaId, perfilId])
   @@map("caso_negocio_lineas")
+}
+
+// ─── PIVOT: PROPUESTA ↔ CLIENTE (punto de contacto) ─────────────────────────
+model PropuestaCliente {
+  propuestaId Int @map("id_propuesta")
+  clienteId   Int @map("id_cliente")
+
+  propuesta Propuesta @relation(fields: [propuestaId], references: [id], onDelete: Cascade)
+  cliente   Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@id([propuestaId, clienteId])
+  @@map("propuesta_cliente")
 }
 
 // ─── PIVOT: PROPUESTA ↔ RESPONSABLE ─────────────────────────────────────────

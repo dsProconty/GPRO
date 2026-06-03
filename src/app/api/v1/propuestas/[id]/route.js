@@ -17,6 +17,7 @@ const TRANSICIONES = {
 const PROPUESTA_INCLUDE = {
   empresa: { select: { id: true, nombre: true } },
   responsables: { include: { empleado: { select: { id: true, nombre: true, apellido: true } } } },
+  clientes: { include: { cliente: { select: { id: true, nombre: true, apellido: true } } } },
   proyecto: { select: { id: true, detalle: true, estadoId: true } },
   logs: {
     include: { user: { select: { id: true, name: true } } },
@@ -62,7 +63,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, message: 'No se puede editar una propuesta en estado terminal' }, { status: 422 })
   }
 
-  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, aplicativo, responsableIds = [], tipoPropuesta } = await request.json()
+  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, aplicativo, responsableIds = [], clienteIds = [], tipoPropuesta } = await request.json()
 
   const errors = {}
   if (!titulo?.trim()) errors.titulo = ['El título es requerido']
@@ -73,8 +74,9 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, message: 'Error de validación', errors }, { status: 422 })
   }
 
-  // Sync responsables
+  // Sync responsables y clientes
   await prisma.propuestaResponsable.deleteMany({ where: { propuestaId: id } })
+  await prisma.propuestaCliente.deleteMany({ where: { propuestaId: id } })
 
   const propuesta = await prisma.propuesta.update({
     where: { id },
@@ -88,6 +90,9 @@ export async function PUT(request, { params }) {
       ...(tipoPropuesta && ['PorHoras', 'Mensualizada'].includes(tipoPropuesta) && { tipoPropuesta }),
       responsables: {
         create: responsableIds.map((eid) => ({ empleadoId: parseInt(eid) })),
+      },
+      clientes: {
+        create: clienteIds.map((cid) => ({ clienteId: parseInt(cid) })),
       },
     },
     include: PROPUESTA_INCLUDE,

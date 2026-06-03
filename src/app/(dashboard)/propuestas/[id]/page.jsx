@@ -330,6 +330,23 @@ export default function PropuestaDetallePage({ params }) {
             </div>
           </div>
         </div>
+        {propuesta.clientes?.length > 0 && (
+          <div className="col-12 md:col-6">
+            <div className="surface-card border-round p-3 shadow-1 flex align-items-start gap-3">
+              <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>👤</div>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '5px' }}>Punto(s) de contacto</div>
+                <div className="flex flex-wrap gap-1">
+                  {propuesta.clientes.map((c) => (
+                    <span key={c.clienteId} style={{ background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A', borderRadius: '20px', padding: '2px 10px', fontSize: '12px', fontWeight: 500 }}>
+                      {c.cliente.nombre} {c.cliente.apellido}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Pipeline de estado ── */}

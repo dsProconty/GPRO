@@ -13,6 +13,7 @@ import { Tag } from 'primereact/tag'
 import { SelectButton } from 'primereact/selectbutton'
 import axios from 'axios'
 import { configuracionService, buildPropuestaConfig } from '@/services/configuracionService'
+import { clienteService } from '@/services/clienteService'
 
 const EMPTY = {
   titulo: '',
@@ -22,6 +23,7 @@ const EMPTY = {
   fechaCreacion: new Date(),
   aplicativo: '',
   responsableIds: [],
+  clienteIds: [],
   tipoPropuesta: 'PorHoras',
   estado: 'Factibilidad',
 }
@@ -44,6 +46,9 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
   const [propuestaConfig, setPropuestaConfig] = useState(propuestaConfigProp)
+
+  // ── Clientes (puntos de contacto) ────────────────────────────
+  const [clientesEmpresa, setClientesEmpresa] = useState([])
 
   // ── Caso de negocio ───────────────────────────────────────────
   const [casoLineas, setCasoLineas] = useState([])          // líneas actuales
@@ -90,6 +95,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
         fechaCreacion:  propuesta.fechaCreacion ? new Date(propuesta.fechaCreacion) : new Date(),
         aplicativo:     propuesta.aplicativo || '',
         responsableIds: propuesta.responsables?.map((r) => r.empleadoId) || [],
+        clienteIds:     propuesta.clientes?.map((c) => c.clienteId) || [],
         tipoPropuesta:  propuesta.tipoPropuesta || 'PorHoras',
         estado:         propuesta.estado || 'Factibilidad',
       })
@@ -112,11 +118,24 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
     }).catch(() => {})
   }, [visible, propuesta])
 
+  // Cargar clientes al cambiar empresa
+  useEffect(() => {
+    if (!form.empresaId) { setClientesEmpresa([]); return }
+    clienteService.getAll({ empresa_id: form.empresaId })
+      .then((res) => setClientesEmpresa(res.data || []))
+      .catch(() => setClientesEmpresa([]))
+  }, [form.empresaId])
+
   // ── Helpers formulario principal ─────────────────────────────
   const set = (field) => (e) => {
     const val = e.target?.value ?? e.value ?? e
     setForm((prev) => ({ ...prev, [field]: val }))
     setErrors((prev) => ({ ...prev, [field]: null }))
+  }
+
+  const handleEmpresaChange = (e) => {
+    setForm((prev) => ({ ...prev, empresaId: e.value, clienteIds: [] }))
+    setErrors((prev) => ({ ...prev, empresaId: null }))
   }
 
   const validate = () => {
@@ -313,6 +332,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
           : form.fechaCreacion,
         aplicativo:     form.aplicativo?.trim() || null,
         responsableIds: form.responsableIds,
+        clienteIds:     form.clienteIds,
         tipoPropuesta:  form.tipoPropuesta,
       }
 
@@ -444,10 +464,26 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
           <label className="text-sm font-medium">Empresa cliente <span className="text-red-500">*</span></label>
           <Dropdown
             value={form.empresaId} options={empresas} optionLabel="nombre" optionValue="id"
-            onChange={set('empresaId')} placeholder="Seleccionar empresa" filter
+            onChange={handleEmpresaChange} placeholder="Seleccionar empresa" filter
             className={errors.empresaId ? 'p-invalid' : ''}
           />
           {errors.empresaId && <small className="text-red-500">{errors.empresaId}</small>}
+        </div>
+
+        {/* Punto de contacto */}
+        <div className="flex flex-column gap-1">
+          <label className="text-sm font-medium">Punto(s) de contacto</label>
+          <MultiSelect
+            value={form.clienteIds}
+            options={clientesEmpresa.map((c) => ({ label: `${c.nombre} ${c.apellido}`, value: c.id }))}
+            onChange={(e) => setForm((p) => ({ ...p, clienteIds: e.value }))}
+            placeholder={form.empresaId ? 'Seleccionar contacto(s)' : 'Primero selecciona una empresa'}
+            disabled={!form.empresaId}
+            display="chip"
+            filter
+            filterPlaceholder="Buscar contacto..."
+            emptyMessage="No hay contactos para esta empresa"
+          />
         </div>
 
         {/* Valor estimado + Fecha */}
