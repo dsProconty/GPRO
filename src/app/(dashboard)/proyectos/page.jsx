@@ -387,6 +387,22 @@ export default function ProyectosPage() {
 
         <div className="flex gap-2" style={{ flexShrink: 0 }}>
           <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined onClick={exportarExcel} disabled={proyectosFiltrados.length === 0} />
+          <Button
+            label="Limpiar filtros"
+            icon="pi pi-filter-slash"
+            severity="secondary"
+            outlined
+            onClick={() => {
+              setGlobalFilter('')
+              setEstadoFiltro(null)
+              setResponsableFiltro(null)
+              setFechaRango(null)
+              setTableFilters(INIT_TABLE_FILTERS)
+              setTableFiltersCerrados(INIT_TABLE_FILTERS_CERRADOS)
+              sessionStorage.removeItem(SESSION_KEY)
+              loadProyectos(null)
+            }}
+          />
           {puede(PERMISOS.PROYECTOS.CREAR) && (
             <Button label="Nuevo Proyecto" icon="pi pi-plus" onClick={openCreate} />
           )}
