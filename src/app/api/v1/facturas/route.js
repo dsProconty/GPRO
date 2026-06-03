@@ -52,7 +52,7 @@ export async function POST(request) {
   const proyecto = await prisma.proyecto.findUnique({ where: { id: parseInt(proyectoId) } })
   if (!proyecto) return NextResponse.json({ success: false, message: 'Proyecto no encontrado' }, { status: 422 })
 
-  const dup = await prisma.factura.findUnique({ where: { numFactura: numFactura.trim() } })
+  const dup = await prisma.factura.findFirst({ where: { numFactura: numFactura.trim() } })
   if (dup) return NextResponse.json({ success: false, message: 'Número de factura duplicado', errors: { numFactura: ['Ya existe una factura con ese número'] } }, { status: 422 })
 
   const factura = await prisma.factura.create({
