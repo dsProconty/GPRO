@@ -103,7 +103,7 @@ export default function FacturaFormDialog({ visible, onHide, onSave, factura, pr
                 <label className="font-semibold block mb-1">Nº Factura (SRI) <span className="text-red-500">*</span></label>
                 <InputText
                   value={form.numFactura}
-                  onChange={(e) => setForm({ ...form, numFactura: e.target.value })}
+                  onChange={(e) => setForm({ ...form, numFactura: e.target.value.replace(/\s/g, '') })}
                   className={`w-full ${errors.numFactura ? 'p-invalid' : ''}`}
                   placeholder="001-001-000000000"
                 />
