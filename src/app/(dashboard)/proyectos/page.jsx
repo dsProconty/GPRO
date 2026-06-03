@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
+import { FilterMatchMode } from 'primereact/api'
 import { Button } from 'primereact/button'
 import { InputText } from '@/components/shared/InputText'
 import { IconField } from 'primereact/iconfield'
@@ -31,6 +32,23 @@ const SESSION_KEY = 'gpro_proyectos_filtros'
 const leerFiltrosGuardados = () => {
   if (typeof window === 'undefined') return {}
   try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}') } catch { return {} }
+}
+
+const INIT_TABLE_FILTERS = {
+  codigo:           { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  detalle:          { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  'empresa.nombre': { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  aplicativo:       { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  ot:               { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  'estado.nombre':  { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+}
+
+const INIT_TABLE_FILTERS_CERRADOS = {
+  codigo:           { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  detalle:          { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  'empresa.nombre': { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  aplicativo:       { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  'estado.nombre':  { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
 }
 
 const ESTADO_CONFIG = {
@@ -61,6 +79,8 @@ export default function ProyectosPage() {
   const [estadoFiltro, setEstadoFiltro] = useState(null)
   const [responsableFiltro, setResponsableFiltro] = useState(null)
   const [fechaRango, setFechaRango] = useState(null)
+  const [tableFilters, setTableFilters] = useState(INIT_TABLE_FILTERS)
+  const [tableFiltersCerrados, setTableFiltersCerrados] = useState(INIT_TABLE_FILTERS_CERRADOS)
   const filtrosListos = useRef(false)
 
   // Guardar filtros — solo después de que la restauración inicial haya ocurrido
@@ -71,8 +91,10 @@ export default function ProyectosPage() {
       estadoFiltro,
       responsableFiltro,
       fechaRango: fechaRango ? fechaRango.map((d) => (d ? d.toISOString() : null)) : null,
+      tableFilters,
+      tableFiltersCerrados,
     }))
-  }, [globalFilter, estadoFiltro, responsableFiltro, fechaRango])
+  }, [globalFilter, estadoFiltro, responsableFiltro, fechaRango, tableFilters, tableFiltersCerrados])
   const [dialogVisible, setDialogVisible] = useState(false)
   const [selectedProyecto, setSelectedProyecto] = useState(null)
   const [visibleRows, setVisibleRows] = useState([])
@@ -80,10 +102,12 @@ export default function ProyectosPage() {
 
   useEffect(() => {
     const saved = leerFiltrosGuardados()
-    if (saved.globalFilter)      setGlobalFilter(saved.globalFilter)
-    if (saved.estadoFiltro)      setEstadoFiltro(saved.estadoFiltro)
-    if (saved.responsableFiltro) setResponsableFiltro(saved.responsableFiltro)
-    if (saved.fechaRango)        setFechaRango(saved.fechaRango.map((d) => (d ? new Date(d) : null)))
+    if (saved.globalFilter)         setGlobalFilter(saved.globalFilter)
+    if (saved.estadoFiltro)         setEstadoFiltro(saved.estadoFiltro)
+    if (saved.responsableFiltro)    setResponsableFiltro(saved.responsableFiltro)
+    if (saved.fechaRango)           setFechaRango(saved.fechaRango.map((d) => (d ? new Date(d) : null)))
+    if (saved.tableFilters)         setTableFilters(saved.tableFilters)
+    if (saved.tableFiltersCerrados) setTableFiltersCerrados(saved.tableFiltersCerrados)
     filtrosListos.current = true
     loadAll(saved.estadoFiltro || null)
   }, [])
@@ -403,6 +427,8 @@ export default function ProyectosPage() {
 
       <DataTable
         value={proyectosFiltrados}
+        filters={tableFilters}
+        onFilter={(e) => setTableFilters(e.filters)}
         globalFilter={globalFilter}
         onValueChange={(rows) => setVisibleRows(rows)}
         loading={loading}
@@ -450,6 +476,8 @@ export default function ProyectosPage() {
           <div style={{ border: '1px solid #d1d5db', borderTop: 'none', borderRadius: '0 0 6px 6px', opacity: 0.85 }}>
             <DataTable
               value={proyectosCerrados}
+              filters={tableFiltersCerrados}
+              onFilter={(e) => setTableFiltersCerrados(e.filters)}
               paginator
               rows={50}
               rowsPerPageOptions={[25, 50, 100]}
