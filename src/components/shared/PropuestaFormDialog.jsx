@@ -340,6 +340,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
         responsableIds: form.responsableIds,
         clienteIds:     form.clienteIds,
         tipoPropuesta:  form.tipoPropuesta,
+        estado:         form.estado,
       }
 
       let propuestaId
@@ -434,35 +435,33 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
           )}
         </div>
 
-        {/* Título + Estado en edición */}
-        <div style={{ display: 'grid', gridTemplateColumns: isEdit ? '1fr auto' : '1fr', gap: '12px', alignItems: 'end' }}>
+        {/* Título + Estado */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'end' }}>
           <div className="flex flex-column gap-1">
             <label className="text-sm font-medium">Título <span className="text-red-500">*</span></label>
             <InputText value={form.titulo} onChange={set('titulo')} placeholder="Nombre de la propuesta" className={errors.titulo ? 'p-invalid' : ''} />
             {errors.titulo && <small className="text-red-500">{errors.titulo}</small>}
           </div>
-          {isEdit && (
-            <div className="flex flex-column gap-1">
-              <label className="text-sm font-medium">Estado</label>
-              <Dropdown
-                value={form.estado}
-                options={Object.values(propuestaConfig).map((cfg) => ({ label: cfg.label, value: cfg.key }))}
-                optionLabel="label"
-                optionValue="value"
-                onChange={(e) => setForm((p) => ({ ...p, estado: e.value }))}
-                style={{ minWidth: '180px' }}
-                itemTemplate={(opt) => {
-                  const cfg = propuestaConfig[opt.value]
-                  return cfg ? <Tag value={cfg.label} severity={cfg.severity} /> : opt.label
-                }}
-                valueTemplate={(opt) => {
-                  if (!opt) return null
-                  const cfg = propuestaConfig[opt.value]
-                  return cfg ? <Tag value={cfg.label} severity={cfg.severity} /> : opt.label
-                }}
-              />
-            </div>
-          )}
+          <div className="flex flex-column gap-1">
+            <label className="text-sm font-medium">Estado</label>
+            <Dropdown
+              value={form.estado}
+              options={Object.values(propuestaConfig).map((cfg) => ({ label: cfg.label, value: cfg.key }))}
+              optionLabel="label"
+              optionValue="value"
+              onChange={(e) => setForm((p) => ({ ...p, estado: e.value }))}
+              style={{ minWidth: '180px' }}
+              itemTemplate={(opt) => {
+                const cfg = propuestaConfig[opt.value]
+                return cfg ? <Tag value={cfg.label} severity={cfg.severity} /> : opt.label
+              }}
+              valueTemplate={(opt) => {
+                if (!opt) return null
+                const cfg = propuestaConfig[opt.value]
+                return cfg ? <Tag value={cfg.label} severity={cfg.severity} /> : opt.label
+              }}
+            />
+          </div>
         </div>
 
         {/* Empresa */}

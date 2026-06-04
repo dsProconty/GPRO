@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { tienePermiso, PERMISOS } from '@/lib/permisos'
-import { generarCodigoPropuesta } from '@/lib/codigoHelper'
+import { generarCodigoPropuesta, generarCodigoProyecto } from '@/lib/codigoHelper'
 
 const serializePropuesta = (p) => ({
   ...p,
@@ -55,12 +55,15 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'No tiene permiso para crear propuestas' }, { status: 403 })
   }
 
-  const { titulo, descripcion, empresaId, valorEstimado, valorMensual, mesesContrato, fechaCreacion, aplicativo, responsableIds = [], clienteIds = [], tipoPropuesta = 'PorHoras' } = await request.json()
+  const { titulo, descripcion, empresaId, valorEstimado, valorMensual, mesesContrato, fechaCreacion, aplicativo, responsableIds = [], clienteIds = [], tipoPropuesta = 'PorHoras', estado = 'Factibilidad' } = await request.json()
+
+  const ESTADOS_VALIDOS = ['Factibilidad', 'Haciendo', 'Enviada', 'Aprobada', 'Rechazada']
 
   const errors = {}
   if (!titulo?.trim()) errors.titulo = ['El título es requerido']
   if (!empresaId) errors.empresaId = ['La empresa es requerida']
   if (!fechaCreacion) errors.fechaCreacion = ['La fecha de creación es requerida']
+  if (!ESTADOS_VALIDOS.includes(estado)) errors.estado = ['Estado inválido']
 
   if (Object.keys(errors).length > 0) {
     return NextResponse.json({ success: false, message: 'Error de validación', errors }, { status: 422 })
@@ -76,40 +79,92 @@ export async function POST(request) {
       ? vMensual * meses
       : (valorEstimado ? parseFloat(valorEstimado) : null)
 
-    const propuesta = await prisma.propuesta.create({
-      data: {
-        codigo,
-        titulo: titulo.trim(),
-        descripcion: descripcion?.trim() || null,
-        empresaId: parseInt(empresaId),
-        valorEstimado: vEstimado,
-        valorMensual:  vMensual,
-        mesesContrato: meses,
-        fechaCreacion: new Date(fechaCreacion),
-        aplicativo: aplicativo?.trim() || null,
-        tipoPropuesta: tipoValido,
-        estado: 'Factibilidad',
-        responsables: {
-          create: responsableIds.map((eid) => ({ empleadoId: parseInt(eid) })),
-        },
-        clientes: {
-          create: clienteIds.map((cid) => ({ clienteId: parseInt(cid) })),
-        },
-        logs: {
-          create: {
-            estadoAnterior: null,
-            estadoNuevo: 'Factibilidad',
-            userId: parseInt(session.user.id),
-            nota: 'Propuesta creada',
-          },
+    const userId = parseInt(session.user.id)
+    const eid    = parseInt(empresaId)
+
+    // Datos base de la propuesta
+    const propuestaData = {
+      codigo,
+      titulo: titulo.trim(),
+      descripcion: descripcion?.trim() || null,
+      empresaId: eid,
+      valorEstimado: vEstimado,
+      valorMensual:  vMensual,
+      mesesContrato: meses,
+      fechaCreacion: new Date(fechaCreacion),
+      ...(estado === 'Enviada' || estado === 'Aprobada' ? { fechaEnvio: new Date() } : {}),
+      aplicativo: aplicativo?.trim() || null,
+      tipoPropuesta: tipoValido,
+      estado,
+      responsables: { create: responsableIds.map((rid) => ({ empleadoId: parseInt(rid) })) },
+      clientes:     { create: clienteIds.map((cid)     => ({ clienteId:  parseInt(cid) })) },
+      logs: {
+        create: {
+          estadoAnterior: null,
+          estadoNuevo: estado,
+          userId,
+          nota: 'Propuesta creada',
         },
       },
+    }
+
+    // ── Caso especial: crear en estado Aprobada → crear Proyecto en la misma transacción ──
+    if (estado === 'Aprobada') {
+      const codigoProyecto = await generarCodigoProyecto(eid, new Date(), prisma)
+
+      let propuestaCreada = null
+      let proyectoCreado  = null
+
+      await prisma.$transaction(async (tx) => {
+        proyectoCreado = await tx.proyecto.create({
+          data: {
+            codigo:        codigoProyecto,
+            detalle:       titulo.trim(),
+            empresaId:     eid,
+            valor:         vEstimado ?? 0,
+            valorMensual:  vMensual  ?? null,
+            mesesContrato: meses     ?? null,
+            fechaCreacion: new Date(),
+            estadoId:      3,
+            aplicativo:    aplicativo?.trim() || null,
+            responsables:  { create: responsableIds.map((rid) => ({ empleadoId: parseInt(rid) })) },
+          },
+          select: { id: true, detalle: true },
+        })
+
+        propuestaCreada = await tx.propuesta.create({
+          data: { ...propuestaData, proyectoId: proyectoCreado.id },
+          include: PROPUESTA_INCLUDE,
+        })
+
+        await tx.proyectoEstadoLog.create({
+          data: {
+            proyectoId:       proyectoCreado.id,
+            estadoAnteriorId: null,
+            estadoNuevoId:    3,
+            userId,
+          },
+        })
+      })
+
+      return NextResponse.json({
+        success: true,
+        data: serializePropuesta(propuestaCreada),
+        proyectoCreado,
+        message: `Propuesta creada y aprobada. Proyecto "${proyectoCreado.detalle}" generado automáticamente.`,
+      }, { status: 201 })
+    }
+
+    // ── Creación normal ──────────────────────────────────────────────────────
+    const propuesta = await prisma.propuesta.create({
+      data: propuestaData,
       include: PROPUESTA_INCLUDE,
     })
 
     return NextResponse.json({
       success: true,
       data: serializePropuesta(propuesta),
+      proyectoCreado: null,
       message: 'Propuesta creada exitosamente',
     }, { status: 201 })
   } catch (e) {
