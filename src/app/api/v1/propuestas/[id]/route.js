@@ -5,11 +5,11 @@ import { prisma } from '@/lib/prisma'
 import { tienePermiso, PERMISOS } from '@/lib/permisos'
 import { generarCodigoProyecto } from '@/lib/codigoHelper'
 
-// Transiciones de estado permitidas
+// Transiciones permitidas — se puede saltar estados, solo Aprobada requiere venir de Enviada
 const TRANSICIONES = {
-  Factibilidad: ['Haciendo'],
-  Haciendo:     ['Enviada', 'Factibilidad'],
-  Enviada:      ['Aprobada', 'Rechazada'],
+  Factibilidad: ['Haciendo', 'Enviada', 'Rechazada'],
+  Haciendo:     ['Factibilidad', 'Enviada', 'Rechazada'],
+  Enviada:      ['Factibilidad', 'Haciendo', 'Aprobada', 'Rechazada'],
   Aprobada:     [],
   Rechazada:    [],
 }
