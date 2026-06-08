@@ -104,7 +104,7 @@ export default function ProyectoDetallePage({ params }) {
   const loadAll = async () => {
     setLoadingProyecto(true)
     try {
-      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes, cfgRes, perfilesRes, emplRes] = await Promise.all([
+      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes, cfgRes, perfilesRes, emplRes] = await Promise.allSettled([
         proyectoService.getById(id),
         facturaService.getAll({ proyecto_id: id }),
         observacionService.getAll({ proyecto_id: id }),
@@ -116,16 +116,21 @@ export default function ProyectoDetallePage({ params }) {
         axios.get('/api/v1/perfiles-consultor?activo=true'),
         empleadoService.getAll({ activo: true }),
       ])
-      setProyecto(proyRes.data)
-      setFacturas(factRes.data)
-      setObservaciones(obsRes.data)
-      setEstados(estRes.data.data)
-      setEmpresas(empRes.data.data)
-      setUsuarios(usrRes.data.data)
-      setRecordatorios(recRes.data)
-      if (cfgRes.data.data?.empresa?.moneda) setMoneda(cfgRes.data.data.empresa.moneda)
-      setPerfilesConsultor(perfilesRes.data.data || [])
-      setEmpleados(emplRes.data || [])
+
+      // El proyecto es crítico — si falla, mostrar error
+      if (proyRes.status === 'rejected') throw new Error('No se pudo cargar el proyecto')
+
+      setProyecto(proyRes.value.data)
+      if (factRes.status === 'fulfilled')    setFacturas(factRes.value.data)
+      if (obsRes.status === 'fulfilled')     setObservaciones(obsRes.value.data)
+      if (estRes.status === 'fulfilled')     setEstados(estRes.value.data.data)
+      if (empRes.status === 'fulfilled')     setEmpresas(empRes.value.data.data)
+      if (usrRes.status === 'fulfilled')     setUsuarios(usrRes.value.data.data)
+      if (recRes.status === 'fulfilled')     setRecordatorios(recRes.value.data)
+      if (cfgRes.status === 'fulfilled' && cfgRes.value.data.data?.empresa?.moneda) setMoneda(cfgRes.value.data.data.empresa.moneda)
+      if (perfilesRes.status === 'fulfilled') setPerfilesConsultor(perfilesRes.value.data.data || [])
+      if (emplRes.status === 'fulfilled')    setEmpleados(emplRes.value.data || [])
+
       // Historial de estado (no bloquea si falla)
       axios.get(`/api/v1/proyectos/${id}/estado-logs`)
         .then((r) => setEstadoLogs(r.data.data || []))
