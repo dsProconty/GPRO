@@ -95,7 +95,7 @@ export default function ProyectoDetallePage({ params }) {
   const [addLineaVisible, setAddLineaVisible] = useState(false)
   const [editingLinea, setEditingLinea] = useState(null)  // linea al editar
   const [savingLinea, setSavingLinea] = useState(false)
-  const [lineaForm, setLineaForm] = useState({ perfilId: null, horas: null, empleadoId: null, precioHora: null })
+  const [lineaForm, setLineaForm] = useState({ lineaId: null, perfilId: null, horas: null, empleadoId: null, precioHora: null })
 
   useEffect(() => {
     loadAll()
@@ -345,6 +345,7 @@ export default function ProyectoDetallePage({ params }) {
   const openAddLinea = (linea = null) => {
     setEditingLinea(linea)
     setLineaForm({
+      lineaId:    linea?.id ?? null,
       perfilId:   linea?.perfilConsultorId ?? null,
       horas:      linea?.horas ?? null,
       empleadoId: linea?.empleadoId ?? null,
@@ -361,6 +362,7 @@ export default function ProyectoDetallePage({ params }) {
     setSavingLinea(true)
     try {
       await axios.post(`/api/v1/proyectos/${id}/caso-negocio`, {
+        lineaId:    lineaForm.lineaId || null,
         perfilId:   lineaForm.perfilId,
         horas:      lineaForm.horas,
         empleadoId: lineaForm.empleadoId || null,
@@ -376,7 +378,7 @@ export default function ProyectoDetallePage({ params }) {
     }
   }
 
-  const handleDeleteLinea = (perfilConsultorId) => {
+  const handleDeleteLinea = (lineaId) => {
     confirmDialog({
       message: '¿Eliminar esta línea del caso de negocio?',
       header: 'Confirmar eliminación',
@@ -386,7 +388,7 @@ export default function ProyectoDetallePage({ params }) {
       acceptClassName: 'p-button-danger',
       accept: async () => {
         try {
-          await axios.delete(`/api/v1/proyectos/${id}/caso-negocio?perfilId=${perfilConsultorId}`)
+          await axios.delete(`/api/v1/proyectos/${id}/caso-negocio?lineaId=${lineaId}`)
           toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Línea eliminada', life: 3000 })
           loadCasoNegocio()
         } catch (err) {
@@ -772,7 +774,7 @@ export default function ProyectoDetallePage({ params }) {
                   const lineaMargenPct = l.precio > 0 ? Math.round(((l.precio - l.costo) / l.precio) * 100) : 0
                   const mc = lineaMargenPct >= 40 ? { bg: '#DCFCE7', color: '#15803D' } : lineaMargenPct >= 20 ? { bg: '#FEFCE8', color: '#854D0E' } : { bg: '#FEF2F2', color: '#B91C1C' }
                   return (
-                  <div key={l.perfilConsultorId}
+                  <div key={l.id}
                     style={{ display: 'grid', gridTemplateColumns: '2.4fr 0.7fr 1fr 1fr 1.1fr 1.1fr 1fr 80px', gap: '0', borderTop: '1px solid var(--surface-border)', padding: '10px 12px', alignItems: 'center', background: idx % 2 === 1 ? 'var(--surface-50)' : '#fff' }}
                   >
                     <div>
@@ -796,7 +798,7 @@ export default function ProyectoDetallePage({ params }) {
                       {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) && (
                         <div className="flex gap-1 justify-content-end">
                           <Button icon="pi pi-pencil" rounded text severity="info" size="small" onClick={() => openAddLinea(l)} tooltip="Editar" tooltipOptions={{ position: 'top' }} />
-                          <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => handleDeleteLinea(l.perfilConsultorId)} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} />
+                          <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => handleDeleteLinea(l.id)} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} />
                         </div>
                       )}
                     </div>
