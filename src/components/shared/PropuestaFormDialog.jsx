@@ -151,13 +151,9 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
   }
 
   // ── Helpers caso de negocio ───────────────────────────────────
-  const perfilesUsados = useMemo(() => new Set(casoLineas.map((l) => l.perfilId)), [casoLineas])
-
   const perfilesOptions = useMemo(() =>
-    perfiles
-      .filter((p) => !perfilesUsados.has(p.id) || p.id === lineaForm?.perfilId)
-      .map((p) => ({ label: `${p.nombre} · ${p.nivel}`, value: p.id })),
-    [perfiles, perfilesUsados, lineaForm?.perfilId]
+    perfiles.map((p) => ({ label: `${p.nombre} · ${p.nivel}`, value: p.id })),
+    [perfiles]
   )
 
   const empleadosOptions = useMemo(() => [
@@ -282,6 +278,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
         perfil:     emp.perfilBase ? { nombre: emp.perfilBase.nombre, nivel: emp.perfilBase.nivel } : null,
         empleado:   { nombre: emp.nombre, apellido: emp.apellido },
         _isNew:     lineaEditIdx !== null ? casoLineas[lineaEditIdx]._isNew : true,
+        id:         lineaEditIdx !== null ? casoLineas[lineaEditIdx].id : undefined,
       }
       setCasoLineas((prev) =>
         lineaEditIdx !== null ? prev.map((l, i) => (i === lineaEditIdx ? nuevaLinea : l)) : [...prev, nuevaLinea]
@@ -304,6 +301,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
       perfil:     perfil   ? { nombre: perfil.nombre, nivel: perfil.nivel }             : (lineaEditIdx !== null ? casoLineas[lineaEditIdx].perfil   : null),
       empleado:   empleado ? { nombre: empleado.nombre, apellido: empleado.apellido }   : null,
       _isNew:     lineaEditIdx !== null ? casoLineas[lineaEditIdx]._isNew : true,
+      id:         lineaEditIdx !== null ? casoLineas[lineaEditIdx].id : undefined,
     }
     setCasoLineas((prev) =>
       lineaEditIdx !== null
@@ -316,7 +314,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
 
   const eliminarLinea = (idx) => {
     const linea = casoLineas[idx]
-    if (isEdit && !linea._isNew) setLineasEliminadas((prev) => [...prev, linea.perfilId])
+    if (isEdit && !linea._isNew && linea.id) setLineasEliminadas((prev) => [...prev, linea.id])
     setCasoLineas((prev) => prev.filter((_, i) => i !== idx))
   }
 
@@ -352,17 +350,18 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
           await axios.patch(`/api/v1/propuestas/${propuesta.id}`, { estadoNuevo: form.estado })
         }
         // Eliminar líneas que el usuario borró
-        for (const perfilId of lineasEliminadas) {
-          await axios.delete(`/api/v1/propuestas/${propuestaId}/caso-negocio?perfilId=${perfilId}`)
+        for (const lineaId of lineasEliminadas) {
+          await axios.delete(`/api/v1/propuestas/${propuestaId}/caso-negocio?lineaId=${lineaId}`)
         }
       } else {
         const res = await axios.post('/api/v1/propuestas', payload)
         propuestaId = res.data.data.id
       }
 
-      // Upsert todas las líneas actuales
+      // Crear o actualizar líneas actuales
       for (const linea of casoLineas) {
         await axios.post(`/api/v1/propuestas/${propuestaId}/caso-negocio`, {
+          lineaId:    linea.id || null,
           perfilId:   linea.perfilId,
           horas:      linea.horas,
           empleadoId: linea.empleadoId || null,
