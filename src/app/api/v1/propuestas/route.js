@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { tienePermiso, PERMISOS } from '@/lib/permisos'
 import { generarCodigoPropuesta, generarCodigoProyecto } from '@/lib/codigoHelper'
+import { logger, logPermisoDenegado } from '@/lib/logger'
 
 const serializePropuesta = (p) => ({
   ...p,
@@ -23,6 +24,7 @@ export async function GET(request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   if (!tienePermiso(session, PERMISOS.PROPUESTAS.VER)) {
+    logPermisoDenegado(session, PERMISOS.PROPUESTAS.VER, 'GET /propuestas')
     return NextResponse.json({ success: false, message: 'Sin permiso para ver propuestas' }, { status: 403 })
   }
 
@@ -52,6 +54,7 @@ export async function POST(request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   if (!tienePermiso(session, PERMISOS.PROPUESTAS.CREAR)) {
+    logPermisoDenegado(session, PERMISOS.PROPUESTAS.CREAR, 'POST /propuestas')
     return NextResponse.json({ success: false, message: 'No tiene permiso para crear propuestas' }, { status: 403 })
   }
 

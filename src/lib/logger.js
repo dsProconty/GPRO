@@ -38,3 +38,17 @@ export const logger = {
   warn:  (msg, data) => write('WARN',  msg, data),
   error: (msg, data) => write('ERROR', msg, data),
 }
+
+/**
+ * Log de permiso denegado. Llamar desde API routes (server-side) cuando
+ * tienePermiso() retorna false.
+ */
+export function logPermisoDenegado(session, permiso, ruta = '') {
+  logger.warn('PERMISO_DENEGADO', {
+    userId:   session?.user?.id,
+    userName: session?.user?.name,
+    email:    session?.user?.email,
+    permiso,
+    ruta,
+  })
+}
