@@ -3,6 +3,7 @@
 // RBAC: Constantes de permisos + helpers de enforcement
 // Sprint 11 — Módulo de Perfiles de Acceso
 // ─────────────────────────────────────────────────────────────────────────────
+import { logger } from '@/lib/logger'
 
 export const PERMISOS = {
   DASHBOARD: {
@@ -82,9 +83,20 @@ export const TODOS_LOS_PERMISOS = Object.values(PERMISOS).flatMap((m) => Object.
  * Verifica si la sesión tiene el permiso solicitado.
  * admin bypassa siempre. Usuarios sin perfil (permisos vacíos) no tienen acceso.
  */
-export function tienePermiso(session, permiso) {
+export function tienePermiso(session, permiso, ruta = '') {
   if (session?.user?.role === 'admin') return true
-  return (session?.user?.permisos || []).includes(permiso)
+  const tiene = (session?.user?.permisos || []).includes(permiso)
+  if (!tiene) {
+    logger.warn('PERMISO_DENEGADO', {
+      userId:   session?.user?.id,
+      userName: session?.user?.name,
+      email:    session?.user?.email,
+      perfil:   session?.user?.perfilNombre ?? null,
+      permiso,
+      ruta,
+    })
+  }
+  return tiene
 }
 
 /**

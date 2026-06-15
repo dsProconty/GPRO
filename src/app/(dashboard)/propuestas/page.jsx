@@ -67,7 +67,7 @@ export default function PropuestasPage() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [propRes, empRes, emplRes, cfgRes, proyRes, estRes] = await Promise.all([
+      const [propRes, empRes, emplRes, cfgRes, proyRes, estRes] = await Promise.allSettled([
         propuestaService.getAll(),
         empresaService.getAll(),
         empleadoService.getAll(),
@@ -75,12 +75,16 @@ export default function PropuestasPage() {
         proyectoService.getAll(),
         axios.get('/api/v1/estados'),
       ])
-      setPropuestas(propRes.data)
-      setEmpresas(empRes.data)
-      setEmpleados(emplRes.data)
-      setPropuestaConfig(buildPropuestaConfig(cfgRes.data.data.estadosPropuesta))
-      setProyectosLegacy(proyRes.data.filter((p) => ESTADOS_LEGACY.includes(p.estado?.nombre)))
-      setEstadosAll(estRes.data.data || [])
+
+      // Propuestas es crítico — si falla, mostrar error
+      if (propRes.status === 'rejected') throw new Error('No se pudieron cargar las propuestas')
+
+      setPropuestas(propRes.value.data)
+      if (empRes.status === 'fulfilled')  setEmpresas(empRes.value.data)
+      if (emplRes.status === 'fulfilled') setEmpleados(emplRes.value.data)
+      if (cfgRes.status === 'fulfilled')  setPropuestaConfig(buildPropuestaConfig(cfgRes.value.data.data.estadosPropuesta))
+      if (proyRes.status === 'fulfilled') setProyectosLegacy(proyRes.value.data.filter((p) => ESTADOS_LEGACY.includes(p.estado?.nombre)))
+      if (estRes.status === 'fulfilled')  setEstadosAll(estRes.value.data.data || [])
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar las propuestas', life: 4000 })
     } finally {

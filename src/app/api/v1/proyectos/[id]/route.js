@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { tienePermiso, puedeEditarProyecto, PERMISOS } from '@/lib/permisos'
+import { logger } from '@/lib/logger'
 
 const PROYECTO_INCLUDE = {
   empresa: { select: { id: true, nombre: true } },
@@ -165,9 +166,17 @@ export async function PATCH(request, { params }) {
         },
       }),
     ])
+    logger.info('PROYECTO_ESTADO_CAMBIADO', {
+      proyectoId:       id,
+      estadoAnteriorId: proyecto.estadoId,
+      estadoNuevoId:    parseInt(estadoId),
+      userId:           session.user.id,
+      userName:         session.user.name,
+    })
     return NextResponse.json({ success: true, data: calcularCampos(updated), message: 'Estado actualizado', warning })
   } catch (e) {
     if (e.code === 'P2025') return NextResponse.json({ success: false, message: 'Proyecto no encontrado' }, { status: 404 })
+    logger.error('PROYECTO_ESTADO_ERROR', { proyectoId: id, estadoId, error: e.message })
     throw e
   }
 }
