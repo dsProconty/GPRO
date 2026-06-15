@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { tienePermiso, PERMISOS } from '@/lib/permisos'
 import { generarCodigoProyecto } from '@/lib/codigoHelper'
+import { logger } from '@/lib/logger'
 
 // Transiciones permitidas — se puede saltar estados, solo Aprobada requiere venir de Enviada
 const TRANSICIONES = {
@@ -219,6 +220,14 @@ export async function PATCH(request, { params }) {
       })
     })
 
+    logger.info('PROPUESTA_APROBADA', {
+      propuestaId: id,
+      proyectoId:  proyectoCreado.id,
+      titulo:      proyectoCreado.detalle,
+      userId,
+      userName: session.user.name,
+    })
+
     return NextResponse.json({
       success: true,
       data: serializePropuesta(propuestaActualizada),
@@ -249,6 +258,15 @@ export async function PATCH(request, { params }) {
       },
     }),
   ])
+
+  logger.info('PROPUESTA_ESTADO_CAMBIADO', {
+    propuestaId:   id,
+    estadoAnterior,
+    estadoNuevo,
+    userId,
+    userName: session.user.name,
+    nota:     nota?.trim() || null,
+  })
 
   return NextResponse.json({
     success: true,
