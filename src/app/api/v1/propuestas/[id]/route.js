@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { tienePermiso, PERMISOS } from '@/lib/permisos'
 import { generarCodigoProyecto } from '@/lib/codigoHelper'
-import { logger } from '@/lib/logger'
+import { logger, logPermisoDenegado } from '@/lib/logger'
 
 // Transiciones permitidas — se puede saltar estados, solo Aprobada requiere venir de Enviada
 const TRANSICIONES = {
@@ -39,6 +39,7 @@ export async function GET(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   if (!tienePermiso(session, PERMISOS.PROPUESTAS.VER)) {
+    logPermisoDenegado(session, PERMISOS.PROPUESTAS.VER, `GET /propuestas/${params.id}`)
     return NextResponse.json({ success: false, message: 'Sin permiso para ver propuestas' }, { status: 403 })
   }
 
@@ -56,6 +57,7 @@ export async function PUT(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   if (!tienePermiso(session, PERMISOS.PROPUESTAS.EDITAR)) {
+    logPermisoDenegado(session, PERMISOS.PROPUESTAS.EDITAR, `PUT /propuestas/${params.id}`)
     return NextResponse.json({ success: false, message: 'No tiene permiso para editar propuestas' }, { status: 403 })
   }
 
@@ -120,6 +122,7 @@ export async function PATCH(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   if (!tienePermiso(session, PERMISOS.PROPUESTAS.CAMBIAR_ESTADO)) {
+    logPermisoDenegado(session, PERMISOS.PROPUESTAS.CAMBIAR_ESTADO, `PATCH /propuestas/${params.id}`)
     return NextResponse.json({ success: false, message: 'No tiene permiso para cambiar el estado de propuestas' }, { status: 403 })
   }
 
@@ -281,6 +284,7 @@ export async function DELETE(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   if (!tienePermiso(session, PERMISOS.PROPUESTAS.ELIMINAR)) {
+    logPermisoDenegado(session, PERMISOS.PROPUESTAS.ELIMINAR, `DELETE /propuestas/${params.id}`)
     return NextResponse.json({ success: false, message: 'No tiene permiso para eliminar propuestas' }, { status: 403 })
   }
 
