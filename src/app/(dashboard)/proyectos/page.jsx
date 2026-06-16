@@ -129,8 +129,8 @@ export default function ProyectosPage() {
       if (empRes.status === 'fulfilled') setEmpresas(empRes.value.data)
       if (estRes.status === 'fulfilled') setEstados(estRes.value.data.data)
       if (cfgRes.status === 'fulfilled' && cfgRes.value.data.data?.empresa?.moneda) setMoneda(cfgRes.value.data.data.empresa.moneda)
-      // Empleados se cargan aparte para no bloquear si el endpoint falla
-      empleadoService.getAll().then((r) => setEmpleados(r.data)).catch(() => {})
+      // Empleados para responsables: endpoint ligero sin permiso especial
+      axios.get('/api/v1/empleados/opciones').then((r) => setEmpleados(r.data.data || [])).catch(() => {})
     } catch {
       toast.current.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los proyectos', life: 4000 })
     } finally {
