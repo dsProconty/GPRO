@@ -70,7 +70,7 @@ export default function PropuestasPage() {
       const [propRes, empRes, emplRes, cfgRes, proyRes, estRes] = await Promise.allSettled([
         propuestaService.getAll(),
         empresaService.getAll(),
-        empleadoService.getAll(),
+        axios.get('/api/v1/empleados/opciones'),
         configuracionService.getAll(),
         proyectoService.getAll(),
         axios.get('/api/v1/estados'),
@@ -81,7 +81,7 @@ export default function PropuestasPage() {
 
       setPropuestas(propRes.value.data)
       if (empRes.status === 'fulfilled')  setEmpresas(empRes.value.data)
-      if (emplRes.status === 'fulfilled') setEmpleados(emplRes.value.data)
+      if (emplRes.status === 'fulfilled') setEmpleados(emplRes.value.data.data || [])
       if (cfgRes.status === 'fulfilled')  setPropuestaConfig(buildPropuestaConfig(cfgRes.value.data.data.estadosPropuesta))
       if (proyRes.status === 'fulfilled') setProyectosLegacy(proyRes.value.data.filter((p) => ESTADOS_LEGACY.includes(p.estado?.nombre)))
       if (estRes.status === 'fulfilled')  setEstadosAll(estRes.value.data.data || [])
