@@ -64,6 +64,7 @@ export default function ProyectoDetallePage({ params }) {
   const [estados, setEstados] = useState([])
   const [empresas, setEmpresas] = useState([])
   const [usuarios, setUsuarios] = useState([])
+  const [empleadosOpciones, setEmpleadosOpciones] = useState([])
 
   const [loadingProyecto, setLoadingProyecto] = useState(true)
   const [loadingFacturas, setLoadingFacturas] = useState(false)
@@ -104,7 +105,7 @@ export default function ProyectoDetallePage({ params }) {
   const loadAll = async () => {
     setLoadingProyecto(true)
     try {
-      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes, cfgRes, perfilesRes, emplRes] = await Promise.allSettled([
+      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes, cfgRes, perfilesRes, emplRes, opcionesRes] = await Promise.allSettled([
         proyectoService.getById(id),
         facturaService.getAll({ proyecto_id: id }),
         observacionService.getAll({ proyecto_id: id }),
@@ -115,6 +116,7 @@ export default function ProyectoDetallePage({ params }) {
         configuracionService.getAll(),
         axios.get('/api/v1/perfiles-consultor?activo=true'),
         empleadoService.getAll({ activo: true }),
+        axios.get('/api/v1/empleados/opciones'),
       ])
 
       // El proyecto es crítico — si falla, mostrar error
@@ -130,6 +132,7 @@ export default function ProyectoDetallePage({ params }) {
       if (cfgRes.status === 'fulfilled' && cfgRes.value.data.data?.empresa?.moneda) setMoneda(cfgRes.value.data.data.empresa.moneda)
       if (perfilesRes.status === 'fulfilled') setPerfilesConsultor(perfilesRes.value.data.data || [])
       if (emplRes.status === 'fulfilled')    setEmpleados(emplRes.value.data || [])
+      if (opcionesRes.status === 'fulfilled') setEmpleadosOpciones(opcionesRes.value.data.data || [])
 
       // Historial de estado (no bloquea si falla)
       axios.get(`/api/v1/proyectos/${id}/estado-logs`)
@@ -1005,7 +1008,7 @@ export default function ProyectoDetallePage({ params }) {
         valorDefault={proyecto?.valorMensual ? Number(proyecto.valorMensual) : Number(proyecto?.valor ?? 0)} />
       <PagoFormDialog visible={pagoDialogVisible} onHide={() => setPagoDialogVisible(false)} onSave={handleSavePago} pago={selectedPago} factura={facturaParaPago} />
       <ObservacionFormDialog visible={obsDialogVisible} onHide={() => setObsDialogVisible(false)} onSave={handleSaveObservacion} proyectoId={id} />
-      <ProyectoFormDialog visible={editDialogVisible} onHide={() => setEditDialogVisible(false)} onSave={handleSaveProyecto} proyecto={proyecto} empresas={empresas} estados={estados} usuarios={usuarios} />
+      <ProyectoFormDialog visible={editDialogVisible} onHide={() => setEditDialogVisible(false)} onSave={handleSaveProyecto} proyecto={proyecto} empresas={empresas} estados={estados} empleados={empleadosOpciones} />
       <RecordatorioFormDialog visible={recDialogVisible} onHide={() => setRecDialogVisible(false)} onSave={handleSaveRecordatorio} recordatorio={selectedRecordatorio} proyectoId={id} />
 
       {/* Dialog: agregar/editar línea de caso de negocio */}
