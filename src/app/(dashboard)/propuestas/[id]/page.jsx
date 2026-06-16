@@ -11,6 +11,7 @@ import { Dialog } from 'primereact/dialog'
 import { Dropdown } from 'primereact/dropdown'
 import { InputNumber } from 'primereact/inputnumber'
 import { ProgressBar } from 'primereact/progressbar'
+import axios from 'axios'
 import { propuestaService } from '@/services/propuestaService'
 import { empresaService } from '@/services/empresaService'
 import { usuarioService } from '@/services/usuarioService'
@@ -48,6 +49,7 @@ export default function PropuestaDetallePage({ params }) {
   const [propuesta, setPropuesta] = useState(null)
   const [empresas, setEmpresas] = useState([])
   const [usuarios, setUsuarios] = useState([])
+  const [empleadosOpciones, setEmpleadosOpciones] = useState([])
   const [propuestaConfig, setPropuestaConfig] = useState({})
   const [loading, setLoading] = useState(true)
 
@@ -68,7 +70,7 @@ export default function PropuestaDetallePage({ params }) {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [propRes, empRes, usrRes, cfgRes, casoRes, pfRes, emplRes] = await Promise.allSettled([
+      const [propRes, empRes, usrRes, cfgRes, casoRes, pfRes, emplRes, opcionesRes] = await Promise.allSettled([
         propuestaService.getById(id),
         empresaService.getAll(),
         usuarioService.getAll(),
@@ -76,6 +78,7 @@ export default function PropuestaDetallePage({ params }) {
         propuestaService.getCasoNegocio(id),
         perfilConsultorService.getAll({ activo: true }),
         empleadoService.getAll({ activo: true }),
+        axios.get('/api/v1/empleados/opciones'),
       ])
       if (propRes.status === 'rejected') throw propRes.reason
       setPropuesta(propRes.value.data)
@@ -89,6 +92,7 @@ export default function PropuestaDetallePage({ params }) {
       }
       if (pfRes.status === 'fulfilled') setPerfilesActivos(pfRes.value.data.data)
       if (emplRes.status === 'fulfilled') setEmpleados(emplRes.value.data || [])
+      if (opcionesRes.status === 'fulfilled') setEmpleadosOpciones(opcionesRes.value.data.data || [])
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar la propuesta', life: 4000 })
     } finally {
@@ -728,7 +732,7 @@ export default function PropuestaDetallePage({ params }) {
         }}
         propuesta={propuesta}
         empresas={empresas}
-        usuarios={usuarios}
+        empleadosResp={empleadosOpciones}
       />
       <CambiarEstadoPropuestaDialog
         visible={estadoDialog.visible}
