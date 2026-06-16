@@ -49,14 +49,15 @@ export default function TarifarioDetallePage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [tarRes, empRes, perRes] = await Promise.all([
+      const [tarRes, empRes, perRes] = await Promise.allSettled([
         tarifarioService.getById(id),
         empleadoService.getAll({ activo: true }),
         axios.get('/api/v1/perfiles-consultor?activo=true'),
       ])
-      setTarifario(tarRes.data.data)
-      setEmpleados(empRes.data || [])
-      setPerfiles(perRes.data.data || [])
+      if (tarRes.status === 'rejected') throw tarRes.reason
+      setTarifario(tarRes.value.data.data)
+      if (empRes.status === 'fulfilled') setEmpleados(empRes.value.data || [])
+      if (perRes.status === 'fulfilled') setPerfiles(perRes.value.data.data || [])
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar el tarifario' })
     } finally {

@@ -118,16 +118,17 @@ export default function ProyectosPage() {
   const loadAll = async (estadoId = null) => {
     setLoading(true)
     try {
-      const [proyRes, empRes, estRes, cfgRes] = await Promise.all([
+      const [proyRes, empRes, estRes, cfgRes] = await Promise.allSettled([
         estadoId ? proyectoService.getAll({ estado_id: estadoId }) : proyectoService.getAll(),
         empresaService.getAll(),
         axios.get('/api/v1/estados'),
         configuracionService.getAll(),
       ])
-      setProyectos(proyRes.data)
-      setEmpresas(empRes.data)
-      setEstados(estRes.data.data)
-      if (cfgRes.data.data?.empresa?.moneda) setMoneda(cfgRes.data.data.empresa.moneda)
+      if (proyRes.status === 'rejected') throw proyRes.reason
+      setProyectos(proyRes.value.data)
+      if (empRes.status === 'fulfilled') setEmpresas(empRes.value.data)
+      if (estRes.status === 'fulfilled') setEstados(estRes.value.data.data)
+      if (cfgRes.status === 'fulfilled' && cfgRes.value.data.data?.empresa?.moneda) setMoneda(cfgRes.value.data.data.empresa.moneda)
       // Empleados se cargan aparte para no bloquear si el endpoint falla
       empleadoService.getAll().then((r) => setEmpleados(r.data)).catch(() => {})
     } catch {

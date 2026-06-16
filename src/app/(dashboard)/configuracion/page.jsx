@@ -291,13 +291,14 @@ export default function ConfiguracionPage() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [cfgRes, pfRes] = await Promise.all([
+      const [cfgRes, pfRes] = await Promise.allSettled([
         configuracionService.getAll(),
         perfilConsultorService.getAll(),
       ])
-      setEstadosProyecto(cfgRes.data.data.estadosProyecto)
-      setEstadosPropuesta(cfgRes.data.data.estadosPropuesta)
-      const emp = cfgRes.data.data.empresa || {}
+      if (cfgRes.status === 'rejected') throw cfgRes.reason
+      setEstadosProyecto(cfgRes.value.data.data.estadosProyecto)
+      setEstadosPropuesta(cfgRes.value.data.data.estadosPropuesta)
+      const emp = cfgRes.value.data.data.empresa || {}
       setEmpresaForm({
         nombre:    emp.nombre    || '',
         moneda:    emp.moneda    || 'USD',
@@ -306,7 +307,7 @@ export default function ConfiguracionPage() {
         telefono:  emp.telefono  || '',
         email:     emp.email     || '',
       })
-      setPerfiles(pfRes.data.data)
+      if (pfRes.status === 'fulfilled') setPerfiles(pfRes.value.data.data)
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar la configuración', life: 4000 })
     } finally {

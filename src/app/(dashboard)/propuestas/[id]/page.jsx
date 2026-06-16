@@ -68,7 +68,7 @@ export default function PropuestaDetallePage({ params }) {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [propRes, empRes, usrRes, cfgRes, casoRes, pfRes, emplRes] = await Promise.all([
+      const [propRes, empRes, usrRes, cfgRes, casoRes, pfRes, emplRes] = await Promise.allSettled([
         propuestaService.getById(id),
         empresaService.getAll(),
         usuarioService.getAll(),
@@ -77,15 +77,18 @@ export default function PropuestaDetallePage({ params }) {
         perfilConsultorService.getAll({ activo: true }),
         empleadoService.getAll({ activo: true }),
       ])
-      setPropuesta(propRes.data)
-      setEmpresas(empRes.data)
-      setUsuarios(usrRes.data)
-      setPropuestaConfig(buildPropuestaConfig(cfgRes.data.data.estadosPropuesta))
-      setCasoLineas(casoRes.data.lineas)
-      setCasoResumen(casoRes.data.resumen)
-      setCasoTarifario(casoRes.data.tarifario)
-      setPerfilesActivos(pfRes.data.data)
-      setEmpleados(emplRes.data || [])
+      if (propRes.status === 'rejected') throw propRes.reason
+      setPropuesta(propRes.value.data)
+      if (empRes.status === 'fulfilled') setEmpresas(empRes.value.data)
+      if (usrRes.status === 'fulfilled') setUsuarios(usrRes.value.data)
+      if (cfgRes.status === 'fulfilled') setPropuestaConfig(buildPropuestaConfig(cfgRes.value.data.data.estadosPropuesta))
+      if (casoRes.status === 'fulfilled') {
+        setCasoLineas(casoRes.value.data.lineas)
+        setCasoResumen(casoRes.value.data.resumen)
+        setCasoTarifario(casoRes.value.data.tarifario)
+      }
+      if (pfRes.status === 'fulfilled') setPerfilesActivos(pfRes.value.data.data)
+      if (emplRes.status === 'fulfilled') setEmpleados(emplRes.value.data || [])
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar la propuesta', life: 4000 })
     } finally {
