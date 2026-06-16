@@ -112,14 +112,13 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
       setCasoLineas([])
     }
 
-    // Cargar perfiles y empleados para el selector
-    Promise.all([
-      axios.get('/api/v1/perfiles-consultor?activo=true'),
-      axios.get('/api/v1/empleados?activo=true'),
-    ]).then(([pfRes, emplRes]) => {
-      setPerfiles(pfRes.data.data || [])
-      setEmpleados(emplRes.data.data || [])
-    }).catch(() => {})
+    // Cargar perfiles y empleados para el selector (independientes para no bloquearse mutuamente)
+    axios.get('/api/v1/perfiles-consultor?activo=true')
+      .then((r) => setPerfiles(r.data.data || []))
+      .catch(() => {})
+    axios.get('/api/v1/empleados?activo=true')
+      .then((r) => setEmpleados(r.data.data || []))
+      .catch(() => {})
   }, [visible, propuesta])
 
   // Cargar clientes al cambiar empresa
