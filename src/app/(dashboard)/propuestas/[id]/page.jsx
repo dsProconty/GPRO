@@ -21,6 +21,7 @@ import { formatCurrency, formatDate } from '@/utils/format'
 import PropuestaFormDialog from '@/components/shared/PropuestaFormDialog'
 import CambiarEstadoPropuestaDialog from '@/components/shared/CambiarEstadoPropuestaDialog'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
+import axios from 'axios'
 
 // Transiciones permitidas (claves internas — nunca cambian)
 const TRANSICIONES_KEYS = {
@@ -59,6 +60,7 @@ export default function PropuestaDetallePage({ params }) {
   const [empleados, setEmpleados] = useState([])
   const [casoDialog, setCasoDialog] = useState(DIALOG_VACIO)
   const [cargandoTarifario, setCargandoTarifario] = useState(false)
+  const [empleadosOpciones, setEmpleadosOpciones] = useState([])
 
   const [editDialogVisible, setEditDialogVisible] = useState(false)
   const [estadoDialog, setEstadoDialog] = useState({ visible: false, estadoDestino: null, saving: false })
@@ -68,7 +70,7 @@ export default function PropuestaDetallePage({ params }) {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [propRes, empRes, usrRes, cfgRes, casoRes, pfRes, emplRes] = await Promise.all([
+      const [propRes, empRes, usrRes, cfgRes, casoRes, pfRes, emplRes, opcionesRes] = await Promise.allSettled([
         propuestaService.getById(id),
         empresaService.getAll(),
         usuarioService.getAll(),
@@ -76,16 +78,21 @@ export default function PropuestaDetallePage({ params }) {
         propuestaService.getCasoNegocio(id),
         perfilConsultorService.getAll({ activo: true }),
         empleadoService.getAll({ activo: true }),
+        axios.get('/api/v1/empleados/opciones'),
       ])
-      setPropuesta(propRes.data)
-      setEmpresas(empRes.data)
-      setUsuarios(usrRes.data)
-      setPropuestaConfig(buildPropuestaConfig(cfgRes.data.data.estadosPropuesta))
-      setCasoLineas(casoRes.data.lineas)
-      setCasoResumen(casoRes.data.resumen)
-      setCasoTarifario(casoRes.data.tarifario)
-      setPerfilesActivos(pfRes.data.data)
-      setEmpleados(emplRes.data || [])
+      if (propRes.status === 'rejected') throw propRes.reason
+      setPropuesta(propRes.value.data)
+      if (empRes.status === 'fulfilled') setEmpresas(empRes.value.data)
+      if (usrRes.status === 'fulfilled') setUsuarios(usrRes.value.data)
+      if (cfgRes.status === 'fulfilled') setPropuestaConfig(buildPropuestaConfig(cfgRes.value.data.data.estadosPropuesta))
+      if (casoRes.status === 'fulfilled') {
+        setCasoLineas(casoRes.value.data.lineas)
+        setCasoResumen(casoRes.value.data.resumen)
+        setCasoTarifario(casoRes.value.data.tarifario)
+      }
+      if (pfRes.status === 'fulfilled') setPerfilesActivos(pfRes.value.data.data)
+      if (emplRes.status === 'fulfilled') setEmpleados(emplRes.value.data || [])
+      if (opcionesRes.status === 'fulfilled') setEmpleadosOpciones(opcionesRes.value.data.data || [])
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar la propuesta', life: 4000 })
     } finally {
@@ -684,7 +691,7 @@ export default function PropuestaDetallePage({ params }) {
         }}
         propuesta={propuesta}
         empresas={empresas}
-        usuarios={usuarios}
+        empleadosResp={empleadosOpciones}
       />
       <CambiarEstadoPropuestaDialog
         visible={estadoDialog.visible}

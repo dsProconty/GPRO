@@ -134,7 +134,7 @@ export default function DashboardLayout({ children }) {
               <div className="text-400 text-xs">{session.user?.email}</div>
             </div>
             <Button icon="pi pi-user-edit" rounded text severity="secondary" size="small" tooltip="Mi perfil" tooltipOptions={{ position: 'top' }} onClick={() => router.push('/perfil')} />
-            <Button icon="pi pi-sign-out" rounded text severity="secondary" size="small" tooltip="Cerrar sesión" tooltipOptions={{ position: 'top' }} onClick={() => signOut({ callbackUrl: '/login' })} />
+            <Button icon="pi pi-sign-out" rounded text severity="secondary" size="small" tooltip="Cerrar sesión" tooltipOptions={{ position: 'top' }} onClick={() => signOut({ redirect: false }).then(() => { window.location.href = '/login' })} />
           </div>
         </div>
       </aside>

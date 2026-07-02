@@ -92,6 +92,7 @@ export default function ProyectoDetallePage({ params }) {
   const [casoNegocio, setCasoNegocio] = useState(null)  // { lineas, resumen } del proyecto
   const [perfilesConsultor, setPerfilesConsultor] = useState([])
   const [empleados, setEmpleados] = useState([])
+  const [empleadosOpciones, setEmpleadosOpciones] = useState([])
   const [addLineaVisible, setAddLineaVisible] = useState(false)
   const [editingLinea, setEditingLinea] = useState(null)  // linea al editar
   const [savingLinea, setSavingLinea] = useState(false)
@@ -104,7 +105,7 @@ export default function ProyectoDetallePage({ params }) {
   const loadAll = async () => {
     setLoadingProyecto(true)
     try {
-      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes, cfgRes, perfilesRes, emplRes] = await Promise.all([
+      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes, cfgRes, perfilesRes, emplRes, opcionesRes] = await Promise.allSettled([
         proyectoService.getById(id),
         facturaService.getAll({ proyecto_id: id }),
         observacionService.getAll({ proyecto_id: id }),
@@ -115,17 +116,20 @@ export default function ProyectoDetallePage({ params }) {
         configuracionService.getAll(),
         axios.get('/api/v1/perfiles-consultor?activo=true'),
         empleadoService.getAll({ activo: true }),
+        axios.get('/api/v1/empleados/opciones'),
       ])
-      setProyecto(proyRes.data)
-      setFacturas(factRes.data)
-      setObservaciones(obsRes.data)
-      setEstados(estRes.data.data)
-      setEmpresas(empRes.data.data)
-      setUsuarios(usrRes.data.data)
-      setRecordatorios(recRes.data)
-      if (cfgRes.data.data?.empresa?.moneda) setMoneda(cfgRes.data.data.empresa.moneda)
-      setPerfilesConsultor(perfilesRes.data.data || [])
-      setEmpleados(emplRes.data || [])
+      if (proyRes.status === 'rejected') throw new Error('No se pudo cargar el proyecto')
+      setProyecto(proyRes.value.data)
+      if (factRes.status === 'fulfilled')    setFacturas(factRes.value.data)
+      if (obsRes.status === 'fulfilled')     setObservaciones(obsRes.value.data)
+      if (estRes.status === 'fulfilled')     setEstados(estRes.value.data.data)
+      if (empRes.status === 'fulfilled')     setEmpresas(empRes.value.data.data)
+      if (usrRes.status === 'fulfilled')     setUsuarios(usrRes.value.data.data)
+      if (recRes.status === 'fulfilled')     setRecordatorios(recRes.value.data)
+      if (cfgRes.status === 'fulfilled' && cfgRes.value.data.data?.empresa?.moneda) setMoneda(cfgRes.value.data.data.empresa.moneda)
+      if (perfilesRes.status === 'fulfilled') setPerfilesConsultor(perfilesRes.value.data.data || [])
+      if (emplRes.status === 'fulfilled')    setEmpleados(emplRes.value.data || [])
+      if (opcionesRes.status === 'fulfilled') setEmpleadosOpciones(opcionesRes.value.data.data || [])
       // Historial de estado (no bloquea si falla)
       axios.get(`/api/v1/proyectos/${id}/estado-logs`)
         .then((r) => setEstadoLogs(r.data.data || []))
@@ -986,7 +990,7 @@ export default function ProyectoDetallePage({ params }) {
       <FacturaFormDialog visible={facturaDialogVisible} onHide={() => setFacturaDialogVisible(false)} onSave={handleSaveFactura} factura={selectedFactura} proyectoId={id} />
       <PagoFormDialog visible={pagoDialogVisible} onHide={() => setPagoDialogVisible(false)} onSave={handleSavePago} pago={selectedPago} factura={facturaParaPago} />
       <ObservacionFormDialog visible={obsDialogVisible} onHide={() => setObsDialogVisible(false)} onSave={handleSaveObservacion} proyectoId={id} />
-      <ProyectoFormDialog visible={editDialogVisible} onHide={() => setEditDialogVisible(false)} onSave={handleSaveProyecto} proyecto={proyecto} empresas={empresas} estados={estados} usuarios={usuarios} />
+      <ProyectoFormDialog visible={editDialogVisible} onHide={() => setEditDialogVisible(false)} onSave={handleSaveProyecto} proyecto={proyecto} empresas={empresas} estados={estados} empleados={empleadosOpciones} />
       <RecordatorioFormDialog visible={recDialogVisible} onHide={() => setRecDialogVisible(false)} onSave={handleSaveRecordatorio} recordatorio={selectedRecordatorio} proyectoId={id} />
 
       {/* Dialog: agregar/editar línea de caso de negocio */}

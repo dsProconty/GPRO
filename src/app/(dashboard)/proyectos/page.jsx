@@ -66,18 +66,19 @@ export default function ProyectosPage() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [proyRes, empRes, estRes, cfgRes] = await Promise.all([
+      const [proyRes, empRes, estRes, cfgRes] = await Promise.allSettled([
         proyectoService.getAll(),
         empresaService.getAll(),
         axios.get('/api/v1/estados'),
         configuracionService.getAll(),
       ])
-      setProyectos(proyRes.data)
-      setEmpresas(empRes.data)
-      setEstados(estRes.data.data)
-      if (cfgRes.data.data?.empresa?.moneda) setMoneda(cfgRes.data.data.empresa.moneda)
-      // Empleados se cargan aparte para no bloquear si el endpoint falla
-      empleadoService.getAll().then((r) => setEmpleados(r.data)).catch(() => {})
+      if (proyRes.status === 'rejected') throw proyRes.reason
+      setProyectos(proyRes.value.data)
+      if (empRes.status === 'fulfilled') setEmpresas(empRes.value.data)
+      if (estRes.status === 'fulfilled') setEstados(estRes.value.data.data)
+      if (cfgRes.status === 'fulfilled' && cfgRes.value.data.data?.empresa?.moneda) setMoneda(cfgRes.value.data.data.empresa.moneda)
+      // Empleados para responsables: endpoint ligero sin permiso especial
+      axios.get('/api/v1/empleados/opciones').then((r) => setEmpleados(r.data.data || [])).catch(() => {})
     } catch {
       toast.current.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los proyectos', life: 4000 })
     } finally {
