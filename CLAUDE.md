@@ -9,9 +9,9 @@ GPRO es un sistema de gestión de proyectos de consultoría para Proconty.
 Administra el ciclo de vida completo: desde la prefactibilidad hasta el cierre,
 incluyendo facturación y registro de pagos.
 
-**URL producción:** https://gpro.vercel.app  
+**URL producción:** https://gpro-app.azurewebsites.net (Azure App Service)  
 **Repo:** https://github.com/dsProconty/GPRO  
-**Deploy:** Vercel (auto-deploy en push a `main`)
+**Deploy:** Azure App Service — auto-deploy en push a rama `main-azure`
 
 ---
 
@@ -24,10 +24,10 @@ incluyendo facturación y registro de pagos.
 | Auth | NextAuth.js v4 | Sesión JWT, 8h |
 | ORM | Prisma 5 | Client en `src/lib/prisma.js` |
 | Base de datos | PostgreSQL (Neon serverless) | Variables en Vercel |
-| Deploy | Vercel | Región iad1 (US East) |
+| Deploy | Azure App Service | rama `main-azure` → deploy automático |
 | Estilos | PrimeFlex utility classes | Sin CSS custom salvo excepciones |
 
-### Variables de entorno (configuradas en Vercel — NO incluir valores aquí)
+### Variables de entorno (configuradas en Azure App Service → Configuration → Application Settings)
 ```
 DATABASE_URL=<ver Vercel dashboard → Settings → Environment Variables>
 NEXTAUTH_SECRET=<ver Vercel dashboard>
@@ -685,17 +685,91 @@ Señala qué regla de negocio del CLAUDE.md implementa cada sección.
 
 ---
 
-## 11. CREDENCIALES Y ACCESOS
+## 11. VERSIONAMIENTO
+
+El número de versión se muestra en el **footer inferior izquierdo** de la aplicación.
+
+**Dónde está definido:** `package.json` → campo `"version"`  
+**Cómo se inyecta:** `next.config.js` lee `version` de `package.json` y lo expone como `NEXT_PUBLIC_APP_VERSION`  
+**Dónde se renderiza:** `src/app/(dashboard)/layout.jsx` → `v{process.env.NEXT_PUBLIC_APP_VERSION}`
+
+### Regla obligatoria
+> ⚠️ **Cada fix o feature que se suba a `main-azure` DEBE incrementar el patch de la versión.**
+
+Esquema: `MAJOR.MINOR.PATCH` — para correcciones de bugs incrementar solo el PATCH.
+
+```bash
+# Ejemplo: pasar de 1.2.14 a 1.2.15
+# Editar package.json: "version": "1.2.15"
+```
+
+Versión actual en producción: **v1.2.15**
+
+---
+
+## 12. RAMAS Y FLUJO DE DEPLOY
+
+| Rama | Propósito |
+|------|-----------|
+| `main-azure` | **Producción** — cada push dispara deploy automático en Azure App Service |
+| `main` | Rama legacy / referencia — NO afecta producción |
+| `claude/hopeful-rubin-*` | Ramas de trabajo de Claude Code — NO tocar producción sin confirmar |
+
+### Reglas de rama
+- **NUNCA** hacer push directo a `main-azure` sin confirmación explícita del usuario
+- Todo cambio va primero a la rama de feature (`claude/...`)
+- El usuario decide cuándo y cómo mergear a `main-azure`
+- Al mergear a `main-azure`: actualizar versión en `package.json` en el mismo commit
+
+---
+
+## 13. SISTEMA DE PERMISOS (RBAC)
+
+La aplicación tiene un sistema de roles y permisos por perfil de usuario.
+
+**Archivos clave:**
+- `src/lib/permisos.js` — función `tienePermiso(session, permiso)` + objeto `PERMISOS`  
+  ⚠️ Este archivo es compartido cliente/servidor — **NUNCA importar módulos Node.js** (fs, path, etc.)
+- `src/hooks/usePermisos.js` — hook React que expone `puede(permiso)` en componentes
+- `src/lib/logger.js` — logging solo servidor — importar solo en API routes, nunca en `permisos.js`
+
+**Perfil PM (no admin):** puede ver proyectos, propuestas y clientes, pero NO tiene acceso a empleados, tarifarios ni configuración avanzada.
+
+### Patrón obligatorio en páginas con múltiples llamadas API
+Usar siempre `Promise.allSettled` (nunca `Promise.all`) cuando una página llama a varios endpoints. Si un endpoint secundario devuelve 403 (sin permiso), la página igual carga con los datos que sí están disponibles.
+
+```javascript
+// CORRECTO
+const [res1, res2, res3] = await Promise.allSettled([
+  servicioA.getAll(),      // crítico
+  servicioB.getAll(),      // secundario — puede fallar con 403
+  servicioC.getAll(),      // secundario — puede fallar con 403
+])
+if (res1.status === 'rejected') throw res1.reason  // solo el crítico bloquea
+if (res2.status === 'fulfilled') setDataB(res2.value.data)
+if (res3.status === 'fulfilled') setDataC(res3.value.data)
+
+// INCORRECTO — si res2 da 403, la página entera falla
+const [res1, res2, res3] = await Promise.all([...])
+```
+
+### Endpoint para dropdowns de empleados
+`GET /api/v1/empleados/opciones` — devuelve solo `id, nombre, apellido` de empleados activos.  
+Requiere solo sesión activa (sin permiso `empleados.ver`). Usar este endpoint en formularios/dropdowns de responsables, en lugar de `empleadoService.getAll()` que requiere permisos de admin.
+
+---
+
+## 14. CREDENCIALES Y ACCESOS
 
 | Servicio | URL / Credencial |
 |---------|-----------------|
-| App producción | https://gpro.vercel.app |
+| App producción | https://gpro-app.azurewebsites.net |
 | Login admin | admin@proconty.com / [ver gestor de contraseñas] |
 | GitHub repo | https://github.com/dsProconty/GPRO |
-| Vercel dashboard | https://vercel.com/dsprocontys-projects/gpro |
+| Azure portal | https://portal.azure.com → App Service "gpro-app" |
 | Neon DB | https://console.neon.tech → proyecto Gpro |
 | DB name | neondb |
 
 ---
 
-*GPRO v1.0 · Proconty · Abril 2026*
+*GPRO v1.2.15 · Proconty · Julio 2026*
