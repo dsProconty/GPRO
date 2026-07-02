@@ -15,6 +15,7 @@ function calcResumen(lineas) {
 
 function serializeLineas(lineas) {
   return lineas.map((l) => ({
+    id:          l.id,
     perfilConsultorId: l.perfilConsultorId,
     empleadoId:  l.empleadoId,
     perfil:      l.perfilConsultor,
@@ -31,6 +32,11 @@ function serializeLineas(lineas) {
   }))
 }
 
+const LINEA_INCLUDE = {
+  perfilConsultor: true,
+  empleado: { select: { id: true, nombre: true, apellido: true } },
+}
+
 // GET /api/v1/proyectos/:id/caso-negocio
 export async function GET(request, { params }) {
   const session = await getServerSession(authOptions)
@@ -45,10 +51,7 @@ export async function GET(request, { params }) {
   const [lineas, proyecto] = await Promise.all([
     prisma.proyectoCasoNegocioLinea.findMany({
       where: { proyectoId },
-      include: {
-        perfilConsultor: true,
-        empleado: { select: { id: true, nombre: true, apellido: true } },
-      },
+      include: LINEA_INCLUDE,
       orderBy: { perfilConsultor: { nombre: 'asc' } },
     }),
     prisma.proyecto.findUnique({
@@ -94,21 +97,22 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, message: 'El tarifario no tiene líneas configuradas' }, { status: 409 })
   }
 
-  await Promise.all(
-    lineasTarifario.map((tl) => {
-      const costoHora = tl.empleado ? Number(tl.empleado.costoHora) : Number(tl.perfil.costoHora)
-      return prisma.proyectoCasoNegocioLinea.upsert({
-        where: { proyectoId_perfilConsultorId: { proyectoId, perfilConsultorId: tl.perfilId } },
-        update: { empleadoId: tl.empleadoId, precioHora: tl.precioHora, costoHora },
-        create: { proyectoId, perfilConsultorId: tl.perfilId, horas: 0, empleadoId: tl.empleadoId, precioHora: tl.precioHora, costoHora },
-      })
-    })
-  )
+  await prisma.proyectoCasoNegocioLinea.createMany({
+    data: lineasTarifario.map((tl) => ({
+      proyectoId,
+      perfilConsultorId: tl.perfilId,
+      horas:      0,
+      empleadoId: tl.empleadoId || null,
+      costoHora:  tl.empleado ? Number(tl.empleado.costoHora) : Number(tl.perfil.costoHora),
+      precioHora: Number(tl.precioHora),
+    })),
+  })
 
   return NextResponse.json({ success: true, message: `${lineasTarifario.length} línea(s) cargadas desde el tarifario` })
 }
 
-// POST /api/v1/proyectos/:id/caso-negocio — upsert línea
+// POST /api/v1/proyectos/:id/caso-negocio — crear o editar línea
+// Si viene lineaId en el body: actualiza esa línea. Si no: crea una nueva.
 export async function POST(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
@@ -119,35 +123,44 @@ export async function POST(request, { params }) {
   const proyectoId = parseInt(params.id)
   if (isNaN(proyectoId)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
 
-  const { perfilId, horas, empleadoId, precioHora } = await request.json()
+  const { lineaId, perfilId, horas, empleadoId, precioHora } = await request.json()
   if (!perfilId) return NextResponse.json({ success: false, message: 'perfilId es requerido' }, { status: 422 })
   if (!horas || Number(horas) <= 0) return NextResponse.json({ success: false, message: 'horas debe ser mayor a 0' }, { status: 422 })
 
   const perfil = await prisma.perfilConsultor.findFirst({ where: { id: parseInt(perfilId), activo: true } })
   if (!perfil) return NextResponse.json({ success: false, message: 'Perfil no encontrado o inactivo' }, { status: 422 })
 
-  // precioHora override si se envía, si no usa el del perfil
   const precio = precioHora !== undefined && precioHora !== null ? Number(precioHora) : Number(perfil.precioHora)
 
-  // costoHora: usa el del empleado asignado si existe, si no el del perfil
   let costo = Number(perfil.costoHora)
   if (empleadoId) {
     const emp = await prisma.empleado.findUnique({ where: { id: Number(empleadoId) } })
     if (emp) costo = Number(emp.costoHora)
   }
 
-  await prisma.proyectoCasoNegocioLinea.upsert({
-    where: { proyectoId_perfilConsultorId: { proyectoId, perfilConsultorId: perfil.id } },
-    update: { horas: parseFloat(horas), costoHora: costo, precioHora: precio, empleadoId: empleadoId ? Number(empleadoId) : null },
-    create: { proyectoId, perfilConsultorId: perfil.id, horas: parseFloat(horas), costoHora: costo, precioHora: precio, empleadoId: empleadoId ? Number(empleadoId) : null },
-  })
+  const lineaData = {
+    horas:       parseFloat(horas),
+    costoHora:   costo,
+    precioHora:  precio,
+    empleadoId:  empleadoId ? Number(empleadoId) : null,
+  }
+
+  if (lineaId) {
+    // Actualizar línea existente por id
+    await prisma.proyectoCasoNegocioLinea.update({
+      where: { id: Number(lineaId) },
+      data: lineaData,
+    })
+  } else {
+    // Crear nueva línea (permite mismo perfil varias veces)
+    await prisma.proyectoCasoNegocioLinea.create({
+      data: { proyectoId, perfilConsultorId: perfil.id, ...lineaData },
+    })
+  }
 
   const lineas = await prisma.proyectoCasoNegocioLinea.findMany({
     where: { proyectoId },
-    include: {
-      perfilConsultor: true,
-      empleado: { select: { id: true, nombre: true, apellido: true } },
-    },
+    include: LINEA_INCLUDE,
     orderBy: { perfilConsultor: { nombre: 'asc' } },
   })
 
@@ -158,7 +171,7 @@ export async function POST(request, { params }) {
   })
 }
 
-// DELETE /api/v1/proyectos/:id/caso-negocio?perfilId=X
+// DELETE /api/v1/proyectos/:id/caso-negocio?lineaId=X
 export async function DELETE(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
@@ -167,19 +180,16 @@ export async function DELETE(request, { params }) {
   }
 
   const proyectoId = parseInt(params.id)
-  const perfilId   = parseInt(request.nextUrl.searchParams.get('perfilId') || '')
-  if (isNaN(proyectoId) || isNaN(perfilId)) return NextResponse.json({ success: false, message: 'IDs inválidos' }, { status: 400 })
+  const lineaId    = parseInt(request.nextUrl.searchParams.get('lineaId') || '')
+  if (isNaN(proyectoId) || isNaN(lineaId)) return NextResponse.json({ success: false, message: 'IDs inválidos' }, { status: 400 })
 
   await prisma.proyectoCasoNegocioLinea.deleteMany({
-    where: { proyectoId, perfilConsultorId: perfilId },
+    where: { id: lineaId, proyectoId },
   })
 
   const lineas = await prisma.proyectoCasoNegocioLinea.findMany({
     where: { proyectoId },
-    include: {
-      perfilConsultor: true,
-      empleado: { select: { id: true, nombre: true, apellido: true } },
-    },
+    include: LINEA_INCLUDE,
     orderBy: { perfilConsultor: { nombre: 'asc' } },
   })
 

@@ -64,6 +64,7 @@ export default function ProyectoDetallePage({ params }) {
   const [estados, setEstados] = useState([])
   const [empresas, setEmpresas] = useState([])
   const [usuarios, setUsuarios] = useState([])
+  const [empleadosOpciones, setEmpleadosOpciones] = useState([])
 
   const [loadingProyecto, setLoadingProyecto] = useState(true)
   const [loadingFacturas, setLoadingFacturas] = useState(false)
@@ -92,11 +93,10 @@ export default function ProyectoDetallePage({ params }) {
   const [casoNegocio, setCasoNegocio] = useState(null)  // { lineas, resumen } del proyecto
   const [perfilesConsultor, setPerfilesConsultor] = useState([])
   const [empleados, setEmpleados] = useState([])
-  const [empleadosOpciones, setEmpleadosOpciones] = useState([])
   const [addLineaVisible, setAddLineaVisible] = useState(false)
   const [editingLinea, setEditingLinea] = useState(null)  // linea al editar
   const [savingLinea, setSavingLinea] = useState(false)
-  const [lineaForm, setLineaForm] = useState({ perfilId: null, horas: null, empleadoId: null, precioHora: null })
+  const [lineaForm, setLineaForm] = useState({ lineaId: null, perfilId: null, horas: null, empleadoId: null, precioHora: null })
 
   useEffect(() => {
     loadAll()
@@ -118,7 +118,11 @@ export default function ProyectoDetallePage({ params }) {
         empleadoService.getAll({ activo: true }),
         axios.get('/api/v1/empleados/opciones'),
       ])
+
+      // El proyecto es crítico — si falla, mostrar error
       if (proyRes.status === 'rejected') throw new Error('No se pudo cargar el proyecto')
+
+
       setProyecto(proyRes.value.data)
       if (factRes.status === 'fulfilled')    setFacturas(factRes.value.data)
       if (obsRes.status === 'fulfilled')     setObservaciones(obsRes.value.data)
@@ -130,6 +134,7 @@ export default function ProyectoDetallePage({ params }) {
       if (perfilesRes.status === 'fulfilled') setPerfilesConsultor(perfilesRes.value.data.data || [])
       if (emplRes.status === 'fulfilled')    setEmpleados(emplRes.value.data || [])
       if (opcionesRes.status === 'fulfilled') setEmpleadosOpciones(opcionesRes.value.data.data || [])
+
       // Historial de estado (no bloquea si falla)
       axios.get(`/api/v1/proyectos/${id}/estado-logs`)
         .then((r) => setEstadoLogs(r.data.data || []))
@@ -344,6 +349,7 @@ export default function ProyectoDetallePage({ params }) {
   const openAddLinea = (linea = null) => {
     setEditingLinea(linea)
     setLineaForm({
+      lineaId:    linea?.id ?? null,
       perfilId:   linea?.perfilConsultorId ?? null,
       horas:      linea?.horas ?? null,
       empleadoId: linea?.empleadoId ?? null,
@@ -360,6 +366,7 @@ export default function ProyectoDetallePage({ params }) {
     setSavingLinea(true)
     try {
       await axios.post(`/api/v1/proyectos/${id}/caso-negocio`, {
+        lineaId:    lineaForm.lineaId || null,
         perfilId:   lineaForm.perfilId,
         horas:      lineaForm.horas,
         empleadoId: lineaForm.empleadoId || null,
@@ -375,7 +382,7 @@ export default function ProyectoDetallePage({ params }) {
     }
   }
 
-  const handleDeleteLinea = (perfilConsultorId) => {
+  const handleDeleteLinea = (lineaId) => {
     confirmDialog({
       message: '¿Eliminar esta línea del caso de negocio?',
       header: 'Confirmar eliminación',
@@ -385,7 +392,7 @@ export default function ProyectoDetallePage({ params }) {
       acceptClassName: 'p-button-danger',
       accept: async () => {
         try {
-          await axios.delete(`/api/v1/proyectos/${id}/caso-negocio?perfilId=${perfilConsultorId}`)
+          await axios.delete(`/api/v1/proyectos/${id}/caso-negocio?lineaId=${lineaId}`)
           toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Línea eliminada', life: 3000 })
           loadCasoNegocio()
         } catch (err) {
@@ -485,23 +492,34 @@ export default function ProyectoDetallePage({ params }) {
       </div>
 
       {/* ── KPI Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '10px', marginBottom: '14px' }}>
-        {[
+      {(() => {
+        const esMensual = !!proyecto.valorMensual
+        const cols = esMensual ? 'repeat(7,1fr)' : 'repeat(5,1fr)'
+        const cards = [
           { icon: '🏢', bg: '#EFF6FF', label: 'Empresa', value: proyecto.empresa?.nombre || '—', valueColor: '#1e293b' },
           { icon: '📅', bg: '#F1F5F9', label: 'Fecha inicio', value: formatDate(proyecto.fechaCreacion), valueColor: '#1e293b' },
           { icon: '🏁', bg: '#FFF7ED', label: 'Fecha de cierre', value: formatDate(proyecto.fechaCierre) || 'Sin definir', valueColor: proyecto.fechaCierre ? '#1e293b' : '#94a3b8' },
           { icon: '🖥️', bg: '#F5F3FF', label: 'Aplicativo', value: proyecto.aplicativo || '—', valueColor: '#1e293b' },
-          { icon: '💰', bg: '#F0FDF4', label: 'Valor contrato', value: formatCurrency(proyecto.valor, moneda), valueColor: '#15803D' },
-        ].map((k) => (
-          <div key={k.label} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 1px 2px rgba(0,0,0,.04)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: k.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>{k.icon}</div>
-            <div>
-              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '3px' }}>{k.label}</div>
-              <div style={{ fontSize: '14.5px', fontWeight: 700, color: k.valueColor }}>{k.value}</div>
-            </div>
+          ...(esMensual ? [
+            { icon: '📅', bg: '#EFF6FF', label: 'Valor mensual', value: formatCurrency(proyecto.valorMensual, moneda), valueColor: '#2563eb' },
+            { icon: '🔢', bg: '#F0F9FF', label: 'Meses', value: `${proyecto.mesesContrato} meses`, valueColor: '#0369a1' },
+          ] : []),
+          { icon: '💰', bg: '#F0FDF4', label: esMensual ? 'Valor total' : 'Valor contrato', value: formatCurrency(proyecto.valor, moneda), valueColor: '#15803D' },
+        ]
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: cols, gap: '10px', marginBottom: '14px' }}>
+            {cards.map((k) => (
+              <div key={k.label} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 1px 2px rgba(0,0,0,.04)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: k.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>{k.icon}</div>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '3px' }}>{k.label}</div>
+                  <div style={{ fontSize: '14.5px', fontWeight: 700, color: k.valueColor }}>{k.value}</div>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        )
+      })()}
 
       {/* ── Pipeline de estado ── */}
       <Card className="mb-3">
@@ -760,7 +778,7 @@ export default function ProyectoDetallePage({ params }) {
                   const lineaMargenPct = l.precio > 0 ? Math.round(((l.precio - l.costo) / l.precio) * 100) : 0
                   const mc = lineaMargenPct >= 40 ? { bg: '#DCFCE7', color: '#15803D' } : lineaMargenPct >= 20 ? { bg: '#FEFCE8', color: '#854D0E' } : { bg: '#FEF2F2', color: '#B91C1C' }
                   return (
-                  <div key={l.perfilConsultorId}
+                  <div key={l.id}
                     style={{ display: 'grid', gridTemplateColumns: '2.4fr 0.7fr 1fr 1fr 1.1fr 1.1fr 1fr 80px', gap: '0', borderTop: '1px solid var(--surface-border)', padding: '10px 12px', alignItems: 'center', background: idx % 2 === 1 ? 'var(--surface-50)' : '#fff' }}
                   >
                     <div>
@@ -784,7 +802,7 @@ export default function ProyectoDetallePage({ params }) {
                       {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) && (
                         <div className="flex gap-1 justify-content-end">
                           <Button icon="pi pi-pencil" rounded text severity="info" size="small" onClick={() => openAddLinea(l)} tooltip="Editar" tooltipOptions={{ position: 'top' }} />
-                          <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => handleDeleteLinea(l.perfilConsultorId)} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} />
+                          <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => handleDeleteLinea(l.id)} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} />
                         </div>
                       )}
                     </div>
@@ -987,7 +1005,8 @@ export default function ProyectoDetallePage({ params }) {
       )}
 
       {/* ── Dialogs ── */}
-      <FacturaFormDialog visible={facturaDialogVisible} onHide={() => setFacturaDialogVisible(false)} onSave={handleSaveFactura} factura={selectedFactura} proyectoId={id} />
+      <FacturaFormDialog visible={facturaDialogVisible} onHide={() => setFacturaDialogVisible(false)} onSave={handleSaveFactura} factura={selectedFactura} proyectoId={id}
+        valorDefault={proyecto?.valorMensual ? Number(proyecto.valorMensual) : Number(proyecto?.valor ?? 0)} />
       <PagoFormDialog visible={pagoDialogVisible} onHide={() => setPagoDialogVisible(false)} onSave={handleSavePago} pago={selectedPago} factura={facturaParaPago} />
       <ObservacionFormDialog visible={obsDialogVisible} onHide={() => setObsDialogVisible(false)} onSave={handleSaveObservacion} proyectoId={id} />
       <ProyectoFormDialog visible={editDialogVisible} onHide={() => setEditDialogVisible(false)} onSave={handleSaveProyecto} proyecto={proyecto} empresas={empresas} estados={estados} empleados={empleadosOpciones} />

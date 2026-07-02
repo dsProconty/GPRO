@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
+import { FilterMatchMode } from 'primereact/api'
 import { Button } from 'primereact/button'
 import { InputText } from '@/components/shared/InputText'
 import { IconField } from 'primereact/iconfield'
@@ -15,6 +16,7 @@ import { Toast } from 'primereact/toast'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { ProgressSpinner } from 'primereact/progressspinner'
 import ProyectoFormDialog from '@/components/shared/ProyectoFormDialog'
+import ProyectoFacturasDialog from '@/components/shared/ProyectoFacturasDialog'
 import { proyectoService } from '@/services/proyectoService'
 import { empresaService } from '@/services/empresaService'
 import { empleadoService } from '@/services/empleadoService'
@@ -25,6 +27,30 @@ import * as XLSX from 'xlsx'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
 const ESTADOS_PROPUESTAS = ['Elaboracion_Propuesta', 'Rechazado']
+
+const SESSION_KEY = 'gpro_proyectos_filtros'
+
+const leerFiltrosGuardados = () => {
+  if (typeof window === 'undefined') return {}
+  try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}') } catch { return {} }
+}
+
+const INIT_TABLE_FILTERS = {
+  codigo:           { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  detalle:          { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  'empresa.nombre': { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  aplicativo:       { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  ot:               { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  'estado.nombre':  { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+}
+
+const INIT_TABLE_FILTERS_CERRADOS = {
+  codigo:           { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  detalle:          { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  'empresa.nombre': { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  aplicativo:       { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  'estado.nombre':  { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+}
 
 const ESTADO_CONFIG = {
   Adjudicado:            { severity: 'success',   label: 'Adjudicado'        },
@@ -54,20 +80,46 @@ export default function ProyectosPage() {
   const [estadoFiltro, setEstadoFiltro] = useState(null)
   const [responsableFiltro, setResponsableFiltro] = useState(null)
   const [fechaRango, setFechaRango] = useState(null)
+  const [tableFilters, setTableFilters] = useState(INIT_TABLE_FILTERS)
+  const [tableFiltersCerrados, setTableFiltersCerrados] = useState(INIT_TABLE_FILTERS_CERRADOS)
+  const filtrosListos = useRef(false)
+
+  // Guardar filtros — solo después de que la restauración inicial haya ocurrido
+  useEffect(() => {
+    if (!filtrosListos.current) return
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      globalFilter,
+      estadoFiltro,
+      responsableFiltro,
+      fechaRango: fechaRango ? fechaRango.map((d) => (d ? d.toISOString() : null)) : null,
+      tableFilters,
+      tableFiltersCerrados,
+    }))
+  }, [globalFilter, estadoFiltro, responsableFiltro, fechaRango, tableFilters, tableFiltersCerrados])
   const [dialogVisible, setDialogVisible] = useState(false)
   const [selectedProyecto, setSelectedProyecto] = useState(null)
+  const [facturasDialogVisible, setFacturasDialogVisible] = useState(false)
+  const [proyectoParaFacturas, setProyectoParaFacturas] = useState(null)
   const [visibleRows, setVisibleRows] = useState([])
   const [cerradosExpanded, setCerradosExpanded] = useState(false)
 
   useEffect(() => {
-    loadAll()
+    const saved = leerFiltrosGuardados()
+    if (saved.globalFilter)         setGlobalFilter(saved.globalFilter)
+    if (saved.estadoFiltro)         setEstadoFiltro(saved.estadoFiltro)
+    if (saved.responsableFiltro)    setResponsableFiltro(saved.responsableFiltro)
+    if (saved.fechaRango)           setFechaRango(saved.fechaRango.map((d) => (d ? new Date(d) : null)))
+    if (saved.tableFilters)         setTableFilters(saved.tableFilters)
+    if (saved.tableFiltersCerrados) setTableFiltersCerrados(saved.tableFiltersCerrados)
+    filtrosListos.current = true
+    loadAll(saved.estadoFiltro || null)
   }, [])
 
-  const loadAll = async () => {
+  const loadAll = async (estadoId = null) => {
     setLoading(true)
     try {
       const [proyRes, empRes, estRes, cfgRes] = await Promise.allSettled([
-        proyectoService.getAll(),
+        estadoId ? proyectoService.getAll({ estado_id: estadoId }) : proyectoService.getAll(),
         empresaService.getAll(),
         axios.get('/api/v1/estados'),
         configuracionService.getAll(),
@@ -164,14 +216,17 @@ export default function ProyectosPage() {
   const tiempoVidaTemplate = (row) =>
     calcTiempoVida(row.fechaCreacion, row.fechaCierre)
 
+  const openFacturas = (row) => { setProyectoParaFacturas(row); setFacturasDialogVisible(true) }
+
   const accionesTemplate = (row) => (
-    <div className="flex gap-1">
-      <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
+    <div className="flex align-items-center" style={{ gap: '2px' }}>
+      <Button icon="pi pi-eye" rounded severity="success" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
+      <Button icon="pi pi-file" rounded severity="info" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Facturas" tooltipOptions={{ position: 'top' }} onClick={() => openFacturas(row)} />
       {(puede(PERMISOS.PROYECTOS.EDITAR) && puedeEditarProyecto(row.estadoId)) && (
-        <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => openEdit(row)} />
+        <Button icon="pi pi-pencil" rounded text severity="secondary" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => openEdit(row)} />
       )}
       {puede(PERMISOS.PROYECTOS.ELIMINAR) && (
-        <Button icon="pi pi-trash" rounded text severity="danger" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => confirmDelete(row)} />
+        <Button icon="pi pi-trash" rounded text severity="danger" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => confirmDelete(row)} />
       )}
     </div>
   )
@@ -333,6 +388,22 @@ export default function ProyectosPage() {
 
         <div className="flex gap-2" style={{ flexShrink: 0 }}>
           <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined onClick={exportarExcel} disabled={proyectosFiltrados.length === 0} />
+          <Button
+            label="Limpiar filtros"
+            icon="pi pi-filter-slash"
+            severity="secondary"
+            outlined
+            onClick={() => {
+              setGlobalFilter('')
+              setEstadoFiltro(null)
+              setResponsableFiltro(null)
+              setFechaRango(null)
+              setTableFilters(INIT_TABLE_FILTERS)
+              setTableFiltersCerrados(INIT_TABLE_FILTERS_CERRADOS)
+              sessionStorage.removeItem(SESSION_KEY)
+              loadProyectos(null)
+            }}
+          />
           {puede(PERMISOS.PROYECTOS.CREAR) && (
             <Button label="Nuevo Proyecto" icon="pi pi-plus" onClick={openCreate} />
           )}
@@ -379,18 +450,19 @@ export default function ProyectosPage() {
 
       <DataTable
         value={proyectosFiltrados}
+        filters={tableFilters}
+        onFilter={(e) => setTableFilters(e.filters)}
         globalFilter={globalFilter}
         onValueChange={(rows) => setVisibleRows(rows)}
         loading={loading}
         paginator
-        rows={10}
-        rowsPerPageOptions={[10, 25, 50]}
+        rows={50}
+        rowsPerPageOptions={[25, 50, 100]}
         emptyMessage="No hay proyectos registrados"
         stripedRows
         scrollable
         filterDisplay="menu"
       >
-        <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
         <Column field="detalle" header="Proyecto" body={detalleTemplate} sortable filter filterPlaceholder="Buscar proyecto..." style={{ minWidth: '180px' }} />
         <Column field="empresa.nombre" header="Cliente" body={(row) => row.empresa?.nombre} sortable filter filterPlaceholder="Buscar cliente..." />
         <Column field="aplicativo" header="Aplicativo" body={(row) => row.aplicativo || '—'} sortable filter filterPlaceholder="Buscar aplicativo..." style={{ width: '120px' }} />
@@ -402,7 +474,8 @@ export default function ProyectosPage() {
         <Column field="fechaCreacion" header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable style={{ width: '115px' }} />
         <Column field="fechaCierre" header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable style={{ width: '115px' }} />
         <Column field="estado.nombre" header="Estado" body={estadoTemplate} sortable filter filterPlaceholder="Buscar estado..." style={{ width: '140px' }} />
-        <Column header="Acciones" body={accionesTemplate} style={{ width: '120px' }} />
+        <Column header="Acciones" body={accionesTemplate} style={{ width: '125px' }} />
+        <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '130px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
       </DataTable>
 
       {/* ── Proyectos Cerrados ─────────────────────────────────────────── */}
@@ -426,18 +499,20 @@ export default function ProyectosPage() {
           <div style={{ border: '1px solid #d1d5db', borderTop: 'none', borderRadius: '0 0 6px 6px', opacity: 0.85 }}>
             <DataTable
               value={proyectosCerrados}
+              filters={tableFiltersCerrados}
+              onFilter={(e) => setTableFiltersCerrados(e.filters)}
               paginator
-              rows={10}
-              rowsPerPageOptions={[10, 25, 50]}
+              rows={50}
+              rowsPerPageOptions={[25, 50, 100]}
               emptyMessage="No hay proyectos cerrados"
               stripedRows
               scrollable
               size="small"
               filterDisplay="menu"
             >
-              <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
               <Column field="detalle" header="Proyecto" body={detalleTemplate} sortable filter filterPlaceholder="Buscar proyecto..." style={{ minWidth: '180px' }} />
               <Column field="empresa.nombre" header="Cliente" body={(row) => row.empresa?.nombre} sortable filter filterPlaceholder="Buscar cliente..." />
+              <Column field="aplicativo" header="Aplicativo" body={(row) => row.aplicativo || '—'} sortable filter filterPlaceholder="Buscar aplicativo..." style={{ width: '130px' }} />
               <Column field="estado.nombre" header="Estado" body={estadoTemplate} sortable filter filterPlaceholder="Buscar estado..." style={{ width: '130px' }} />
               <Column field="valor" header="Valor" body={valorTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
               <Column field="facturado" header="Facturado" body={facturadoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
@@ -445,9 +520,13 @@ export default function ProyectosPage() {
               <Column field="saldo" header="Saldo" body={saldoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
               <Column field="fechaCreacion" header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable style={{ width: '115px' }} />
               <Column field="fechaCierre" header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable style={{ width: '115px' }} />
-              <Column header="Acciones" body={(row) => (
-                <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
-              )} style={{ width: '80px' }} />
+              <Column header="Acciones" style={{ width: '70px' }} body={(row) => (
+                <div className="flex align-items-center" style={{ gap: '2px' }}>
+                  <Button icon="pi pi-eye" rounded severity="success" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
+                  <Button icon="pi pi-file" rounded severity="info" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Facturas" tooltipOptions={{ position: 'top' }} onClick={() => openFacturas(row)} />
+                </div>
+              )} />
+              <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '130px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
             </DataTable>
           </div>
         )}
@@ -461,6 +540,12 @@ export default function ProyectosPage() {
         empresas={empresas}
         estados={estados}
         empleados={empleados}
+      />
+
+      <ProyectoFacturasDialog
+        visible={facturasDialogVisible}
+        onHide={() => setFacturasDialogVisible(false)}
+        proyecto={proyectoParaFacturas}
       />
     </div>
   )

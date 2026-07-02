@@ -8,6 +8,7 @@ import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
 import { Button } from 'primereact/button'
 import { InputText } from '@/components/shared/InputText'
+import { InputText as PrInputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Tag } from 'primereact/tag'
 import { Dialog } from 'primereact/dialog'
@@ -100,11 +101,11 @@ function EstadoProyectoDialog({ visible, onHide, onSave, estado }) {
         {error && <div className="p-2 border-round text-red-600 text-sm surface-100">{error}</div>}
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Nombre <span className="text-red-500">*</span></label>
-          <InputText value={form.nombre} onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))} placeholder="Ej: En Ejecución" />
+          <PrInputText value={form.nombre} onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))} placeholder="Ej: En Ejecución" className="w-full" />
         </div>
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Descripción</label>
-          <InputText value={form.descripcion} onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))} placeholder="Descripción opcional" />
+          <PrInputText value={form.descripcion} onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))} placeholder="Descripción opcional" className="w-full" />
         </div>
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Color / Severidad</label>
@@ -161,7 +162,7 @@ function EstadoPropuestaDialog({ visible, onHide, onSave, estadoLabel }) {
         </div>
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Nombre visible <span className="text-red-500">*</span></label>
-          <InputText value={form.label} onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))} placeholder="Ej: Generando Propuesta" />
+          <PrInputText value={form.label} onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))} placeholder="Ej: Generando Propuesta" className="w-full" />
         </div>
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Color / Severidad</label>
@@ -238,7 +239,7 @@ function PerfilConsultorDialog({ visible, onHide, onSave, perfil }) {
           <div className="col-8">
             <div className="flex flex-column gap-1">
               <label className="text-sm font-medium">Rol <span className="text-red-500">*</span></label>
-              <InputText value={form.nombre} onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))} placeholder="Ej: Full Stack, QA, PM" />
+              <PrInputText value={form.nombre} onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))} placeholder="Ej: Full Stack, QA, PM" className="w-full" />
             </div>
           </div>
           <div className="col-4">

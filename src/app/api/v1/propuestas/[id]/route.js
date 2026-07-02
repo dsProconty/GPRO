@@ -4,12 +4,13 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { tienePermiso, PERMISOS } from '@/lib/permisos'
 import { generarCodigoProyecto } from '@/lib/codigoHelper'
+import { logger, logPermisoDenegado } from '@/lib/logger'
 
-// Transiciones de estado permitidas
+// Transiciones permitidas — se puede saltar estados, solo Aprobada requiere venir de Enviada
 const TRANSICIONES = {
-  Factibilidad: ['Haciendo'],
-  Haciendo:     ['Enviada', 'Factibilidad'],
-  Enviada:      ['Aprobada', 'Rechazada'],
+  Factibilidad: ['Haciendo', 'Enviada', 'Rechazada'],
+  Haciendo:     ['Factibilidad', 'Enviada', 'Rechazada'],
+  Enviada:      ['Factibilidad', 'Haciendo', 'Aprobada', 'Rechazada'],
   Aprobada:     [],
   Rechazada:    [],
 }
@@ -17,6 +18,7 @@ const TRANSICIONES = {
 const PROPUESTA_INCLUDE = {
   empresa: { select: { id: true, nombre: true } },
   responsables: { include: { empleado: { select: { id: true, nombre: true, apellido: true } } } },
+  clientes: { include: { cliente: { select: { id: true, nombre: true, apellido: true } } } },
   proyecto: { select: { id: true, detalle: true, estadoId: true } },
   logs: {
     include: { user: { select: { id: true, name: true } } },
@@ -25,7 +27,11 @@ const PROPUESTA_INCLUDE = {
 }
 
 function serializePropuesta(p) {
-  return { ...p, valorEstimado: p.valorEstimado ? Number(p.valorEstimado) : null }
+  return {
+    ...p,
+    valorEstimado: p.valorEstimado ? Number(p.valorEstimado) : null,
+    valorMensual:  p.valorMensual  ? Number(p.valorMensual)  : null,
+  }
 }
 
 // GET /api/v1/propuestas/:id
@@ -33,6 +39,7 @@ export async function GET(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   if (!tienePermiso(session, PERMISOS.PROPUESTAS.VER)) {
+    logPermisoDenegado(session, PERMISOS.PROPUESTAS.VER, `GET /propuestas/${params.id}`)
     return NextResponse.json({ success: false, message: 'Sin permiso para ver propuestas' }, { status: 403 })
   }
 
@@ -50,6 +57,7 @@ export async function PUT(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   if (!tienePermiso(session, PERMISOS.PROPUESTAS.EDITAR)) {
+    logPermisoDenegado(session, PERMISOS.PROPUESTAS.EDITAR, `PUT /propuestas/${params.id}`)
     return NextResponse.json({ success: false, message: 'No tiene permiso para editar propuestas' }, { status: 403 })
   }
 
@@ -62,7 +70,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, message: 'No se puede editar una propuesta en estado terminal' }, { status: 422 })
   }
 
-  const { titulo, descripcion, empresaId, valorEstimado, fechaCreacion, aplicativo, responsableIds = [], tipoPropuesta } = await request.json()
+  const { titulo, descripcion, empresaId, valorEstimado, valorMensual, mesesContrato, fechaCreacion, aplicativo, responsableIds = [], clienteIds = [], tipoPropuesta } = await request.json()
 
   const errors = {}
   if (!titulo?.trim()) errors.titulo = ['El título es requerido']
@@ -73,8 +81,16 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, message: 'Error de validación', errors }, { status: 422 })
   }
 
-  // Sync responsables
+  const tipoValido = tipoPropuesta && ['PorHoras', 'Mensualizada'].includes(tipoPropuesta) ? tipoPropuesta : undefined
+  const vMensual   = valorMensual ? parseFloat(valorMensual) : null
+  const meses      = mesesContrato ? parseInt(mesesContrato) : null
+  const vEstimado  = tipoValido === 'Mensualizada' && vMensual && meses
+    ? vMensual * meses
+    : (valorEstimado != null ? parseFloat(valorEstimado) : null)
+
+  // Sync responsables y clientes
   await prisma.propuestaResponsable.deleteMany({ where: { propuestaId: id } })
+  await prisma.propuestaCliente.deleteMany({ where: { propuestaId: id } })
 
   const propuesta = await prisma.propuesta.update({
     where: { id },
@@ -82,12 +98,17 @@ export async function PUT(request, { params }) {
       titulo: titulo.trim(),
       descripcion: descripcion?.trim() || null,
       empresaId: parseInt(empresaId),
-      valorEstimado: valorEstimado != null ? parseFloat(valorEstimado) : null,
+      valorEstimado: vEstimado,
+      valorMensual:  vMensual,
+      mesesContrato: meses,
       fechaCreacion: new Date(fechaCreacion),
       aplicativo: aplicativo?.trim() || null,
-      ...(tipoPropuesta && ['PorHoras', 'Mensualizada'].includes(tipoPropuesta) && { tipoPropuesta }),
+      ...(tipoValido && { tipoPropuesta: tipoValido }),
       responsables: {
         create: responsableIds.map((eid) => ({ empleadoId: parseInt(eid) })),
+      },
+      clientes: {
+        create: clienteIds.map((cid) => ({ clienteId: parseInt(cid) })),
       },
     },
     include: PROPUESTA_INCLUDE,
@@ -101,6 +122,7 @@ export async function PATCH(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   if (!tienePermiso(session, PERMISOS.PROPUESTAS.CAMBIAR_ESTADO)) {
+    logPermisoDenegado(session, PERMISOS.PROPUESTAS.CAMBIAR_ESTADO, `PATCH /propuestas/${params.id}`)
     return NextResponse.json({ success: false, message: 'No tiene permiso para cambiar el estado de propuestas' }, { status: 403 })
   }
 
@@ -151,6 +173,8 @@ export async function PATCH(request, { params }) {
           detalle: propuesta.titulo,
           empresaId: propuesta.empresaId,
           valor: propuesta.valorEstimado ?? 0,
+          valorMensual:  propuesta.valorMensual  ? propuesta.valorMensual  : null,
+          mesesContrato: propuesta.mesesContrato ? propuesta.mesesContrato : null,
           fechaCreacion: new Date(),
           estadoId: 3, // Adjudicado
           aplicativo: propuesta.aplicativo || null,
@@ -199,6 +223,14 @@ export async function PATCH(request, { params }) {
       })
     })
 
+    logger.info('PROPUESTA_APROBADA', {
+      propuestaId: id,
+      proyectoId:  proyectoCreado.id,
+      titulo:      proyectoCreado.detalle,
+      userId,
+      userName: session.user.name,
+    })
+
     return NextResponse.json({
       success: true,
       data: serializePropuesta(propuestaActualizada),
@@ -230,6 +262,15 @@ export async function PATCH(request, { params }) {
     }),
   ])
 
+  logger.info('PROPUESTA_ESTADO_CAMBIADO', {
+    propuestaId:   id,
+    estadoAnterior,
+    estadoNuevo,
+    userId,
+    userName: session.user.name,
+    nota:     nota?.trim() || null,
+  })
+
   return NextResponse.json({
     success: true,
     data: serializePropuesta(propuestaActualizada),
@@ -243,6 +284,7 @@ export async function DELETE(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   if (!tienePermiso(session, PERMISOS.PROPUESTAS.ELIMINAR)) {
+    logPermisoDenegado(session, PERMISOS.PROPUESTAS.ELIMINAR, `DELETE /propuestas/${params.id}`)
     return NextResponse.json({ success: false, message: 'No tiene permiso para eliminar propuestas' }, { status: 403 })
   }
 

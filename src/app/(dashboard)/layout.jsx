@@ -125,6 +125,11 @@ export default function DashboardLayout({ children }) {
           ))}
         </nav>
         <div className="p-3" style={{ borderTop: '1px solid var(--surface-border)' }}>
+          <div className="flex align-items-center justify-content-center mb-2">
+            <span style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.5px', background: '#f1f5f9', borderRadius: '20px', padding: '2px 10px' }}>
+              v{process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'}
+            </span>
+          </div>
           <div className="flex align-items-center gap-2 px-3 py-2 border-round surface-100">
             <div className="flex align-items-center justify-content-center border-round-full flex-shrink-0 text-white text-sm font-bold" style={{ width: '32px', height: '32px', background: 'linear-gradient(135deg, #1e3a5f, #2e75b6)' }}>
               {session.user?.name?.charAt(0)?.toUpperCase() || 'U'}

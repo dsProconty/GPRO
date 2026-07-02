@@ -11,6 +11,7 @@ import { Dialog } from 'primereact/dialog'
 import { Dropdown } from 'primereact/dropdown'
 import { InputNumber } from 'primereact/inputnumber'
 import { ProgressBar } from 'primereact/progressbar'
+import axios from 'axios'
 import { propuestaService } from '@/services/propuestaService'
 import { empresaService } from '@/services/empresaService'
 import { usuarioService } from '@/services/usuarioService'
@@ -21,7 +22,6 @@ import { formatCurrency, formatDate } from '@/utils/format'
 import PropuestaFormDialog from '@/components/shared/PropuestaFormDialog'
 import CambiarEstadoPropuestaDialog from '@/components/shared/CambiarEstadoPropuestaDialog'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
-import axios from 'axios'
 
 // Transiciones permitidas (claves internas — nunca cambian)
 const TRANSICIONES_KEYS = {
@@ -49,6 +49,7 @@ export default function PropuestaDetallePage({ params }) {
   const [propuesta, setPropuesta] = useState(null)
   const [empresas, setEmpresas] = useState([])
   const [usuarios, setUsuarios] = useState([])
+  const [empleadosOpciones, setEmpleadosOpciones] = useState([])
   const [propuestaConfig, setPropuestaConfig] = useState({})
   const [loading, setLoading] = useState(true)
 
@@ -60,7 +61,6 @@ export default function PropuestaDetallePage({ params }) {
   const [empleados, setEmpleados] = useState([])
   const [casoDialog, setCasoDialog] = useState(DIALOG_VACIO)
   const [cargandoTarifario, setCargandoTarifario] = useState(false)
-  const [empleadosOpciones, setEmpleadosOpciones] = useState([])
 
   const [editDialogVisible, setEditDialogVisible] = useState(false)
   const [estadoDialog, setEstadoDialog] = useState({ visible: false, estadoDestino: null, saving: false })
@@ -328,15 +328,56 @@ export default function PropuestaDetallePage({ params }) {
             </div>
           </div>
         </div>
-        <div className="col-12 md:col-3">
-          <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>💰</div>
-            <div>
-              <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Valor estimado</div>
-              <div className="font-bold text-sm" style={{ color: '#15803d' }}>{propuesta.valorEstimado ? formatCurrency(propuesta.valorEstimado) : '—'}</div>
+        {propuesta.tipoPropuesta === 'Mensualizada' && propuesta.valorMensual ? (
+          <>
+            <div className="col-12 md:col-3">
+              <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
+                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>📅</div>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Valor mensual</div>
+                  <div className="font-bold text-sm" style={{ color: '#2563eb' }}>{formatCurrency(propuesta.valorMensual)}</div>
+                  {propuesta.mesesContrato && <div style={{ fontSize: '11px', color: '#94a3b8' }}>× {propuesta.mesesContrato} meses</div>}
+                </div>
+              </div>
+            </div>
+            <div className="col-12 md:col-3">
+              <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
+                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>💰</div>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Valor total</div>
+                  <div className="font-bold text-sm" style={{ color: '#15803d' }}>{formatCurrency(propuesta.valorEstimado)}</div>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="col-12 md:col-3">
+            <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
+              <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>💰</div>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Valor estimado</div>
+                <div className="font-bold text-sm" style={{ color: '#15803d' }}>{propuesta.valorEstimado ? formatCurrency(propuesta.valorEstimado) : '—'}</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+        {propuesta.clientes?.length > 0 && (
+          <div className="col-12 md:col-6">
+            <div className="surface-card border-round p-3 shadow-1 flex align-items-start gap-3">
+              <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>👤</div>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '5px' }}>Punto(s) de contacto</div>
+                <div className="flex flex-wrap gap-1">
+                  {propuesta.clientes.map((c) => (
+                    <span key={c.clienteId} style={{ background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A', borderRadius: '20px', padding: '2px 10px', fontSize: '12px', fontWeight: 500 }}>
+                      {c.cliente.nombre} {c.cliente.apellido}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Pipeline de estado ── */}

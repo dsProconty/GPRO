@@ -75,7 +75,11 @@ export default function PropuestasPage() {
         proyectoService.getAll(),
         axios.get('/api/v1/estados'),
       ])
+
+      // Propuestas es crítico — si falla, mostrar error
       if (propRes.status === 'rejected') throw new Error('No se pudieron cargar las propuestas')
+
+
       setPropuestas(propRes.value.data)
       if (empRes.status === 'fulfilled')  setEmpresas(empRes.value.data)
       if (emplRes.status === 'fulfilled') setEmpleados(emplRes.value.data.data || [])

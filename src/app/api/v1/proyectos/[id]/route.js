@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { tienePermiso, puedeEditarProyecto, PERMISOS } from '@/lib/permisos'
+import { logger, logPermisoDenegado } from '@/lib/logger'
 
 const PROYECTO_INCLUDE = {
   empresa: { select: { id: true, nombre: true } },
@@ -40,6 +41,7 @@ export async function GET(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   if (!tienePermiso(session, PERMISOS.PROYECTOS.VER)) {
+    logPermisoDenegado(session, PERMISOS.PROYECTOS.VER, `GET /proyectos/${params.id}`)
     return NextResponse.json({ success: false, message: 'Sin permiso para ver proyectos' }, { status: 403 })
   }
 
@@ -63,10 +65,12 @@ export async function PUT(request, { params }) {
 
   // Check editar permission + state restriction (RN Sprint 11)
   if (!tienePermiso(session, PERMISOS.PROYECTOS.EDITAR)) {
+    logPermisoDenegado(session, PERMISOS.PROYECTOS.EDITAR, `PUT /proyectos/${params.id}`)
     return NextResponse.json({ success: false, message: 'No tiene permiso para editar proyectos' }, { status: 403 })
   }
   const proyectoActual = await prisma.proyecto.findUnique({ where: { id }, select: { estadoId: true } })
   if (proyectoActual && !puedeEditarProyecto(session, proyectoActual.estadoId)) {
+    logPermisoDenegado(session, PERMISOS.PROYECTOS.EDITAR, `PUT /proyectos/${params.id} (estado restringido)`)
     return NextResponse.json({ success: false, message: 'No tiene permiso para editar proyectos en este estado' }, { status: 403 })
   }
 
@@ -123,6 +127,7 @@ export async function PATCH(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   if (!tienePermiso(session, PERMISOS.PROYECTOS.CAMBIAR_ESTADO)) {
+    logPermisoDenegado(session, PERMISOS.PROYECTOS.CAMBIAR_ESTADO, `PATCH /proyectos/${params.id}`)
     return NextResponse.json({ success: false, message: 'No tiene permiso para cambiar el estado del proyecto' }, { status: 403 })
   }
 
@@ -165,9 +170,17 @@ export async function PATCH(request, { params }) {
         },
       }),
     ])
+    logger.info('PROYECTO_ESTADO_CAMBIADO', {
+      proyectoId:       id,
+      estadoAnteriorId: proyecto.estadoId,
+      estadoNuevoId:    parseInt(estadoId),
+      userId:           session.user.id,
+      userName:         session.user.name,
+    })
     return NextResponse.json({ success: true, data: calcularCampos(updated), message: 'Estado actualizado', warning })
   } catch (e) {
     if (e.code === 'P2025') return NextResponse.json({ success: false, message: 'Proyecto no encontrado' }, { status: 404 })
+    logger.error('PROYECTO_ESTADO_ERROR', { proyectoId: id, estadoId, error: e.message })
     throw e
   }
 }
@@ -178,6 +191,7 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   }
   if (!tienePermiso(session, PERMISOS.PROYECTOS.ELIMINAR)) {
+    logPermisoDenegado(session, PERMISOS.PROYECTOS.ELIMINAR, `DELETE /proyectos/${params.id}`)
     return NextResponse.json({ success: false, message: 'No tiene permiso para eliminar proyectos' }, { status: 403 })
   }
 

@@ -13,15 +13,19 @@ import { Tag } from 'primereact/tag'
 import { SelectButton } from 'primereact/selectbutton'
 import axios from 'axios'
 import { configuracionService, buildPropuestaConfig } from '@/services/configuracionService'
+import { clienteService } from '@/services/clienteService'
 
 const EMPTY = {
   titulo: '',
   descripcion: '',
   empresaId: null,
   valorEstimado: null,
+  valorMensual: null,
+  mesesContrato: null,
   fechaCreacion: new Date(),
   aplicativo: '',
   responsableIds: [],
+  clienteIds: [],
   tipoPropuesta: 'PorHoras',
   estado: 'Factibilidad',
 }
@@ -44,6 +48,9 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
   const [propuestaConfig, setPropuestaConfig] = useState(propuestaConfigProp)
+
+  // ── Clientes (puntos de contacto) ────────────────────────────
+  const [clientesEmpresa, setClientesEmpresa] = useState([])
 
   // ── Caso de negocio ───────────────────────────────────────────
   const [casoLineas, setCasoLineas] = useState([])          // líneas actuales
@@ -87,9 +94,12 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
         descripcion:    propuesta.descripcion || '',
         empresaId:      propuesta.empresaId || null,
         valorEstimado:  propuesta.valorEstimado ?? null,
+        valorMensual:   propuesta.valorMensual ?? null,
+        mesesContrato:  propuesta.mesesContrato ?? null,
         fechaCreacion:  propuesta.fechaCreacion ? new Date(propuesta.fechaCreacion) : new Date(),
         aplicativo:     propuesta.aplicativo || '',
         responsableIds: propuesta.responsables?.map((r) => r.empleadoId) || [],
+        clienteIds:     propuesta.clientes?.map((c) => c.clienteId) || [],
         tipoPropuesta:  propuesta.tipoPropuesta || 'PorHoras',
         estado:         propuesta.estado || 'Factibilidad',
       })
@@ -102,7 +112,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
       setCasoLineas([])
     }
 
-    // Cargar perfiles y empleados para el selector de forma independiente
+    // Cargar perfiles y empleados para el selector (independientes para no bloquearse mutuamente)
     axios.get('/api/v1/perfiles-consultor?activo=true')
       .then((r) => setPerfiles(r.data.data || []))
       .catch(() => {})
@@ -111,11 +121,24 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
       .catch(() => {})
   }, [visible, propuesta])
 
+  // Cargar clientes al cambiar empresa
+  useEffect(() => {
+    if (!form.empresaId) { setClientesEmpresa([]); return }
+    clienteService.getAll({ empresa_id: form.empresaId })
+      .then((res) => setClientesEmpresa(res.data || []))
+      .catch(() => setClientesEmpresa([]))
+  }, [form.empresaId])
+
   // ── Helpers formulario principal ─────────────────────────────
   const set = (field) => (e) => {
     const val = e.target?.value ?? e.value ?? e
     setForm((prev) => ({ ...prev, [field]: val }))
     setErrors((prev) => ({ ...prev, [field]: null }))
+  }
+
+  const handleEmpresaChange = (e) => {
+    setForm((prev) => ({ ...prev, empresaId: e.value, clienteIds: [] }))
+    setErrors((prev) => ({ ...prev, empresaId: null }))
   }
 
   const validate = () => {
@@ -127,13 +150,9 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
   }
 
   // ── Helpers caso de negocio ───────────────────────────────────
-  const perfilesUsados = useMemo(() => new Set(casoLineas.map((l) => l.perfilId)), [casoLineas])
-
   const perfilesOptions = useMemo(() =>
-    perfiles
-      .filter((p) => !perfilesUsados.has(p.id) || p.id === lineaForm?.perfilId)
-      .map((p) => ({ label: `${p.nombre} · ${p.nivel}`, value: p.id })),
-    [perfiles, perfilesUsados, lineaForm?.perfilId]
+    perfiles.map((p) => ({ label: `${p.nombre} · ${p.nivel}`, value: p.id })),
+    [perfiles]
   )
 
   const empleadosOptions = useMemo(() => [
@@ -258,6 +277,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
         perfil:     emp.perfilBase ? { nombre: emp.perfilBase.nombre, nivel: emp.perfilBase.nivel } : null,
         empleado:   { nombre: emp.nombre, apellido: emp.apellido },
         _isNew:     lineaEditIdx !== null ? casoLineas[lineaEditIdx]._isNew : true,
+        id:         lineaEditIdx !== null ? casoLineas[lineaEditIdx].id : undefined,
       }
       setCasoLineas((prev) =>
         lineaEditIdx !== null ? prev.map((l, i) => (i === lineaEditIdx ? nuevaLinea : l)) : [...prev, nuevaLinea]
@@ -280,6 +300,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
       perfil:     perfil   ? { nombre: perfil.nombre, nivel: perfil.nivel }             : (lineaEditIdx !== null ? casoLineas[lineaEditIdx].perfil   : null),
       empleado:   empleado ? { nombre: empleado.nombre, apellido: empleado.apellido }   : null,
       _isNew:     lineaEditIdx !== null ? casoLineas[lineaEditIdx]._isNew : true,
+      id:         lineaEditIdx !== null ? casoLineas[lineaEditIdx].id : undefined,
     }
     setCasoLineas((prev) =>
       lineaEditIdx !== null
@@ -292,7 +313,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
 
   const eliminarLinea = (idx) => {
     const linea = casoLineas[idx]
-    if (isEdit && !linea._isNew) setLineasEliminadas((prev) => [...prev, linea.perfilId])
+    if (isEdit && !linea._isNew && linea.id) setLineasEliminadas((prev) => [...prev, linea.id])
     setCasoLineas((prev) => prev.filter((_, i) => i !== idx))
   }
 
@@ -307,12 +328,16 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
         descripcion:    form.descripcion?.trim() || null,
         empresaId:      form.empresaId,
         valorEstimado:  form.valorEstimado ?? null,
+        valorMensual:   form.valorMensual ?? null,
+        mesesContrato:  form.mesesContrato ?? null,
         fechaCreacion:  form.fechaCreacion instanceof Date
           ? form.fechaCreacion.toISOString().slice(0, 10)
           : form.fechaCreacion,
         aplicativo:     form.aplicativo?.trim() || null,
         responsableIds: form.responsableIds,
+        clienteIds:     form.clienteIds,
         tipoPropuesta:  form.tipoPropuesta,
+        estado:         form.estado,
       }
 
       let propuestaId
@@ -324,17 +349,18 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
           await axios.patch(`/api/v1/propuestas/${propuesta.id}`, { estadoNuevo: form.estado })
         }
         // Eliminar líneas que el usuario borró
-        for (const perfilId of lineasEliminadas) {
-          await axios.delete(`/api/v1/propuestas/${propuestaId}/caso-negocio?perfilId=${perfilId}`)
+        for (const lineaId of lineasEliminadas) {
+          await axios.delete(`/api/v1/propuestas/${propuestaId}/caso-negocio?lineaId=${lineaId}`)
         }
       } else {
         const res = await axios.post('/api/v1/propuestas', payload)
         propuestaId = res.data.data.id
       }
 
-      // Upsert todas las líneas actuales
+      // Crear o actualizar líneas actuales
       for (const linea of casoLineas) {
         await axios.post(`/api/v1/propuestas/${propuestaId}/caso-negocio`, {
+          lineaId:    linea.id || null,
           perfilId:   linea.perfilId,
           horas:      linea.horas,
           empleadoId: linea.empleadoId || null,
@@ -407,35 +433,33 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
           )}
         </div>
 
-        {/* Título + Estado en edición */}
-        <div style={{ display: 'grid', gridTemplateColumns: isEdit ? '1fr auto' : '1fr', gap: '12px', alignItems: 'end' }}>
+        {/* Título + Estado */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'end' }}>
           <div className="flex flex-column gap-1">
             <label className="text-sm font-medium">Título <span className="text-red-500">*</span></label>
             <InputText value={form.titulo} onChange={set('titulo')} placeholder="Nombre de la propuesta" className={errors.titulo ? 'p-invalid' : ''} />
             {errors.titulo && <small className="text-red-500">{errors.titulo}</small>}
           </div>
-          {isEdit && (
-            <div className="flex flex-column gap-1">
-              <label className="text-sm font-medium">Estado</label>
-              <Dropdown
-                value={form.estado}
-                options={Object.values(propuestaConfig).map((cfg) => ({ label: cfg.label, value: cfg.key }))}
-                optionLabel="label"
-                optionValue="value"
-                onChange={(e) => setForm((p) => ({ ...p, estado: e.value }))}
-                style={{ minWidth: '180px' }}
-                itemTemplate={(opt) => {
-                  const cfg = propuestaConfig[opt.value]
-                  return cfg ? <Tag value={cfg.label} severity={cfg.severity} /> : opt.label
-                }}
-                valueTemplate={(opt) => {
-                  if (!opt) return null
-                  const cfg = propuestaConfig[opt.value]
-                  return cfg ? <Tag value={cfg.label} severity={cfg.severity} /> : opt.label
-                }}
-              />
-            </div>
-          )}
+          <div className="flex flex-column gap-1">
+            <label className="text-sm font-medium">Estado</label>
+            <Dropdown
+              value={form.estado}
+              options={Object.values(propuestaConfig).map((cfg) => ({ label: cfg.label, value: cfg.key }))}
+              optionLabel="label"
+              optionValue="value"
+              onChange={(e) => setForm((p) => ({ ...p, estado: e.value }))}
+              style={{ minWidth: '180px' }}
+              itemTemplate={(opt) => {
+                const cfg = propuestaConfig[opt.value]
+                return cfg ? <Tag value={cfg.label} severity={cfg.severity} /> : opt.label
+              }}
+              valueTemplate={(opt) => {
+                if (!opt) return null
+                const cfg = propuestaConfig[opt.value]
+                return cfg ? <Tag value={cfg.label} severity={cfg.severity} /> : opt.label
+              }}
+            />
+          </div>
         </div>
 
         {/* Empresa */}
@@ -443,37 +467,96 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
           <label className="text-sm font-medium">Empresa cliente <span className="text-red-500">*</span></label>
           <Dropdown
             value={form.empresaId} options={empresas} optionLabel="nombre" optionValue="id"
-            onChange={set('empresaId')} placeholder="Seleccionar empresa" filter
+            onChange={handleEmpresaChange} placeholder="Seleccionar empresa" filter
             className={errors.empresaId ? 'p-invalid' : ''}
           />
           {errors.empresaId && <small className="text-red-500">{errors.empresaId}</small>}
         </div>
 
-        {/* Valor estimado + Fecha */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          <div className="flex flex-column gap-1">
-            <label className="text-sm font-medium">Valor estimado (USD)</label>
-            <InputNumber
-              value={form.valorEstimado}
-              onValueChange={(e) => { setForm((p) => ({ ...p, valorEstimado: e.value })); setErrors((p) => ({ ...p, valorEstimado: null })) }}
-              mode="decimal" minFractionDigits={2} maxFractionDigits={2} placeholder="0.00"
-              pt={{ input: { onPaste: (e) => {
-                const text = e.clipboardData.getData('text').replace(/[$,\s]/g, '')
-                const num = parseFloat(text)
-                if (!isNaN(num)) {
-                  e.preventDefault()
-                  setForm((p) => ({ ...p, valorEstimado: num }))
-                  setErrors((p) => ({ ...p, valorEstimado: null }))
-                }
-              }}}}
-            />
-          </div>
-          <div className="flex flex-column gap-1">
-            <label className="text-sm font-medium">Fecha de inicio <span className="text-red-500">*</span></label>
-            <Calendar value={form.fechaCreacion} onChange={set('fechaCreacion')} dateFormat="dd/mm/yy" className={errors.fechaCreacion ? 'p-invalid' : ''} />
-            {errors.fechaCreacion && <small className="text-red-500">{errors.fechaCreacion}</small>}
-          </div>
+        {/* Punto de contacto */}
+        <div className="flex flex-column gap-1">
+          <label className="text-sm font-medium">Punto(s) de contacto</label>
+          <MultiSelect
+            value={form.clienteIds}
+            options={clientesEmpresa.map((c) => ({ label: `${c.nombre} ${c.apellido}`, value: c.id }))}
+            onChange={(e) => setForm((p) => ({ ...p, clienteIds: e.value }))}
+            placeholder={form.empresaId ? 'Seleccionar contacto(s)' : 'Primero selecciona una empresa'}
+            disabled={!form.empresaId}
+            display="chip"
+            filter
+            filterPlaceholder="Buscar contacto..."
+            emptyMessage="No hay contactos para esta empresa"
+          />
         </div>
+
+        {/* Valor — depende del tipo */}
+        {form.tipoPropuesta === 'Mensualizada' ? (
+          <div className="flex flex-column gap-2">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+              <div className="flex flex-column gap-1">
+                <label className="text-sm font-medium">Valor mensual (USD) <span className="text-red-500">*</span></label>
+                <InputNumber
+                  value={form.valorMensual}
+                  onValueChange={(e) => setForm((p) => ({ ...p, valorMensual: e.value }))}
+                  mode="decimal" minFractionDigits={2} maxFractionDigits={2} placeholder="0.00"
+                />
+              </div>
+              <div className="flex flex-column gap-1">
+                <label className="text-sm font-medium">Nº de meses <span className="text-red-500">*</span></label>
+                <InputNumber
+                  value={form.mesesContrato}
+                  onValueChange={(e) => setForm((p) => ({ ...p, mesesContrato: e.value }))}
+                  min={1} minFractionDigits={0} maxFractionDigits={0} placeholder="0"
+                />
+              </div>
+              <div className="flex flex-column gap-1">
+                <label className="text-sm font-medium">Fecha de inicio <span className="text-red-500">*</span></label>
+                <Calendar value={form.fechaCreacion} onChange={set('fechaCreacion')} dateFormat="dd/mm/yy" className={errors.fechaCreacion ? 'p-invalid' : ''} />
+                {errors.fechaCreacion && <small className="text-red-500">{errors.fechaCreacion}</small>}
+              </div>
+            </div>
+            {/* Valor total calculado */}
+            {form.valorMensual > 0 && form.mesesContrato > 0 && (
+              <div style={{ background: 'linear-gradient(135deg,#EFF6FF,#F0FDF4)', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#6B7280', marginBottom: '2px' }}>Valor total del contrato</div>
+                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#15803d' }}>
+                    {fmt(form.valorMensual * form.mesesContrato)}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', fontSize: '12px', color: '#6B7280' }}>
+                  <div>{fmt(form.valorMensual)} / mes</div>
+                  <div>× {form.mesesContrato} meses</div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="flex flex-column gap-1">
+              <label className="text-sm font-medium">Valor estimado (USD)</label>
+              <InputNumber
+                value={form.valorEstimado}
+                onValueChange={(e) => { setForm((p) => ({ ...p, valorEstimado: e.value })); setErrors((p) => ({ ...p, valorEstimado: null })) }}
+                mode="decimal" minFractionDigits={2} maxFractionDigits={2} placeholder="0.00"
+                pt={{ input: { onPaste: (e) => {
+                  const text = e.clipboardData.getData('text').replace(/[$,\s]/g, '')
+                  const num = parseFloat(text)
+                  if (!isNaN(num)) {
+                    e.preventDefault()
+                    setForm((p) => ({ ...p, valorEstimado: num }))
+                    setErrors((p) => ({ ...p, valorEstimado: null }))
+                  }
+                }}}}
+              />
+            </div>
+            <div className="flex flex-column gap-1">
+              <label className="text-sm font-medium">Fecha de inicio <span className="text-red-500">*</span></label>
+              <Calendar value={form.fechaCreacion} onChange={set('fechaCreacion')} dateFormat="dd/mm/yy" className={errors.fechaCreacion ? 'p-invalid' : ''} />
+              {errors.fechaCreacion && <small className="text-red-500">{errors.fechaCreacion}</small>}
+            </div>
+          </div>
+        )}
 
         {/* Responsables */}
         <div className="flex flex-column gap-1">
