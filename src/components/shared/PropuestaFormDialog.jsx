@@ -105,7 +105,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
       })
       // Cargar líneas existentes
       axios.get(`/api/v1/propuestas/${propuesta.id}/caso-negocio`)
-        .then((res) => setCasoLineas((res.data.lineas || []).map((l) => ({ ...l, _isNew: false }))))
+        .then((res) => setCasoLineas((res.data.data?.lineas || []).map((l) => ({ ...l, _isNew: false }))))
         .catch(() => setCasoLineas([]))
     } else {
       setForm(EMPTY)
@@ -195,7 +195,7 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
         // En edición: el API crea las líneas directo en la BD
         await axios.put(`/api/v1/propuestas/${propuesta.id}/caso-negocio`)
         const res = await axios.get(`/api/v1/propuestas/${propuesta.id}/caso-negocio`)
-        setCasoLineas((res.data.lineas || []).map((l) => ({ ...l, _isNew: false })))
+        setCasoLineas((res.data.data?.lineas || []).map((l) => ({ ...l, _isNew: false })))
         setLineasEliminadas([])
       } else {
         // En creación: cargar líneas del tarifario en estado local
