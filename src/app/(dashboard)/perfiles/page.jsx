@@ -115,6 +115,37 @@ const MODULOS = [
     ],
     especiales: [],
   },
+  {
+    key: 'casosNegocio',
+    label: 'Casos de Negocio',
+    acciones: [
+      { key: 'ver', label: 'Ver' },
+      { key: 'editar', label: 'Editar' },
+    ],
+    especiales: [],
+  },
+  {
+    key: 'empleados',
+    label: 'Empleados',
+    acciones: [
+      { key: 'ver', label: 'Ver' },
+      { key: 'crear', label: 'Crear' },
+      { key: 'editar', label: 'Editar' },
+      { key: 'eliminar', label: 'Eliminar' },
+    ],
+    especiales: [],
+  },
+  {
+    key: 'tarifarios',
+    label: 'Tarifarios',
+    acciones: [
+      { key: 'ver', label: 'Ver' },
+      { key: 'crear', label: 'Crear' },
+      { key: 'editar', label: 'Editar' },
+      { key: 'eliminar', label: 'Eliminar' },
+    ],
+    especiales: [],
+  },
 ]
 
 const ESTADOS_PROYECTO = [
