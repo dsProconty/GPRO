@@ -9,9 +9,11 @@ GPRO es un sistema de gestión de proyectos de consultoría para Proconty.
 Administra el ciclo de vida completo: desde la prefactibilidad hasta el cierre,
 incluyendo facturación y registro de pagos.
 
-**URL producción:** https://gpro.vercel.app  
+**URL producción:** https://gpro.proconty.com (fallback: https://gpro-app-b5hbhngha7gfh3d7.westus-01.azurewebsites.net)
 **Repo:** https://github.com/dsProconty/GPRO  
-**Deploy:** Vercel (auto-deploy en push a `main`)
+**Deploy:** Azure App Service (`gpro-app`), auto-deploy en push a `main-azure` vía GitHub Actions (`.github/workflows/main-azure_gpro-app.yml`)
+
+> ⚠️ **Migración Vercel → Azure completada en mayo 2026** (ver `DEPLOYMENT_AZURE.md`). Todo el desarrollo y los pushes de producción se hacen sobre `main-azure`, no sobre `main`. `main`/Vercel/Neon quedan como respaldo legacy, no reflejan producción. **Todos los cambios se hacen y despliegan en Azure salvo indicación explícita en contrario.**
 
 ---
 
@@ -23,18 +25,19 @@ incluyendo facturación y registro de pagos.
 | UI | PrimeReact 10 + PrimeFlex + PrimeIcons | Componentes listos |
 | Auth | NextAuth.js v4 | Sesión JWT, 8h |
 | ORM | Prisma 5 | Client en `src/lib/prisma.js` |
-| Base de datos | PostgreSQL (Neon serverless) | Variables en Vercel |
-| Deploy | Vercel | Región iad1 (US East) |
+| Base de datos | Azure Database for PostgreSQL Flexible Server (`gpro-db`, Postgres 16) | Variables en Azure App Service |
+| Deploy | Azure App Service B1 (Linux) — App `gpro-app` | Región West US |
 | Estilos | PrimeFlex utility classes | Sin CSS custom salvo excepciones |
 
-### Variables de entorno (configuradas en Vercel — NO incluir valores aquí)
+### Variables de entorno (configuradas en Azure App Service → Settings → Environment variables — NO incluir valores aquí)
 ```
-DATABASE_URL=<ver Vercel dashboard → Settings → Environment Variables>
-NEXTAUTH_SECRET=<ver Vercel dashboard>
-NEXTAUTH_URL=https://gpro.vercel.app
-CRON_SECRET=<ver Vercel dashboard>
-RESEND_API_KEY=<ver Vercel dashboard>
+DATABASE_URL=<ver Azure Portal → gpro-app → Environment variables>
+NEXTAUTH_SECRET=<ver Azure Portal>
+NEXTAUTH_URL=https://gpro.proconty.com
+CRON_SECRET=<ver Azure Portal>
+RESEND_API_KEY=<ver Azure Portal>
 ```
+El cron de recordatorios ya no corre vía `vercel.json` — lo dispara `.github/workflows/cron-recordatorios.yml` (GitHub Actions, diario 13:00 UTC) llamando a `/api/cron/recordatorios` sobre la URL de Azure.
 
 ---
 
@@ -652,7 +655,7 @@ Una historia está DONE cuando:
 - [ ] Toast de éxito y error funcionando
 - [ ] Loading state implementado
 - [ ] Probado en Chrome
-- [ ] Push a `main` y deploy verde en Vercel
+- [ ] Push a `main-azure` y deploy verde en Azure App Service (GitHub Actions)
 
 ---
 
@@ -670,8 +673,8 @@ Stack real del proyecto:
 - Next.js 14 con App Router (NO Laravel, NO Vite)
 - PrimeReact 10 + PrimeFlex (NO Tailwind)
 - NextAuth.js v4 para auth (NO Sanctum)
-- Prisma 5 + PostgreSQL Neon (NO MySQL/Eloquent)
-- Deploy en Vercel
+- Prisma 5 + PostgreSQL en Azure Database for PostgreSQL (NO MySQL/Eloquent)
+- Deploy en Azure App Service, rama `main-azure`
 
 Lo que ya existe (Sprint 0 completado):
 - Auth funcionando: src/lib/auth.js + src/app/api/auth/[...nextauth]/route.js
@@ -689,12 +692,15 @@ Señala qué regla de negocio del CLAUDE.md implementa cada sección.
 
 | Servicio | URL / Credencial |
 |---------|-----------------|
-| App producción | https://gpro.vercel.app |
+| App producción | https://gpro.proconty.com |
+| App producción (fallback Azure) | https://gpro-app-b5hbhngha7gfh3d7.westus-01.azurewebsites.net |
 | Login admin | admin@proconty.com / [ver gestor de contraseñas] |
 | GitHub repo | https://github.com/dsProconty/GPRO |
-| Vercel dashboard | https://vercel.com/dsprocontys-projects/gpro |
-| Neon DB | https://console.neon.tech → proyecto Gpro |
+| Rama de deploy | `main-azure` |
+| Azure Portal | Resource Group `rg-gpro` → App Service `gpro-app` |
+| Azure PostgreSQL | Servidor `gpro-db` (Flexible Server, Postgres 16) |
 | DB name | neondb |
+| Vercel/Neon (legacy, respaldo, no producción) | https://vercel.com/dsprocontys-projects/gpro · https://console.neon.tech |
 
 ---
 
