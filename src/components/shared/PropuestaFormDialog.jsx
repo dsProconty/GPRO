@@ -344,10 +344,6 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
       if (isEdit) {
         await axios.put(`/api/v1/propuestas/${propuesta.id}`, payload)
         propuestaId = propuesta.id
-        // Si el estado cambió, usar el endpoint PATCH (valida transiciones)
-        if (form.estado && form.estado !== propuesta.estado) {
-          await axios.patch(`/api/v1/propuestas/${propuesta.id}`, { estadoNuevo: form.estado })
-        }
         // Eliminar líneas que el usuario borró
         for (const lineaId of lineasEliminadas) {
           await axios.delete(`/api/v1/propuestas/${propuestaId}/caso-negocio?lineaId=${lineaId}`)
@@ -366,6 +362,13 @@ export default function PropuestaFormDialog({ visible, onHide, onSave, propuesta
           empleadoId: linea.empleadoId || null,
           precioHora: linea.precioHora ?? null,
         })
+      }
+
+      // Cambiar estado al final: si pasa a Aprobada/Rechazada, la propuesta
+      // (y su caso de negocio) queda bloqueada para edición — debe ir después
+      // de sincronizar el caso de negocio, no antes.
+      if (isEdit && form.estado && form.estado !== propuesta.estado) {
+        await axios.patch(`/api/v1/propuestas/${propuesta.id}`, { estadoNuevo: form.estado })
       }
 
       onSave()
