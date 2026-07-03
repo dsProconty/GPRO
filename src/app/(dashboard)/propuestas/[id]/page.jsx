@@ -38,7 +38,7 @@ const TRANSICIONES_KEYS = {
   Rechazada: [],
 }
 
-const DIALOG_VACIO = { visible: false, saving: false, perfilId: null, horas: null, empleadoId: null, precioHora: null, editando: false }
+const DIALOG_VACIO = { visible: false, saving: false, id: null, perfilId: null, horas: null, empleadoId: null, precioHora: null, editando: false }
 
 export default function PropuestaDetallePage({ params }) {
   const toast = useRef(null)
@@ -118,6 +118,7 @@ export default function PropuestaDetallePage({ params }) {
       visible: true,
       saving: false,
       editando: true,
+      id: linea.id,
       perfilId: linea.perfilId,
       horas: linea.horas,
       empleadoId: linea.empleadoId || null,
@@ -130,6 +131,7 @@ export default function PropuestaDetallePage({ params }) {
     setCasoDialog((p) => ({ ...p, saving: true }))
     try {
       await propuestaService.upsertLineaCaso(id, {
+        lineaId:    casoDialog.id || null,
         perfilId:   casoDialog.perfilId,
         horas:      casoDialog.horas,
         empleadoId: casoDialog.empleadoId || null,
@@ -144,9 +146,9 @@ export default function PropuestaDetallePage({ params }) {
     }
   }
 
-  const handleDeleteLinea = async (perfilId) => {
+  const handleDeleteLinea = async (lineaId) => {
     try {
-      await propuestaService.deleteLineaCaso(id, perfilId)
+      await propuestaService.deleteLineaCaso(id, lineaId)
       toast.current.show({ severity: 'success', summary: 'Eliminado', detail: 'Línea eliminada', life: 3000 })
       loadCaso()
     } catch (err) {
@@ -578,7 +580,7 @@ export default function PropuestaDetallePage({ params }) {
                 </thead>
                 <tbody>
                   {casoLineas.map((l, idx) => (
-                    <tr key={l.perfilId} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 1 ? '#fafbfc' : '#fff' }}>
+                    <tr key={l.id} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 1 ? '#fafbfc' : '#fff' }}>
                       <td style={{ padding: '12px' }}>
                         <div className="font-semibold" style={{ fontSize: '13px' }}>{l.perfil.nombre}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
@@ -599,7 +601,7 @@ export default function PropuestaDetallePage({ params }) {
                         {!esTerminal && (
                           <div className="flex gap-1 justify-content-end">
                             <Button icon="pi pi-pencil" rounded text severity="info" size="small" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => abrirEditarLinea(l)} />
-                            <Button icon="pi pi-trash" rounded text severity="danger" size="small" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => handleDeleteLinea(l.perfilId)} />
+                            <Button icon="pi pi-trash" rounded text severity="danger" size="small" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => handleDeleteLinea(l.id)} />
                           </div>
                         )}
                       </td>
