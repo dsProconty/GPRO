@@ -20,7 +20,16 @@ import { InputNumber } from 'primereact/inputnumber'
 import { InputSwitch } from 'primereact/inputswitch'
 import { configuracionService, SEVERITY_COLORS } from '@/services/configuracionService'
 import { perfilConsultorService, NIVEL_OPTIONS } from '@/services/perfilConsultorService'
+import { formatDate, formatCurrency } from '@/utils/format'
 import axios from 'axios'
+
+const FUENTE_CONFIG = {
+  estado_log:      { label: 'Historial de estado', severity: 'success' },
+  fecha_cierre:     { label: 'Fecha cierre operativo', severity: 'info' },
+  saldo_pendiente:  { label: 'Saldo pendiente — omitido', severity: 'warning' },
+  sin_facturas:     { label: 'Sin facturas — omitido', severity: 'secondary' },
+  sin_dato:         { label: 'Sin dato confiable — omitido', severity: 'danger' },
+}
 
 const MONEDA_OPTIONS = [
   { label: 'USD — Dólar estadounidense',  value: 'USD' },
@@ -278,6 +287,10 @@ export default function ConfiguracionPage() {
   const [elDialog, setElDialog] = useState({ visible: false, estadoLabel: null })  // label propuesta
   const [pfDialog, setPfDialog] = useState({ visible: false, perfil: null })       // perfil consultor
 
+  const [backfillDialog, setBackfillDialog] = useState({ visible: false, resultados: [], mensaje: '' })
+  const [backfillLoading, setBackfillLoading] = useState(false)
+  const [backfillAplicando, setBackfillAplicando] = useState(false)
+
   useEffect(() => {
     if (status === 'authenticated') {
       if (session?.user?.role !== 'admin') {
@@ -331,6 +344,41 @@ export default function ConfiguracionPage() {
     setPfDialog({ visible: false, perfil: null })
     toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Perfil guardado', life: 3000 })
     loadAll()
+  }
+
+  const handlePreviewCierreFinanciero = async () => {
+    setBackfillLoading(true)
+    try {
+      const res = await axios.post('/api/v1/admin/backfill-cierre-financiero', { aplicar: false })
+      setBackfillDialog({ visible: true, resultados: res.data.data, mensaje: res.data.message })
+    } catch (e) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 6000 })
+    } finally {
+      setBackfillLoading(false)
+    }
+  }
+
+  const handleAplicarCierreFinanciero = () => {
+    const aplicables = backfillDialog.resultados.filter((r) => r.fechaTentativa).length
+    confirmDialog({
+      message: `Se asignará fecha de cierre financiero a ${aplicables} proyecto(s). Esta acción escribe directamente en la base de datos. ¿Confirmas?`,
+      header: 'Aplicar cierre financiero retroactivo',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Sí, aplicar',
+      rejectLabel: 'Cancelar',
+      accept: async () => {
+        setBackfillAplicando(true)
+        try {
+          const res = await axios.post('/api/v1/admin/backfill-cierre-financiero', { aplicar: true })
+          setBackfillDialog({ visible: true, resultados: res.data.data, mensaje: res.data.message })
+          toast.current.show({ severity: 'success', summary: 'Aplicado', detail: res.data.message, life: 6000 })
+        } catch (e) {
+          toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 6000 })
+        } finally {
+          setBackfillAplicando(false)
+        }
+      },
+    })
   }
 
   const confirmDeletePerfil = (perfil) => {
@@ -712,6 +760,20 @@ export default function ConfiguracionPage() {
               }}
             />
           </div>
+          <div className="flex align-items-center justify-content-between p-3 surface-100 border-round">
+            <div>
+              <p className="m-0 font-semibold text-sm">5. Backfill de cierre financiero (proyectos cerrados)</p>
+              <p className="m-0 text-color-secondary text-xs mt-1">Calcula una fecha tentativa de cierre financiero para proyectos ya Cerrados, usando el historial de cambios de estado o la fecha de cierre operativo. Solo vista previa hasta que confirmes aplicar</p>
+            </div>
+            <Button
+              label="Vista previa"
+              icon="pi pi-search"
+              severity="secondary"
+              size="small"
+              loading={backfillLoading}
+              onClick={handlePreviewCierreFinanciero}
+            />
+          </div>
         </div>
       </Card>
 
@@ -734,6 +796,40 @@ export default function ConfiguracionPage() {
         onSave={handleSavePerfil}
         perfil={pfDialog.perfil}
       />
+
+      <Dialog
+        header="Vista previa — Cierre financiero retroactivo"
+        visible={backfillDialog.visible}
+        onHide={() => setBackfillDialog({ visible: false, resultados: [], mensaje: '' })}
+        style={{ width: '900px', maxWidth: '95vw' }}
+        modal
+        footer={
+          <div className="flex justify-content-end gap-2">
+            <Button label="Cerrar" severity="secondary" outlined onClick={() => setBackfillDialog({ visible: false, resultados: [], mensaje: '' })} />
+            <Button
+              label="Aplicar cambios"
+              icon="pi pi-check"
+              severity="danger"
+              loading={backfillAplicando}
+              disabled={!backfillDialog.resultados.some((r) => r.fechaTentativa && !r.aplicado)}
+              onClick={handleAplicarCierreFinanciero}
+            />
+          </div>
+        }
+      >
+        <p className="text-color-secondary text-sm mb-3">{backfillDialog.mensaje}</p>
+        <DataTable value={backfillDialog.resultados} size="small" stripedRows scrollable style={{ maxHeight: '55vh' }}>
+          <Column field="codigo" header="Código" body={(r) => r.codigo || '—'} style={{ width: '110px', fontFamily: 'monospace', fontSize: '0.8rem' }} />
+          <Column field="detalle" header="Proyecto" />
+          <Column header="Facturado" body={(r) => formatCurrency(r.facturado)} style={{ textAlign: 'right' }} />
+          <Column header="Saldo" body={(r) => formatCurrency(r.saldo)} style={{ textAlign: 'right' }} />
+          <Column header="Fuente" body={(r) => (
+            <Tag value={FUENTE_CONFIG[r.fuente]?.label || r.fuente} severity={FUENTE_CONFIG[r.fuente]?.severity || 'secondary'} />
+          )} />
+          <Column header="Fecha tentativa" body={(r) => r.fechaTentativa ? formatDate(r.fechaTentativa) : '—'} style={{ width: '130px' }} />
+          <Column header="Estado" body={(r) => r.aplicado ? <Tag value="✅ Aplicado" severity="success" /> : ''} style={{ width: '110px' }} />
+        </DataTable>
+      </Dialog>
     </div>
   )
 }
