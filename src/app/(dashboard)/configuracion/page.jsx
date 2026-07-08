@@ -818,16 +818,32 @@ export default function ConfiguracionPage() {
         }
       >
         <p className="text-color-secondary text-sm mb-3">{backfillDialog.mensaje}</p>
-        <DataTable value={backfillDialog.resultados} size="small" stripedRows scrollable style={{ maxHeight: '55vh' }}>
-          <Column field="codigo" header="Código" body={(r) => r.codigo || '—'} style={{ width: '110px', fontFamily: 'monospace', fontSize: '0.8rem' }} />
-          <Column field="detalle" header="Proyecto" />
-          <Column header="Facturado" body={(r) => formatCurrency(r.facturado)} style={{ textAlign: 'right' }} />
-          <Column header="Saldo" body={(r) => formatCurrency(r.saldo)} style={{ textAlign: 'right' }} />
-          <Column header="Fuente" body={(r) => (
-            <Tag value={FUENTE_CONFIG[r.fuente]?.label || r.fuente} severity={FUENTE_CONFIG[r.fuente]?.severity || 'secondary'} />
-          )} />
-          <Column header="Fecha tentativa" body={(r) => r.fechaTentativa ? formatDate(r.fechaTentativa) : '—'} style={{ width: '130px' }} />
-          <Column header="Estado" body={(r) => r.aplicado ? <Tag value="✅ Aplicado" severity="success" /> : ''} style={{ width: '110px' }} />
+        <DataTable value={backfillDialog.resultados} size="small" stripedRows scrollable style={{ maxHeight: '55vh' }} filterDisplay="menu">
+          <Column field="codigo" header="Código" body={(r) => r.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '110px', fontFamily: 'monospace', fontSize: '0.8rem' }} />
+          <Column field="detalle" header="Proyecto" sortable filter filterPlaceholder="Buscar proyecto..." />
+          <Column field="facturado" header="Facturado" body={(r) => formatCurrency(r.facturado)} sortable dataType="numeric" style={{ textAlign: 'right' }} />
+          <Column field="saldo" header="Saldo" body={(r) => formatCurrency(r.saldo)} sortable dataType="numeric" style={{ textAlign: 'right' }} />
+          <Column
+            field="fuente"
+            header="Fuente"
+            body={(r) => (
+              <Tag value={FUENTE_CONFIG[r.fuente]?.label || r.fuente} severity={FUENTE_CONFIG[r.fuente]?.severity || 'secondary'} />
+            )}
+            sortable
+            filter
+            filterElement={(options) => (
+              <Dropdown
+                value={options.value}
+                options={Object.entries(FUENTE_CONFIG).map(([key, cfg]) => ({ label: cfg.label, value: key }))}
+                onChange={(e) => options.filterApplyCallback(e.value)}
+                placeholder="Todas"
+                showClear
+                style={{ minWidth: '200px' }}
+              />
+            )}
+          />
+          <Column field="fechaTentativa" header="Fecha tentativa" body={(r) => r.fechaTentativa ? formatDate(r.fechaTentativa) : '—'} sortable style={{ width: '130px' }} />
+          <Column field="aplicado" header="Estado" body={(r) => r.aplicado ? <Tag value="✅ Aplicado" severity="success" /> : ''} sortable style={{ width: '110px' }} />
         </DataTable>
       </Dialog>
     </div>
