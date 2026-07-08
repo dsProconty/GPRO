@@ -11,6 +11,7 @@ import { IconField } from 'primereact/iconfield'
 import { InputIcon } from 'primereact/inputicon'
 import { Dropdown } from 'primereact/dropdown'
 import { Calendar } from 'primereact/calendar'
+import { Dialog } from 'primereact/dialog'
 import { Tag } from 'primereact/tag'
 import { Toast } from 'primereact/toast'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
@@ -102,6 +103,7 @@ export default function ProyectosPage() {
   const [proyectoParaFacturas, setProyectoParaFacturas] = useState(null)
   const [visibleRows, setVisibleRows] = useState([])
   const [cerradosExpanded, setCerradosExpanded] = useState(false)
+  const [cierreFinancieroDialog, setCierreFinancieroDialog] = useState({ visible: false, proyecto: null, fecha: null, saving: false })
 
   useEffect(() => {
     const saved = leerFiltrosGuardados()
@@ -217,6 +219,30 @@ export default function ProyectosPage() {
     calcTiempoVida(row.fechaCreacion, row.fechaCierre)
 
   const openFacturas = (row) => { setProyectoParaFacturas(row); setFacturasDialogVisible(true) }
+
+  const abrirCorregirCierreFinanciero = (row) => {
+    setCierreFinancieroDialog({
+      visible: true,
+      proyecto: row,
+      fecha: row.fechaCierreFinanciero ? new Date(row.fechaCierreFinanciero) : null,
+      saving: false,
+    })
+  }
+
+  const guardarCierreFinancieroManual = async () => {
+    const { proyecto, fecha } = cierreFinancieroDialog
+    setCierreFinancieroDialog((p) => ({ ...p, saving: true }))
+    try {
+      const fechaStr = fecha ? fecha.toISOString().slice(0, 10) : null
+      await axios.patch(`/api/v1/proyectos/${proyecto.id}/cierre-financiero`, { fecha: fechaStr })
+      toast.current.show({ severity: 'success', summary: 'Guardado', detail: 'Cierre financiero actualizado', life: 3000 })
+      setCierreFinancieroDialog({ visible: false, proyecto: null, fecha: null, saving: false })
+      loadProyectos(estadoFiltro)
+    } catch (err) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'Error al actualizar el cierre financiero', life: 4000 })
+      setCierreFinancieroDialog((p) => ({ ...p, saving: false }))
+    }
+  }
 
   const accionesTemplate = (row) => (
     <div className="flex align-items-center" style={{ gap: '2px' }}>
@@ -520,7 +546,23 @@ export default function ProyectosPage() {
               <Column field="saldo" header="Saldo" body={saldoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
               <Column field="fechaCreacion" header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable style={{ width: '115px' }} />
               <Column field="fechaCierre" header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable style={{ width: '115px' }} />
-              <Column field="fechaCierreFinanciero" header="Cierre Financiero" body={(row) => row.fechaCierreFinanciero ? formatDate(row.fechaCierreFinanciero) : '—'} sortable style={{ width: '130px' }} />
+              <Column
+                field="fechaCierreFinanciero"
+                header="Cierre Financiero"
+                sortable
+                style={{ width: '150px' }}
+                body={(row) => (
+                  <div className="flex align-items-center gap-1">
+                    <span>{row.fechaCierreFinanciero ? formatDate(row.fechaCierreFinanciero) : '—'}</span>
+                    {puede(PERMISOS.PROYECTOS.CERRAR_FINANCIERO) && (
+                      <Button icon="pi pi-pencil" rounded text severity="secondary" size="small"
+                        style={{ width: '22px', height: '22px' }}
+                        tooltip="Corregir fecha" tooltipOptions={{ position: 'top' }}
+                        onClick={() => abrirCorregirCierreFinanciero(row)} />
+                    )}
+                  </div>
+                )}
+              />
               <Column header="Acciones" style={{ width: '70px' }} body={(row) => (
                 <div className="flex align-items-center" style={{ gap: '2px' }}>
                   <Button icon="pi pi-eye" rounded severity="success" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
@@ -549,6 +591,37 @@ export default function ProyectosPage() {
         proyecto={proyectoParaFacturas}
         onSave={() => loadProyectos(estadoFiltro)}
       />
+
+      <Dialog
+        header="Corregir cierre financiero"
+        visible={cierreFinancieroDialog.visible}
+        onHide={() => setCierreFinancieroDialog({ visible: false, proyecto: null, fecha: null, saving: false })}
+        style={{ width: '380px' }}
+        modal
+        footer={
+          <div className="flex justify-content-end gap-2">
+            <Button label="Cancelar" severity="secondary" outlined
+              onClick={() => setCierreFinancieroDialog({ visible: false, proyecto: null, fecha: null, saving: false })}
+              disabled={cierreFinancieroDialog.saving} />
+            <Button label="Guardar" icon="pi pi-check" loading={cierreFinancieroDialog.saving} onClick={guardarCierreFinancieroManual} />
+          </div>
+        }
+      >
+        <p className="text-color-secondary text-sm mb-3">{cierreFinancieroDialog.proyecto?.detalle}</p>
+        <div className="flex flex-column gap-1">
+          <label className="text-sm font-medium">Fecha de cierre financiero</label>
+          <Calendar
+            value={cierreFinancieroDialog.fecha}
+            onChange={(e) => setCierreFinancieroDialog((p) => ({ ...p, fecha: e.value || null }))}
+            dateFormat="dd/mm/yy"
+            placeholder="Elegir fecha"
+            showIcon
+            readOnlyInput
+            className="w-full"
+          />
+          <small className="text-color-secondary mt-1">Dejar vacío revierte el cierre financiero (lo vuelve a marcar como pendiente).</small>
+        </div>
+      </Dialog>
     </div>
   )
 }

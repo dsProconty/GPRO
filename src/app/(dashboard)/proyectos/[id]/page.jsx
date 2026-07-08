@@ -749,15 +749,14 @@ export default function ProyectoDetallePage({ params }) {
           {/* Cierre financiero — solo aplica una vez que hay algo facturado */}
           <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #e2e8f0' }}>
             {(() => {
-              const puedeGestionarCierre = resumen.saldo > 0.001
-                ? puede(PERMISOS.PROYECTOS.CERRAR_FINANCIERO)
-                : puede(PERMISOS.PROYECTOS.EDITAR)
-
               if (proyecto.fechaCierreFinanciero) {
+                // Modificar/reabrir un cierre financiero YA asignado siempre requiere
+                // el permiso especial, sin importar el saldo (es una correccion).
+                const puedeReabrir = puede(PERMISOS.PROYECTOS.CERRAR_FINANCIERO)
                 return (
                   <div className="flex align-items-center justify-content-between flex-wrap gap-2">
                     <Tag severity="success" value={`✅ Cerrado financieramente · ${formatDate(proyecto.fechaCierreFinanciero)}`} />
-                    {puedeGestionarCierre && (
+                    {puedeReabrir && (
                       <Button label="Reabrir" icon="pi pi-lock-open" size="small" text severity="secondary"
                         loading={savingCierreFinanciero} onClick={handleReabrirFinanciero} />
                     )}
@@ -767,7 +766,12 @@ export default function ProyectoDetallePage({ params }) {
               // Un proyecto recien creado tiene facturado=0 y saldo=0 "por defecto":
               // no debe ofrecerse el cierre financiero hasta que exista al menos una factura.
               if (resumen.facturado <= 0.001) return null
-              return puedeGestionarCierre && (
+              // Primer cierre: alcanza con editar si ya esta pagado, o requiere el
+              // permiso especial si se quiere forzar con saldo pendiente.
+              const puedeCerrar = resumen.saldo > 0.001
+                ? puede(PERMISOS.PROYECTOS.CERRAR_FINANCIERO)
+                : puede(PERMISOS.PROYECTOS.EDITAR)
+              return puedeCerrar && (
                 <Button label="Cerrar financieramente" icon="pi pi-lock" size="small" outlined
                   severity={resumen.saldo > 0.001 ? 'warning' : 'success'}
                   loading={savingCierreFinanciero} onClick={handleCerrarFinanciero} />
