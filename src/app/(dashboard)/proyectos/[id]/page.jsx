@@ -746,7 +746,7 @@ export default function ProyectoDetallePage({ params }) {
             <div style={{ width: `${resumen.pctFacturado}%`, height: '100%', borderRadius: '20px', background: 'linear-gradient(90deg,#1D4ED8,#4F8EF7)' }} />
           </div>
 
-          {/* Cierre financiero */}
+          {/* Cierre financiero — solo aplica una vez que hay algo facturado */}
           <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #e2e8f0' }}>
             {(() => {
               const puedeGestionarCierre = resumen.saldo > 0.001
@@ -764,6 +764,9 @@ export default function ProyectoDetallePage({ params }) {
                   </div>
                 )
               }
+              // Un proyecto recien creado tiene facturado=0 y saldo=0 "por defecto":
+              // no debe ofrecerse el cierre financiero hasta que exista al menos una factura.
+              if (resumen.facturado <= 0.001) return null
               return puedeGestionarCierre && (
                 <Button label="Cerrar financieramente" icon="pi pi-lock" size="small" outlined
                   severity={resumen.saldo > 0.001 ? 'warning' : 'success'}

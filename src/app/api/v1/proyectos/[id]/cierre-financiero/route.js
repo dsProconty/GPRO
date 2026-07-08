@@ -34,6 +34,15 @@ export async function PATCH(request, { params }) {
   const pagado = proyecto.facturas.reduce((s, f) => s + f.pagos.reduce((sp, p) => sp + Number(p.valor), 0), 0)
   const saldo = facturado - pagado
 
+  // Un proyecto sin nada facturado no puede cerrarse financieramente
+  // (saldo=0 por defecto no cuenta como "cobrado")
+  if (fecha && facturado <= 0.001) {
+    return NextResponse.json({
+      success: false,
+      message: 'El proyecto no tiene facturas registradas, no se puede cerrar financieramente.',
+    }, { status: 422 })
+  }
+
   if (saldo > 0.001 && !tienePermiso(session, PERMISOS.PROYECTOS.CERRAR_FINANCIERO)) {
     logPermisoDenegado(session, PERMISOS.PROYECTOS.CERRAR_FINANCIERO, `PATCH /proyectos/${id}/cierre-financiero (saldo pendiente)`)
     return NextResponse.json({
