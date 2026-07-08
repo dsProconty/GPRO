@@ -5,7 +5,10 @@ import { prisma } from '@/lib/prisma'
 
 /**
  * POST /api/v1/admin/backfill-cierre-financiero
- * Body: { aplicar?: boolean }  — default false = solo vista previa, no escribe nada.
+ * Body: { aplicar?: boolean, overrides?: { [proyectoId]: 'YYYY-MM-DD' } }
+ * aplicar default false = solo vista previa, no escribe nada.
+ * overrides permite fijar manualmente la fecha para proyectos sin dato confiable
+ * (o para reemplazar cualquier fecha calculada), marcados con fuente "manual".
  *
  * Para cada proyecto en estado "Cerrado" sin fechaCierreFinanciero, calcula una fecha
  * tentativa de cierre financiero:
@@ -15,7 +18,8 @@ import { prisma } from '@/lib/prisma'
  *   - Pagado al 100% (saldo <= 0)          -> usa la fecha del ultimo cambio de estado a
  *     "Cerrado" en proyecto_estado_logs (fuente: estado_log); si no existe ese log (proyecto
  *     cerrado antes de que existiera el historial de estados), usa fechaCierre operativo
- *     (fuente: fecha_cierre); si tampoco hay eso, se omite (fuente: sin_dato).
+ *     (fuente: fecha_cierre); si tampoco hay eso, se omite (fuente: sin_dato) a menos que
+ *     venga un override manual para ese proyecto.
  *
  * Solo admin. No modifica nada salvo que aplicar=true.
  */
@@ -26,7 +30,7 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'Solo administradores' }, { status: 403 })
   }
 
-  const { aplicar = false } = await request.json().catch(() => ({}))
+  const { aplicar = false, overrides = {} } = await request.json().catch(() => ({}))
 
   const estadoCerrado = await prisma.estado.findFirst({ where: { nombre: 'Cerrado' } })
   if (!estadoCerrado) {
@@ -62,6 +66,9 @@ export async function POST(request) {
     } else if (p.fechaCierre) {
       fuente = 'fecha_cierre'
       fecha = p.fechaCierre
+    } else if (overrides[String(p.id)]) {
+      fuente = 'manual'
+      fecha = new Date(overrides[String(p.id)])
     }
 
     const item = {
