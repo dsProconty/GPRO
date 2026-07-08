@@ -11,15 +11,16 @@ import { prisma } from '@/lib/prisma'
  * (o para reemplazar cualquier fecha calculada), marcados con fuente "manual".
  *
  * Para cada proyecto en estado "Cerrado" sin fechaCierreFinanciero, calcula una fecha
- * tentativa de cierre financiero:
- *   - Sin facturas registradas            -> se omite (fuente: sin_facturas)
- *   - Con saldo pendiente (facturado>pagado) -> se omite (fuente: saldo_pendiente, requiere
- *     cierre forzado manual con permiso proyectos.cerrarFinanciero)
- *   - Pagado al 100% (saldo <= 0)          -> usa la fecha del ultimo cambio de estado a
- *     "Cerrado" en proyecto_estado_logs (fuente: estado_log); si no existe ese log (proyecto
- *     cerrado antes de que existiera el historial de estados), usa fechaCierre operativo
- *     (fuente: fecha_cierre); si tampoco hay eso, se omite (fuente: sin_dato) a menos que
- *     venga un override manual para ese proyecto.
+ * tentativa de cierre financiero, en este orden de prioridad:
+ *   1. Sin facturas registradas              -> se omite (fuente: sin_facturas)
+ *   2. Con saldo pendiente (facturado>pagado) -> se omite (fuente: saldo_pendiente, requiere
+ *      cierre forzado manual con permiso proyectos.cerrarFinanciero)
+ *   3. Override manual (overrides[proyectoId]) -> siempre gana sobre lo calculado
+ *      (fuente: manual), porque el historial o la fecha guardada pueden estar
+ *      desactualizados o ser incorrectos frente a lo que confirma quien cerro el proyecto
+ *   4. Ultimo cambio de estado a "Cerrado" en proyecto_estado_logs (fuente: estado_log)
+ *   5. Si no hay log, usa fechaCierre operativo ya guardado (fuente: fecha_cierre)
+ *   6. Si no hay ninguno de los anteriores, se omite (fuente: sin_dato)
  *
  * Solo admin. No modifica nada salvo que aplicar=true.
  */
@@ -60,15 +61,17 @@ export async function POST(request) {
       fuente = 'sin_facturas'
     } else if (saldo > 0.001) {
       fuente = 'saldo_pendiente'
+    } else if (overrides[String(p.id)]) {
+      // La correccion manual siempre gana sobre cualquier fuente calculada:
+      // el historial o la fecha guardada pueden estar desactualizados o ser incorrectos.
+      fuente = 'manual'
+      fecha = new Date(overrides[String(p.id)])
     } else if (p.estadoLogs[0]) {
       fuente = 'estado_log'
       fecha = p.estadoLogs[0].createdAt
     } else if (p.fechaCierre) {
       fuente = 'fecha_cierre'
       fecha = p.fechaCierre
-    } else if (overrides[String(p.id)]) {
-      fuente = 'manual'
-      fecha = new Date(overrides[String(p.id)])
     }
 
     const item = {

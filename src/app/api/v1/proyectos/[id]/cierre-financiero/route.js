@@ -9,8 +9,12 @@ import { logger, logPermisoDenegado } from '@/lib/logger'
 // Body: { fecha: 'YYYY-MM-DD' | null }
 // fecha truthy  -> cierra financieramente el proyecto (fechaCierreFinanciero = fecha)
 // fecha null    -> reabre el cierre financiero (fechaCierreFinanciero = null)
-// Si el proyecto tiene saldo pendiente (facturado - pagado > 0), solo un usuario
-// con el permiso proyectos.cerrarFinanciero puede forzar el cierre o reabrirlo.
+// Reglas de permiso:
+//   - Primer cierre (fechaCierreFinanciero aun null) con saldo en $0 -> alcanza proyectos.editar
+//   - Primer cierre forzado con saldo pendiente -> requiere proyectos.cerrarFinanciero
+//   - Corregir o revertir un cierre financiero YA asignado -> siempre requiere
+//     proyectos.cerrarFinanciero, sin importar el saldo (es una correccion de un dato
+//     historico, no el flujo normal de cierre)
 export async function PATCH(request, { params }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
@@ -43,7 +47,17 @@ export async function PATCH(request, { params }) {
     }, { status: 422 })
   }
 
-  if (saldo > 0.001 && !tienePermiso(session, PERMISOS.PROYECTOS.CERRAR_FINANCIERO)) {
+  const yaEstabaCerrado = proyecto.fechaCierreFinanciero !== null
+
+  if (yaEstabaCerrado) {
+    if (!tienePermiso(session, PERMISOS.PROYECTOS.CERRAR_FINANCIERO)) {
+      logPermisoDenegado(session, PERMISOS.PROYECTOS.CERRAR_FINANCIERO, `PATCH /proyectos/${id}/cierre-financiero (corregir fecha existente)`)
+      return NextResponse.json({
+        success: false,
+        message: 'Solo un usuario con permiso de cierre financiero puede modificar una fecha de cierre ya asignada.',
+      }, { status: 403 })
+    }
+  } else if (saldo > 0.001 && !tienePermiso(session, PERMISOS.PROYECTOS.CERRAR_FINANCIERO)) {
     logPermisoDenegado(session, PERMISOS.PROYECTOS.CERRAR_FINANCIERO, `PATCH /proyectos/${id}/cierre-financiero (saldo pendiente)`)
     return NextResponse.json({
       success: false,
