@@ -38,6 +38,7 @@ const MODULOS = [
     especiales: [
       { key: 'cambiarEstado', label: 'Cambiar Estado' },
       { key: 'pdf', label: 'Descargar PDF' },
+      { key: 'cerrarFinanciero', label: 'Cerrar financiero con saldo pendiente' },
     ],
   },
   {

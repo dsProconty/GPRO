@@ -520,6 +520,7 @@ export default function ProyectosPage() {
               <Column field="saldo" header="Saldo" body={saldoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
               <Column field="fechaCreacion" header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable style={{ width: '115px' }} />
               <Column field="fechaCierre" header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable style={{ width: '115px' }} />
+              <Column field="fechaCierreFinanciero" header="Cierre Financiero" body={(row) => row.fechaCierreFinanciero ? formatDate(row.fechaCierreFinanciero) : '—'} sortable style={{ width: '130px' }} />
               <Column header="Acciones" style={{ width: '70px' }} body={(row) => (
                 <div className="flex align-items-center" style={{ gap: '2px' }}>
                   <Button icon="pi pi-eye" rounded severity="success" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
