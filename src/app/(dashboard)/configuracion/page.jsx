@@ -859,11 +859,14 @@ export default function ConfiguracionPage() {
             sortable
             style={{ width: '160px' }}
             body={(r) => {
-              if (r.fechaTentativa) return formatDate(r.fechaTentativa)
-              if (r.fuente !== 'sin_dato' || r.aplicado) return '—'
+              if (r.aplicado) return formatDate(r.fechaTentativa)
+              if (r.fuente === 'sin_facturas' || r.fuente === 'saldo_pendiente') return '—'
+              const valorActual = manualDates[r.id] !== undefined
+                ? manualDates[r.id]
+                : (r.fechaTentativa ? new Date(r.fechaTentativa) : null)
               return (
                 <Calendar
-                  value={manualDates[r.id] || null}
+                  value={valorActual}
                   onChange={(e) => setManualDates((prev) => ({ ...prev, [r.id]: e.value || null }))}
                   dateFormat="dd/mm/yy"
                   placeholder="Elegir fecha"
