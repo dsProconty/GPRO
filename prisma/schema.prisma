@@ -113,6 +113,7 @@ model Proyecto {
   valor          Decimal   @db.Decimal(12, 2)
   fechaCreacion  DateTime  @map("fecha_creacion") @db.Date
   fechaCierre    DateTime? @map("fecha_cierre") @db.Date
+  fechaCierreFinanciero DateTime? @map("fecha_cierre_financiero") @db.Date
   estadoId       Int       @map("id_estado")
   projectOnline  String?   @map("project_online") @db.VarChar(500)
   codigo              String?   @unique @db.VarChar(20)

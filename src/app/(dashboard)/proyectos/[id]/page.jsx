@@ -70,6 +70,7 @@ export default function ProyectoDetallePage({ params }) {
   const [loadingFacturas, setLoadingFacturas] = useState(false)
   const [loadingObs, setLoadingObs] = useState(false)
   const [savingEstado, setSavingEstado] = useState(false)
+  const [savingCierreFinanciero, setSavingCierreFinanciero] = useState(false)
   const [expandedRows, setExpandedRows] = useState(null)
 
   // Dialogs
@@ -215,6 +216,47 @@ export default function ProyectoDetallePage({ params }) {
     } finally {
       setSavingEstado(false)
     }
+  }
+
+  // === Cierre financiero ===
+  const ejecutarCierreFinanciero = async (fecha) => {
+    setSavingCierreFinanciero(true)
+    try {
+      const res = await axios.patch(`/api/v1/proyectos/${id}/cierre-financiero`, { fecha })
+      setProyecto((p) => ({ ...p, fechaCierreFinanciero: res.data.data.fechaCierreFinanciero }))
+      toast.current.show({ severity: 'success', summary: fecha ? 'Cerrado financieramente' : 'Cierre financiero revertido', detail: res.data.message, life: 3000 })
+    } catch (err) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'Error al actualizar el cierre financiero', life: 4000 })
+    } finally {
+      setSavingCierreFinanciero(false)
+    }
+  }
+
+  const handleCerrarFinanciero = () => {
+    const hoy = new Date().toISOString().slice(0, 10)
+    if (resumen.saldo > 0.001) {
+      confirmDialog({
+        message: `Este proyecto tiene un saldo pendiente de ${formatCurrency(resumen.saldo, moneda)}. ¿Confirmas el cierre financiero de todas formas?`,
+        header: 'Cerrar financiero con saldo pendiente',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Sí, cerrar',
+        rejectLabel: 'Cancelar',
+        accept: () => ejecutarCierreFinanciero(hoy),
+      })
+    } else {
+      ejecutarCierreFinanciero(hoy)
+    }
+  }
+
+  const handleReabrirFinanciero = () => {
+    confirmDialog({
+      message: '¿Reabrir el cierre financiero de este proyecto?',
+      header: 'Reabrir cierre financiero',
+      icon: 'pi pi-question-circle',
+      acceptLabel: 'Sí, reabrir',
+      rejectLabel: 'Cancelar',
+      accept: () => ejecutarCierreFinanciero(null),
+    })
   }
 
   // === Facturas ===
@@ -702,6 +744,35 @@ export default function ProyectoDetallePage({ params }) {
           </div>
           <div style={{ height: '8px', background: '#f1f3f4', borderRadius: '20px', overflow: 'hidden' }}>
             <div style={{ width: `${resumen.pctFacturado}%`, height: '100%', borderRadius: '20px', background: 'linear-gradient(90deg,#1D4ED8,#4F8EF7)' }} />
+          </div>
+
+          {/* Cierre financiero — solo aplica una vez que hay algo facturado */}
+          <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #e2e8f0' }}>
+            {(() => {
+              const puedeGestionarCierre = resumen.saldo > 0.001
+                ? puede(PERMISOS.PROYECTOS.CERRAR_FINANCIERO)
+                : puede(PERMISOS.PROYECTOS.EDITAR)
+
+              if (proyecto.fechaCierreFinanciero) {
+                return (
+                  <div className="flex align-items-center justify-content-between flex-wrap gap-2">
+                    <Tag severity="success" value={`✅ Cerrado financieramente · ${formatDate(proyecto.fechaCierreFinanciero)}`} />
+                    {puedeGestionarCierre && (
+                      <Button label="Reabrir" icon="pi pi-lock-open" size="small" text severity="secondary"
+                        loading={savingCierreFinanciero} onClick={handleReabrirFinanciero} />
+                    )}
+                  </div>
+                )
+              }
+              // Un proyecto recien creado tiene facturado=0 y saldo=0 "por defecto":
+              // no debe ofrecerse el cierre financiero hasta que exista al menos una factura.
+              if (resumen.facturado <= 0.001) return null
+              return puedeGestionarCierre && (
+                <Button label="Cerrar financieramente" icon="pi pi-lock" size="small" outlined
+                  severity={resumen.saldo > 0.001 ? 'warning' : 'success'}
+                  loading={savingCierreFinanciero} onClick={handleCerrarFinanciero} />
+              )
+            })()}
           </div>
         </Card>
       </div>
