@@ -16,7 +16,7 @@ import { pagoService } from '@/services/pagoService'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
-export default function ProyectoFacturasDialog({ visible, onHide, proyecto }) {
+export default function ProyectoFacturasDialog({ visible, onHide, proyecto, onSave }) {
   const toast = useRef(null)
   const { puede } = usePermisos()
 
@@ -54,6 +54,7 @@ export default function ProyectoFacturasDialog({ visible, onHide, proyecto }) {
     setFacturaDialogVisible(false)
     toast.current?.show({ severity: 'success', summary: 'Éxito', detail: 'Factura guardada', life: 3000 })
     loadFacturas()
+    onSave?.()
   }
 
   const confirmDeleteFactura = (f) => {
@@ -69,6 +70,7 @@ export default function ProyectoFacturasDialog({ visible, onHide, proyecto }) {
           await facturaService.remove(f.id)
           toast.current?.show({ severity: 'success', summary: 'Éxito', detail: 'Factura eliminada', life: 3000 })
           loadFacturas()
+          onSave?.()
         } catch (err) {
           toast.current?.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'Error al eliminar', life: 4000 })
         }
@@ -83,6 +85,7 @@ export default function ProyectoFacturasDialog({ visible, onHide, proyecto }) {
     setPagoDialogVisible(false)
     toast.current?.show({ severity: 'success', summary: 'Éxito', detail: 'Pago guardado', life: 3000 })
     loadFacturas()
+    onSave?.()
   }
 
   const confirmDeletePago = (pago) => {
@@ -98,6 +101,7 @@ export default function ProyectoFacturasDialog({ visible, onHide, proyecto }) {
           await pagoService.remove(pago.id)
           toast.current?.show({ severity: 'success', summary: 'Éxito', detail: 'Pago eliminado', life: 3000 })
           loadFacturas()
+          onSave?.()
         } catch {
           toast.current?.show({ severity: 'error', summary: 'Error', detail: 'Error al eliminar el pago', life: 4000 })
         }

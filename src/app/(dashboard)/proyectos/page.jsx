@@ -547,6 +547,7 @@ export default function ProyectosPage() {
         visible={facturasDialogVisible}
         onHide={() => setFacturasDialogVisible(false)}
         proyecto={proyectoParaFacturas}
+        onSave={() => loadProyectos(estadoFiltro)}
       />
     </div>
   )
