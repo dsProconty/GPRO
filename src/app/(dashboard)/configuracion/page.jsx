@@ -10,6 +10,7 @@ import { Button } from 'primereact/button'
 import { InputText } from '@/components/shared/InputText'
 import { InputText as PrInputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
+import { Calendar } from 'primereact/calendar'
 import { Tag } from 'primereact/tag'
 import { Dialog } from 'primereact/dialog'
 import { Toast } from 'primereact/toast'
@@ -26,6 +27,7 @@ import axios from 'axios'
 const FUENTE_CONFIG = {
   estado_log:      { label: 'Historial de estado', severity: 'success' },
   fecha_cierre:     { label: 'Fecha cierre operativo', severity: 'info' },
+  manual:           { label: 'Fecha manual', severity: 'success' },
   saldo_pendiente:  { label: 'Saldo pendiente — omitido', severity: 'warning' },
   sin_facturas:     { label: 'Sin facturas — omitido', severity: 'secondary' },
   sin_dato:         { label: 'Sin dato confiable — omitido', severity: 'danger' },
@@ -290,6 +292,7 @@ export default function ConfiguracionPage() {
   const [backfillDialog, setBackfillDialog] = useState({ visible: false, resultados: [], mensaje: '' })
   const [backfillLoading, setBackfillLoading] = useState(false)
   const [backfillAplicando, setBackfillAplicando] = useState(false)
+  const [manualDates, setManualDates] = useState({}) // { [proyectoId]: Date }
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -350,6 +353,7 @@ export default function ConfiguracionPage() {
     setBackfillLoading(true)
     try {
       const res = await axios.post('/api/v1/admin/backfill-cierre-financiero', { aplicar: false })
+      setManualDates({})
       setBackfillDialog({ visible: true, resultados: res.data.data, mensaje: res.data.message })
     } catch (e) {
       toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 6000 })
@@ -359,9 +363,12 @@ export default function ConfiguracionPage() {
   }
 
   const handleAplicarCierreFinanciero = () => {
-    const aplicables = backfillDialog.resultados.filter((r) => r.fechaTentativa).length
+    const overrideEntries = Object.entries(manualDates).filter(([, d]) => d)
+    const aplicables = backfillDialog.resultados.filter(
+      (r) => r.fechaTentativa || manualDates[r.id]
+    ).length
     confirmDialog({
-      message: `Se asignará fecha de cierre financiero a ${aplicables} proyecto(s). Esta acción escribe directamente en la base de datos. ¿Confirmas?`,
+      message: `Se asignará fecha de cierre financiero a ${aplicables} proyecto(s)${overrideEntries.length > 0 ? ` (${overrideEntries.length} con fecha ingresada manualmente)` : ''}. Esta acción escribe directamente en la base de datos. ¿Confirmas?`,
       header: 'Aplicar cierre financiero retroactivo',
       icon: 'pi pi-exclamation-triangle',
       acceptLabel: 'Sí, aplicar',
@@ -369,8 +376,12 @@ export default function ConfiguracionPage() {
       accept: async () => {
         setBackfillAplicando(true)
         try {
-          const res = await axios.post('/api/v1/admin/backfill-cierre-financiero', { aplicar: true })
+          const overrides = Object.fromEntries(
+            overrideEntries.map(([id, d]) => [id, d.toISOString().slice(0, 10)])
+          )
+          const res = await axios.post('/api/v1/admin/backfill-cierre-financiero', { aplicar: true, overrides })
           setBackfillDialog({ visible: true, resultados: res.data.data, mensaje: res.data.message })
+          setManualDates({})
           toast.current.show({ severity: 'success', summary: 'Aplicado', detail: res.data.message, life: 6000 })
         } catch (e) {
           toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 6000 })
@@ -811,7 +822,7 @@ export default function ConfiguracionPage() {
               icon="pi pi-check"
               severity="danger"
               loading={backfillAplicando}
-              disabled={!backfillDialog.resultados.some((r) => r.fechaTentativa && !r.aplicado)}
+              disabled={!backfillDialog.resultados.some((r) => (r.fechaTentativa || manualDates[r.id]) && !r.aplicado)}
               onClick={handleAplicarCierreFinanciero}
             />
           </div>
@@ -842,7 +853,27 @@ export default function ConfiguracionPage() {
               />
             )}
           />
-          <Column field="fechaTentativa" header="Fecha tentativa" body={(r) => r.fechaTentativa ? formatDate(r.fechaTentativa) : '—'} sortable style={{ width: '130px' }} />
+          <Column
+            field="fechaTentativa"
+            header="Fecha tentativa"
+            sortable
+            style={{ width: '160px' }}
+            body={(r) => {
+              if (r.fechaTentativa) return formatDate(r.fechaTentativa)
+              if (r.fuente !== 'sin_dato' || r.aplicado) return '—'
+              return (
+                <Calendar
+                  value={manualDates[r.id] || null}
+                  onChange={(e) => setManualDates((prev) => ({ ...prev, [r.id]: e.value || null }))}
+                  dateFormat="dd/mm/yy"
+                  placeholder="Elegir fecha"
+                  showIcon
+                  style={{ width: '140px' }}
+                  inputStyle={{ fontSize: '0.8rem', padding: '4px 6px' }}
+                />
+              )
+            }}
+          />
           <Column field="aplicado" header="Estado" body={(r) => r.aplicado ? <Tag value="✅ Aplicado" severity="success" /> : ''} sortable style={{ width: '110px' }} />
         </DataTable>
       </Dialog>

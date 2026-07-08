@@ -91,6 +91,9 @@ export async function PUT(request, { params }) {
     await prisma.proyectoCliente.deleteMany({ where: { proyectoId: id } })
     await prisma.proyectoResponsable.deleteMany({ where: { proyectoId: id } })
 
+    const estadoIdNuevo = parseInt(estadoId)
+    const estadoCambio = proyectoActual && proyectoActual.estadoId !== estadoIdNuevo
+
     const proyecto = await prisma.proyecto.update({
       where: { id },
       data: {
@@ -99,7 +102,7 @@ export async function PUT(request, { params }) {
         valor: valor ? parseFloat(valor) : 0,
         fechaCreacion: new Date(fechaCreacion),
         fechaCierre: fechaCierre ? new Date(fechaCierre) : null,
-        estadoId: parseInt(estadoId),
+        estadoId: estadoIdNuevo,
         aplicativo: aplicativo?.trim() || null,
         ot: ot?.trim() || null,
         projectOnline: projectOnline?.trim() || null,
@@ -113,6 +116,19 @@ export async function PUT(request, { params }) {
       },
       include: PROYECTO_INCLUDE,
     })
+
+    // Registrar en el historial de estados tambien cuando el cambio viene del
+    // formulario completo de edicion, no solo del cambio rapido (PATCH).
+    if (estadoCambio) {
+      await prisma.proyectoEstadoLog.create({
+        data: {
+          proyectoId: id,
+          estadoAnteriorId: proyectoActual.estadoId,
+          estadoNuevoId: estadoIdNuevo,
+          userId: parseInt(session.user.id),
+        },
+      })
+    }
 
     return NextResponse.json({ success: true, data: calcularCampos(proyecto), message: 'Proyecto actualizado exitosamente' })
   } catch (error) {
