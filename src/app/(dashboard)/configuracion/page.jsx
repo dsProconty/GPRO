@@ -829,7 +829,7 @@ export default function ConfiguracionPage() {
         }
       >
         <p className="text-color-secondary text-sm mb-3">{backfillDialog.mensaje}</p>
-        <DataTable value={backfillDialog.resultados} size="small" stripedRows scrollable style={{ maxHeight: '55vh' }} filterDisplay="menu">
+        <DataTable value={backfillDialog.resultados} dataKey="id" size="small" stripedRows scrollable style={{ maxHeight: '55vh' }} filterDisplay="menu">
           <Column field="codigo" header="Código" body={(r) => r.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '110px', fontFamily: 'monospace', fontSize: '0.8rem' }} />
           <Column field="detalle" header="Proyecto" sortable filter filterPlaceholder="Buscar proyecto..." />
           <Column field="facturado" header="Facturado" body={(r) => formatCurrency(r.facturado)} sortable dataType="numeric" style={{ textAlign: 'right' }} />
@@ -868,6 +868,7 @@ export default function ConfiguracionPage() {
                   dateFormat="dd/mm/yy"
                   placeholder="Elegir fecha"
                   showIcon
+                  readOnlyInput
                   style={{ width: '140px' }}
                   inputStyle={{ fontSize: '0.8rem', padding: '4px 6px' }}
                 />
