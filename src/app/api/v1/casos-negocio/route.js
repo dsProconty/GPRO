@@ -85,7 +85,9 @@ export async function GET(request) {
 
     const facturado = p.facturas.reduce((s, f) => s + Number(f.valor), 0)
     const pagado    = p.facturas.reduce((s, f) => s + f.pagos.reduce((sp, pg) => sp + Number(pg.valor), 0), 0)
-    const saldo     = facturado - pagado
+    // Saldo = todo lo que el proyecto todavia debe cobrar, facturado o no
+    // (Ingreso Estimado - Cobrado), no solo lo facturado pendiente de pago.
+    const saldo     = totalPrecio - pagado
 
     return {
       id: p.id,
@@ -144,7 +146,7 @@ export async function GET(request) {
         gmPct,
         totalFact,
         totalPagado,
-        saldoPorCobrar: totalFact - totalPagado,
+        saldoPorCobrar: totalPrecio - totalPagado,
       },
       porPerfil,
       estados,
