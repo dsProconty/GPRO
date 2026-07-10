@@ -29,11 +29,16 @@ export async function enviarRecordatorio({ proyecto, recordatorio }) {
   })
 }
 
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
 function plantillaEmail({ proyecto, recordatorio }) {
   const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || ''
   const fecha = new Date().toLocaleDateString('es-EC', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
+  const diaConfigurado = recordatorio.frecuencia === 'anual'
+    ? `Día ${recordatorio.diaMes} de ${MESES[recordatorio.mes - 1]}, cada año`
+    : `Día ${recordatorio.diaMes} de cada mes`
 
   return `
 <!DOCTYPE html>
@@ -79,7 +84,7 @@ function plantillaEmail({ proyecto, recordatorio }) {
               </tr>
               <tr>
                 <td style="padding:6px 0;color:#6b7280;font-size:13px;">Día configurado:</td>
-                <td style="padding:6px 0;color:#111827;font-size:13px;font-weight:600;">Día ${recordatorio.diaMes} de cada mes</td>
+                <td style="padding:6px 0;color:#111827;font-size:13px;font-weight:600;">${diaConfigurado}</td>
               </tr>
             </table>
 

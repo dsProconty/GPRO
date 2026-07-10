@@ -208,6 +208,8 @@ model RecordatorioFactura {
   id            Int       @id @default(autoincrement()) @map("id_recordatorio")
   proyectoId    Int       @map("id_negocio")
   diaMes        Int       @map("dia_mes")       // 1-28
+  frecuencia    String    @default("mensual") @db.VarChar(10) // 'mensual' | 'anual'
+  mes           Int?      // 1-12, solo cuando frecuencia = 'anual'
   descripcion   String    @db.Text
   destinatarios String    @db.Text              // emails separados por coma
   activo        Boolean   @default(true)

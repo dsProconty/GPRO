@@ -44,6 +44,8 @@ const ESTADO_CONFIG = {
   'Entregado':             { severity: 'success',   label: 'Entregado'       },
 }
 
+const MESES_ABREV = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+
 const PIPELINE_STEPS = [
   { id: 3, nombre: 'Adjudicado' },
   { id: 1, nombre: 'En Ejecución' },
@@ -345,7 +347,7 @@ export default function ProyectoDetallePage({ params }) {
 
   const confirmDeleteRecordatorio = (rec) => {
     confirmDialog({
-      message: `¿Eliminar el recordatorio del día ${rec.diaMes} de cada mes?`,
+      message: `¿Eliminar el recordatorio del día ${rec.diaMes}${rec.frecuencia === 'anual' ? ` de ${MESES_ABREV[rec.mes - 1]}` : ' de cada mes'}?`,
       header: 'Confirmar eliminación',
       icon: 'pi pi-exclamation-triangle',
       acceptLabel: 'Eliminar',
@@ -907,7 +909,7 @@ export default function ProyectoDetallePage({ params }) {
         <div className="flex justify-content-between align-items-center mb-3">
           <div>
             <h3 className="m-0 font-semibold"><i className="pi pi-bell mr-2" />Recordatorios de Facturación</h3>
-            <p className="text-color-secondary text-xs mt-1 mb-0">Alertas automáticas por email en un día fijo cada mes</p>
+            <p className="text-color-secondary text-xs mt-1 mb-0">Alertas automáticas por email, mensuales o anuales</p>
           </div>
           {puede(PERMISOS.RECORDATORIOS.CREAR) && (
             <Button label="Nuevo Recordatorio" icon="pi pi-plus" size="small" severity="warning" outlined
@@ -920,7 +922,14 @@ export default function ProyectoDetallePage({ params }) {
           <p className="text-color-secondary text-sm m-0">No hay recordatorios configurados para este proyecto.</p>
         ) : (
           <DataTable value={recordatorios} size="small" stripedRows emptyMessage="Sin recordatorios">
-            <Column header="Día" body={(r) => <span className="font-bold text-primary">Día {r.diaMes}</span>} style={{ width: '80px' }} />
+            <Column header="Día" body={(r) => (
+              <span className="font-bold text-primary">
+                Día {r.diaMes}{r.frecuencia === 'anual' ? ` ${MESES_ABREV[r.mes - 1]}` : ''}
+              </span>
+            )} style={{ width: '95px' }} />
+            <Column header="Frecuencia" body={(r) => (
+              <Tag value={r.frecuencia === 'anual' ? '🗓️ Anual' : '📅 Mensual'} severity={r.frecuencia === 'anual' ? 'info' : 'secondary'} />
+            )} style={{ width: '100px' }} />
             <Column field="descripcion" header="Descripción" />
             <Column header="Destinatarios" body={(r) => (
               <span className="text-sm text-color-secondary" title={r.destinatarios}>
