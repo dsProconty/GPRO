@@ -68,7 +68,14 @@ export async function PUT(request, { params }) {
     logPermisoDenegado(session, PERMISOS.PROYECTOS.EDITAR, `PUT /proyectos/${params.id}`)
     return NextResponse.json({ success: false, message: 'No tiene permiso para editar proyectos' }, { status: 403 })
   }
-  const proyectoActual = await prisma.proyecto.findUnique({ where: { id }, select: { estadoId: true } })
+  const proyectoActual = await prisma.proyecto.findUnique({
+    where: { id },
+    select: {
+      estadoId: true,
+      fechaCierreFinanciero: true,
+      facturas: { select: { valor: true, pagos: { select: { valor: true } } } },
+    },
+  })
   if (proyectoActual && !puedeEditarProyecto(session, proyectoActual.estadoId)) {
     logPermisoDenegado(session, PERMISOS.PROYECTOS.EDITAR, `PUT /proyectos/${params.id} (estado restringido)`)
     return NextResponse.json({ success: false, message: 'No tiene permiso para editar proyectos en este estado' }, { status: 403 })
@@ -94,6 +101,16 @@ export async function PUT(request, { params }) {
     const estadoIdNuevo = parseInt(estadoId)
     const estadoCambio = proyectoActual && proyectoActual.estadoId !== estadoIdNuevo
 
+    let autoCierreFinanciero = false
+    if (estadoCambio && !proyectoActual.fechaCierreFinanciero) {
+      const estadoNuevo = await prisma.estado.findUnique({ where: { id: estadoIdNuevo } })
+      if (estadoNuevo?.nombre === 'Cerrado') {
+        const facturado = proyectoActual.facturas.reduce((s, f) => s + Number(f.valor), 0)
+        const pagado = proyectoActual.facturas.reduce((s, f) => s + f.pagos.reduce((sp, p) => sp + Number(p.valor), 0), 0)
+        if (facturado > 0.001 && facturado - pagado <= 0.001) autoCierreFinanciero = true
+      }
+    }
+
     const proyecto = await prisma.proyecto.update({
       where: { id },
       data: {
@@ -107,6 +124,7 @@ export async function PUT(request, { params }) {
         ot: ot?.trim() || null,
         projectOnline: projectOnline?.trim() || null,
         estadoPropuesta: estadoPropuesta?.trim() || null,
+        ...(autoCierreFinanciero && { fechaCierreFinanciero: new Date() }),
         clientes: {
           create: clienteIds.map((cid) => ({ clienteId: parseInt(cid) })),
         },
@@ -130,7 +148,11 @@ export async function PUT(request, { params }) {
       })
     }
 
-    return NextResponse.json({ success: true, data: calcularCampos(proyecto), message: 'Proyecto actualizado exitosamente' })
+    return NextResponse.json({
+      success: true,
+      data: calcularCampos(proyecto),
+      message: autoCierreFinanciero ? 'Proyecto actualizado y cerrado financieramente' : 'Proyecto actualizado exitosamente',
+    })
   } catch (error) {
     if (error.code === 'P2025') {
       return NextResponse.json({ success: false, message: 'Proyecto no encontrado' }, { status: 404 })
@@ -162,11 +184,17 @@ export async function PATCH(request, { params }) {
 
   const estado = await prisma.estado.findUnique({ where: { id: parseInt(estadoId) } })
   let warning = null
+  let autoCierreFinanciero = false
   if (estado?.nombre === 'Cerrado') {
     const facturado = proyecto.facturas.reduce((s, f) => s + Number(f.valor), 0)
     const pagado = proyecto.facturas.reduce((s, f) => s + f.pagos.reduce((sp, p) => sp + Number(p.valor), 0), 0)
-    if (facturado - pagado > 0.001) {
+    const saldo = facturado - pagado
+    if (saldo > 0.001) {
       warning = 'El proyecto tiene saldo pendiente de cobro.'
+    } else if (facturado > 0.001 && !proyecto.fechaCierreFinanciero) {
+      // Ya esta todo facturado y cobrado: completar el cierre financiero de una vez,
+      // sin necesitar un segundo paso manual.
+      autoCierreFinanciero = true
     }
   }
 
@@ -174,7 +202,10 @@ export async function PATCH(request, { params }) {
     const [updated] = await prisma.$transaction([
       prisma.proyecto.update({
         where: { id },
-        data: { estadoId: parseInt(estadoId) },
+        data: {
+          estadoId: parseInt(estadoId),
+          ...(autoCierreFinanciero && { fechaCierreFinanciero: new Date() }),
+        },
         include: PROYECTO_INCLUDE,
       }),
       prisma.proyectoEstadoLog.create({
@@ -192,8 +223,14 @@ export async function PATCH(request, { params }) {
       estadoNuevoId:    parseInt(estadoId),
       userId:           session.user.id,
       userName:         session.user.name,
+      autoCierreFinanciero,
     })
-    return NextResponse.json({ success: true, data: calcularCampos(updated), message: 'Estado actualizado', warning })
+    return NextResponse.json({
+      success: true,
+      data: calcularCampos(updated),
+      message: autoCierreFinanciero ? 'Estado actualizado y cerrado financieramente' : 'Estado actualizado',
+      warning,
+    })
   } catch (e) {
     if (e.code === 'P2025') return NextResponse.json({ success: false, message: 'Proyecto no encontrado' }, { status: 404 })
     logger.error('PROYECTO_ESTADO_ERROR', { proyectoId: id, estadoId, error: e.message })
