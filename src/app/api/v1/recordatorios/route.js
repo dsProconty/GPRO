@@ -42,11 +42,13 @@ export async function POST(request) {
   }
 
   const body = await request.json()
-  const { proyectoId, diaMes, descripcion, destinatarios, activo = true } = body
+  const { proyectoId, diaMes, frecuencia = 'mensual', mes, descripcion, destinatarios, activo = true } = body
 
   const errors = {}
   if (!proyectoId) errors.proyectoId = ['El proyecto es requerido']
   if (!diaMes || diaMes < 1 || diaMes > 28) errors.diaMes = ['El día debe ser entre 1 y 28']
+  if (!['mensual', 'anual'].includes(frecuencia)) errors.frecuencia = ['Frecuencia inválida']
+  if (frecuencia === 'anual' && (!mes || mes < 1 || mes > 12)) errors.mes = ['El mes es requerido para recordatorios anuales']
   if (!descripcion?.trim()) errors.descripcion = ['La descripción es requerida']
   if (!destinatarios?.trim()) errors.destinatarios = ['Los destinatarios son requeridos']
   else if (!validarDestinatarios(destinatarios)) errors.destinatarios = ['Ingresa emails válidos separados por coma']
@@ -62,6 +64,8 @@ export async function POST(request) {
       data: {
         proyectoId: parseInt(proyectoId),
         diaMes: parseInt(diaMes),
+        frecuencia,
+        mes: frecuencia === 'anual' ? parseInt(mes) : null,
         descripcion: descripcion.trim(),
         destinatarios: destinatarios.split(',').map((e) => e.trim()).filter(Boolean).join(', '),
         activo,

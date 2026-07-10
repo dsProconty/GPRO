@@ -12,7 +12,9 @@ export async function GET() {
   }
 
   try {
-    const diaHoy = new Date().getDate()
+    const hoy = new Date()
+    const diaHoy = hoy.getDate()
+    const mesHoy = hoy.getMonth() + 1
 
     const [proyectos, facturas, pagos, estados, recordatoriosHoy] = await Promise.all([
       prisma.proyecto.findMany({
@@ -25,7 +27,16 @@ export async function GET() {
         select: { valor: true, fecha: true, facturaId: true, factura: { select: { proyectoId: true } } },
       }),
       prisma.estado.findMany({ select: { id: true, nombre: true } }),
-      prisma.recordatorioFactura.count({ where: { activo: true, diaMes: diaHoy } }),
+      prisma.recordatorioFactura.count({
+        where: {
+          activo: true,
+          diaMes: diaHoy,
+          OR: [
+            { frecuencia: 'mensual' },
+            { frecuencia: 'anual', mes: mesHoy },
+          ],
+        },
+      }),
     ])
 
     // ── KPIs básicos ────────────────────────────────────────────
