@@ -833,14 +833,14 @@ export default function ConfiguracionPage() {
             <p className="m-0 text-color-secondary text-xs mb-2">
               Corrige un comentario duplicado o mal registrado. El ID aparece atenuado junto a la fecha de cada observación en el detalle del proyecto (ej. #123)
             </p>
-            <div className="flex align-items-end gap-2 flex-wrap">
-              <div className="flex flex-column gap-1">
-                <label className="text-xs font-medium">ID de la observación</label>
+            <div className="flex flex-column gap-1" style={{ maxWidth: '320px' }}>
+              <label className="text-xs font-medium">ID de la observación</label>
+              <div className="flex gap-2">
                 <InputNumber value={eliminarObsId} onValueChange={(e) => { setEliminarObsId(e.value); setEliminarObsPreview(null) }}
-                  placeholder="Ej: 123" style={{ width: '140px' }} />
+                  placeholder="Ej: 123" useGrouping={false} className="flex-1" />
+                <Button label="Buscar" icon="pi pi-search" severity="secondary" size="small" outlined
+                  loading={eliminarObsLoading} disabled={!eliminarObsId} onClick={handleBuscarObservacion} />
               </div>
-              <Button label="Buscar" icon="pi pi-search" severity="secondary" size="small" outlined
-                loading={eliminarObsLoading} disabled={!eliminarObsId} onClick={handleBuscarObservacion} />
             </div>
 
             {eliminarObsPreview && (
