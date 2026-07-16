@@ -82,6 +82,7 @@ export default function ProyectoDetallePage({ params }) {
   const [selectedPago, setSelectedPago] = useState(null)
   const [facturaParaPago, setFacturaParaPago] = useState(null)
   const [obsDialogVisible, setObsDialogVisible] = useState(false)
+  const [respuestaAObservacion, setRespuestaAObservacion] = useState(null)
   const [editDialogVisible, setEditDialogVisible] = useState(false)
 
   // Historial de estado
@@ -324,9 +325,13 @@ export default function ProyectoDetallePage({ params }) {
   // === Observaciones ===
   const handleSaveObservacion = () => {
     setObsDialogVisible(false)
+    setRespuestaAObservacion(null)
     toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Observación registrada', life: 3000 })
     loadObservaciones()
   }
+
+  const abrirNuevaObservacion = () => { setRespuestaAObservacion(null); setObsDialogVisible(true) }
+  const abrirResponderObservacion = (obs) => { setRespuestaAObservacion(obs); setObsDialogVisible(true) }
 
   // === Recordatorios ===
   const loadRecordatorios = async () => {
@@ -1020,7 +1025,7 @@ export default function ProyectoDetallePage({ params }) {
             <p className="text-color-secondary text-xs mt-1 mb-0">Bitácora inmutable del proyecto</p>
           </div>
           {puede(PERMISOS.OBSERVACIONES.CREAR) && (
-            <Button label="Nueva observación" icon="pi pi-plus" size="small" onClick={() => setObsDialogVisible(true)} />
+            <Button label="Nueva observación" icon="pi pi-plus" size="small" onClick={abrirNuevaObservacion} />
           )}
         </div>
         {loadingObs ? (
@@ -1035,7 +1040,21 @@ export default function ProyectoDetallePage({ params }) {
                   <span className="font-semibold text-sm"><i className="pi pi-user mr-1" />{obs.user?.name}</span>
                   <span className="text-color-secondary text-xs">{new Date(obs.createdAt).toLocaleString('es-EC')}</span>
                 </div>
+                {obs.respuestaA && (
+                  <div className="surface-100 border-round px-2 py-1 mb-2" style={{ borderLeft: '2px solid var(--surface-400)' }}>
+                    <span className="text-xs text-color-secondary">
+                      <i className="pi pi-reply mr-1" />En respuesta a <strong>{obs.respuestaA.user?.name}</strong>: “
+                      {obs.respuestaA.descripcion.length > 100 ? obs.respuestaA.descripcion.slice(0, 100) + '…' : obs.respuestaA.descripcion}”
+                    </span>
+                  </div>
+                )}
                 <p className="m-0 text-sm" style={{ whiteSpace: 'pre-wrap' }}>{obs.descripcion}</p>
+                {puede(PERMISOS.OBSERVACIONES.CREAR) && (
+                  <div className="mt-2">
+                    <Button label="Responder" icon="pi pi-reply" text size="small" className="p-0"
+                      onClick={() => abrirResponderObservacion(obs)} />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -1092,7 +1111,13 @@ export default function ProyectoDetallePage({ params }) {
       <FacturaFormDialog visible={facturaDialogVisible} onHide={() => setFacturaDialogVisible(false)} onSave={handleSaveFactura} factura={selectedFactura} proyectoId={id}
         valorDefault={proyecto?.valorMensual ? Number(proyecto.valorMensual) : Number(proyecto?.valor ?? 0)} />
       <PagoFormDialog visible={pagoDialogVisible} onHide={() => setPagoDialogVisible(false)} onSave={handleSavePago} pago={selectedPago} factura={facturaParaPago} />
-      <ObservacionFormDialog visible={obsDialogVisible} onHide={() => setObsDialogVisible(false)} onSave={handleSaveObservacion} proyectoId={id} />
+      <ObservacionFormDialog
+        visible={obsDialogVisible}
+        onHide={() => { setObsDialogVisible(false); setRespuestaAObservacion(null) }}
+        onSave={handleSaveObservacion}
+        proyectoId={id}
+        respuestaA={respuestaAObservacion}
+      />
       <ProyectoFormDialog visible={editDialogVisible} onHide={() => setEditDialogVisible(false)} onSave={handleSaveProyecto} proyecto={proyecto} empresas={empresas} estados={estados} empleados={empleadosOpciones} />
       <RecordatorioFormDialog visible={recDialogVisible} onHide={() => setRecDialogVisible(false)} onSave={handleSaveRecordatorio} recordatorio={selectedRecordatorio} proyectoId={id} />
 
