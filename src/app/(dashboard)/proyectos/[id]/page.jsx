@@ -185,6 +185,22 @@ export default function ProyectoDetallePage({ params }) {
     }
   }
 
+  // Agrupa observaciones en hilos: comentario raíz + sus respuestas (un solo nivel)
+  const hilosObservaciones = useMemo(() => {
+    const raices = observaciones.filter((o) => !o.respuestaAId)
+    const respuestasPorRaiz = {}
+    observaciones.forEach((o) => {
+      if (o.respuestaAId) {
+        if (!respuestasPorRaiz[o.respuestaAId]) respuestasPorRaiz[o.respuestaAId] = []
+        respuestasPorRaiz[o.respuestaAId].push(o)
+      }
+    })
+    Object.values(respuestasPorRaiz).forEach((arr) =>
+      arr.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+    )
+    return raices.map((raiz) => ({ raiz, respuestas: respuestasPorRaiz[raiz.id] || [] }))
+  }, [observaciones])
+
   // Resumen financiero reactivo
   const resumen = useMemo(() => {
     const facturado = facturas.reduce((s, f) => s + f.valor, 0)
@@ -1033,26 +1049,43 @@ export default function ProyectoDetallePage({ params }) {
         ) : observaciones.length === 0 ? (
           <p className="text-color-secondary text-sm m-0">No hay observaciones registradas.</p>
         ) : (
-          <div className="flex flex-column gap-2">
-            {observaciones.map((obs) => (
-              <div key={obs.id} className="surface-50 border-round p-3 border-left-3" style={{ borderColor: 'var(--primary-color)' }}>
-                <div className="flex justify-content-between align-items-center mb-1">
-                  <span className="font-semibold text-sm"><i className="pi pi-user mr-1" />{obs.user?.name}</span>
-                  <span className="text-color-secondary text-xs">{new Date(obs.createdAt).toLocaleString('es-EC')}</span>
-                </div>
-                {obs.respuestaA && (
-                  <div className="surface-100 border-round px-2 py-1 mb-2" style={{ borderLeft: '2px solid var(--surface-400)' }}>
-                    <span className="text-xs text-color-secondary">
-                      <i className="pi pi-reply mr-1" />En respuesta a <strong>{obs.respuestaA.user?.name}</strong>: “
-                      {obs.respuestaA.descripcion.length > 100 ? obs.respuestaA.descripcion.slice(0, 100) + '…' : obs.respuestaA.descripcion}”
+          <div className="flex flex-column gap-3">
+            {hilosObservaciones.map(({ raiz, respuestas }) => (
+              <div key={raiz.id} className="border-round overflow-hidden" style={{ border: '1px solid var(--surface-border)' }}>
+                {/* Comentario original */}
+                <div className="p-3 border-left-3" style={{ background: 'var(--surface-50)', borderColor: 'var(--primary-color)' }}>
+                  <div className="flex justify-content-between align-items-center mb-1">
+                    <span className="font-semibold text-sm"><i className="pi pi-user mr-1" />{raiz.user?.name}</span>
+                    <span className="text-color-secondary text-xs">
+                      {new Date(raiz.createdAt).toLocaleString('es-EC')}
+                      <span className="ml-2" style={{ opacity: 0.4 }}>#{raiz.id}</span>
                     </span>
                   </div>
-                )}
-                <p className="m-0 text-sm" style={{ whiteSpace: 'pre-wrap' }}>{obs.descripcion}</p>
+                  <p className="m-0 text-sm" style={{ whiteSpace: 'pre-wrap' }}>{raiz.descripcion}</p>
+                </div>
+
+                {/* Respuestas — misma burbuja, tinte distinto para diferenciarlas */}
+                {respuestas.map((r) => (
+                  <div key={r.id} className="p-3 border-left-3"
+                    style={{ background: '#EFF6FF', borderColor: '#2E75B6', borderTop: '1px solid var(--surface-border)' }}>
+                    <div className="flex justify-content-between align-items-center mb-1">
+                      <span className="font-semibold text-sm" style={{ color: '#1D4ED8' }}>
+                        <i className="pi pi-reply mr-1" />{r.user?.name}
+                      </span>
+                      <span className="text-color-secondary text-xs">
+                        {new Date(r.createdAt).toLocaleString('es-EC')}
+                        <span className="ml-2" style={{ opacity: 0.4 }}>#{r.id}</span>
+                      </span>
+                    </div>
+                    <p className="m-0 text-sm" style={{ whiteSpace: 'pre-wrap' }}>{r.descripcion}</p>
+                  </div>
+                ))}
+
+                {/* Responder — siempre apunta al comentario raíz (un solo nivel) */}
                 {puede(PERMISOS.OBSERVACIONES.CREAR) && (
-                  <div className="mt-2">
+                  <div className="px-3 py-2" style={{ borderTop: '1px solid var(--surface-border)' }}>
                     <Button label="Responder" icon="pi pi-reply" text size="small" className="p-0"
-                      onClick={() => abrirResponderObservacion(obs)} />
+                      onClick={() => abrirResponderObservacion(raiz)} />
                   </div>
                 )}
               </div>

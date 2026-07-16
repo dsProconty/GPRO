@@ -294,6 +294,11 @@ export default function ConfiguracionPage() {
   const [backfillAplicando, setBackfillAplicando] = useState(false)
   const [manualDates, setManualDates] = useState({}) // { [proyectoId]: Date }
 
+  const [eliminarObsId, setEliminarObsId] = useState(null)
+  const [eliminarObsPreview, setEliminarObsPreview] = useState(null)
+  const [eliminarObsLoading, setEliminarObsLoading] = useState(false)
+  const [eliminarObsAplicando, setEliminarObsAplicando] = useState(false)
+
   useEffect(() => {
     if (status === 'authenticated') {
       if (session?.user?.role !== 'admin') {
@@ -387,6 +392,44 @@ export default function ConfiguracionPage() {
           toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 6000 })
         } finally {
           setBackfillAplicando(false)
+        }
+      },
+    })
+  }
+
+  const handleBuscarObservacion = async () => {
+    if (!eliminarObsId) return
+    setEliminarObsLoading(true)
+    setEliminarObsPreview(null)
+    try {
+      const res = await axios.post('/api/v1/admin/eliminar-observacion', { id: eliminarObsId, aplicar: false })
+      setEliminarObsPreview(res.data.data)
+    } catch (e) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 6000 })
+    } finally {
+      setEliminarObsLoading(false)
+    }
+  }
+
+  const handleEliminarObservacion = () => {
+    confirmDialog({
+      message: `¿Eliminar definitivamente la observación #${eliminarObsPreview.id} de "${eliminarObsPreview.autor}"? Esta acción no se puede deshacer.`,
+      header: 'Eliminar observación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Sí, eliminar',
+      rejectLabel: 'Cancelar',
+      acceptClassName: 'p-button-danger',
+      accept: async () => {
+        setEliminarObsAplicando(true)
+        try {
+          const res = await axios.post('/api/v1/admin/eliminar-observacion', { id: eliminarObsId, aplicar: true })
+          toast.current.show({ severity: 'success', summary: 'Eliminada', detail: res.data.message, life: 4000 })
+          setEliminarObsPreview(null)
+          setEliminarObsId(null)
+        } catch (e) {
+          toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 6000 })
+        } finally {
+          setEliminarObsAplicando(false)
         }
       },
     })
@@ -784,6 +827,45 @@ export default function ConfiguracionPage() {
               loading={backfillLoading}
               onClick={handlePreviewCierreFinanciero}
             />
+          </div>
+          <div className="p-3 surface-100 border-round">
+            <p className="m-0 font-semibold text-sm mb-1">6. Eliminar observación por error</p>
+            <p className="m-0 text-color-secondary text-xs mb-2">
+              Corrige un comentario duplicado o mal registrado. El ID aparece atenuado junto a la fecha de cada observación en el detalle del proyecto (ej. #123)
+            </p>
+            <div className="flex align-items-end gap-2 flex-wrap">
+              <div className="flex flex-column gap-1">
+                <label className="text-xs font-medium">ID de la observación</label>
+                <InputNumber value={eliminarObsId} onValueChange={(e) => { setEliminarObsId(e.value); setEliminarObsPreview(null) }}
+                  placeholder="Ej: 123" style={{ width: '140px' }} />
+              </div>
+              <Button label="Buscar" icon="pi pi-search" severity="secondary" size="small" outlined
+                loading={eliminarObsLoading} disabled={!eliminarObsId} onClick={handleBuscarObservacion} />
+            </div>
+
+            {eliminarObsPreview && (
+              <div className="mt-3 p-3 surface-0 border-round" style={{ border: '1px solid var(--surface-border)' }}>
+                <div className="flex justify-content-between align-items-center mb-2">
+                  <span className="text-sm font-semibold">{eliminarObsPreview.autor} · {eliminarObsPreview.proyecto}</span>
+                  <span className="text-xs text-color-secondary">{formatDate(eliminarObsPreview.createdAt)}</span>
+                </div>
+                <p className="text-sm m-0 mb-2" style={{ whiteSpace: 'pre-wrap' }}>{eliminarObsPreview.descripcion}</p>
+                {eliminarObsPreview.respondeA && (
+                  <p className="text-xs text-color-secondary m-0 mb-2">
+                    <i className="pi pi-reply mr-1" />En respuesta a {eliminarObsPreview.respondeA.autor}
+                  </p>
+                )}
+                {eliminarObsPreview.tieneRespuestas ? (
+                  <p className="text-orange-600 text-xs m-0">
+                    <i className="pi pi-exclamation-triangle mr-1" />
+                    Tiene {eliminarObsPreview.cantidadRespuestas} respuesta(s) encadenada(s) — no se puede eliminar.
+                  </p>
+                ) : (
+                  <Button label="Eliminar definitivamente" icon="pi pi-trash" severity="danger" size="small"
+                    loading={eliminarObsAplicando} onClick={handleEliminarObservacion} />
+                )}
+              </div>
+            )}
           </div>
         </div>
       </Card>
