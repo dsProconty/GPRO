@@ -63,6 +63,10 @@ export async function POST(request) {
     if (!observacionOriginal || observacionOriginal.proyectoId !== parseInt(proyectoId)) {
       return NextResponse.json({ success: false, message: 'La observación a la que responde no es válida' }, { status: 422 })
     }
+    // Un solo nivel de respuesta: no se puede responder a una respuesta
+    if (observacionOriginal.respuestaAId) {
+      return NextResponse.json({ success: false, message: 'No se puede responder a una respuesta, responde al comentario original' }, { status: 422 })
+    }
   }
 
   // RN-03: id_user SIEMPRE del token, nunca del body
