@@ -238,15 +238,18 @@ model RecordatorioLog {
 // REGLA DE NEGOCIO: Solo INSERT. Nunca UPDATE ni DELETE.
 // El id_user se toma del token de sesión, NUNCA del body del request.
 model Observacion {
-  id          Int      @id @default(autoincrement()) @map("id_observacion")
-  proyectoId  Int      @map("id_negocio")
-  descripcion String   @db.Text
-  userId      Int      @map("id_user")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id            Int      @id @default(autoincrement()) @map("id_observacion")
+  proyectoId    Int      @map("id_negocio")
+  descripcion   String   @db.Text
+  userId        Int      @map("id_user")
+  respuestaAId  Int?     @map("respuesta_a_id") // observacion a la que responde (un solo nivel)
+  createdAt     DateTime @default(now()) @map("created_at")
 
   // Relaciones
-  proyecto    Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id])
+  proyecto      Proyecto      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id])
+  respuestaA    Observacion?  @relation("ObservacionRespuestas", fields: [respuestaAId], references: [id])
+  respuestas    Observacion[] @relation("ObservacionRespuestas")
 
   @@map("observaciones")
 }
