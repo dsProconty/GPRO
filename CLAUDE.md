@@ -9,9 +9,9 @@ GPRO es un sistema de gestión de proyectos de consultoría para Proconty.
 Administra el ciclo de vida completo: desde la prefactibilidad hasta el cierre,
 incluyendo facturación y registro de pagos.
 
-**URL producción:** https://gpro.proconty.com (fallback: https://gpro-app-b5hbhngha7gfh3d7.westus-01.azurewebsites.net)
+**URL producción:** https://gpro.proconty.com (fallback: https://gpro-app-b5hbhngha7gfh3d7.westus-01.azurewebsites.net)  
 **Repo:** https://github.com/dsProconty/GPRO  
-**Deploy:** Azure App Service (`gpro-app`), auto-deploy en push a `main-azure` vía GitHub Actions (`.github/workflows/main-azure_gpro-app.yml`)
+**Deploy:** Azure App Service (`gpro-app`), auto-deploy en push a **`main-azure`** vía GitHub Actions (`.github/workflows/main-azure_gpro-app.yml`) — ⚠️ NO `main`, ver sección 2.1
 
 > ⚠️ **Migración Vercel → Azure completada en mayo 2026** (ver `DEPLOYMENT_AZURE.md`). Todo el desarrollo y los pushes de producción se hacen sobre `main-azure`, no sobre `main`. `main`/Vercel/Neon quedan como respaldo legacy, no reflejan producción. **Todos los cambios se hacen y despliegan en Azure salvo indicación explícita en contrario.**
 
@@ -25,19 +25,77 @@ incluyendo facturación y registro de pagos.
 | UI | PrimeReact 10 + PrimeFlex + PrimeIcons | Componentes listos |
 | Auth | NextAuth.js v4 | Sesión JWT, 8h |
 | ORM | Prisma 5 | Client en `src/lib/prisma.js` |
-| Base de datos | Azure Database for PostgreSQL Flexible Server (`gpro-db`, Postgres 16) | Variables en Azure App Service |
-| Deploy | Azure App Service B1 (Linux) — App `gpro-app` | Región West US |
+| Base de datos | Azure Database for PostgreSQL Flexible Server (`gpro-db`, Postgres 16, `neondb`) | Antes Neon; migrado a Azure. Host `gpro-db.postgres.database.azure.com` |
+| Deploy | Azure App Service B1 (Linux) — App `gpro-app`, Node 22-lts | Región West US. Vía GitHub Actions, dispara con push a `main-azure` |
 | Estilos | PrimeFlex utility classes | Sin CSS custom salvo excepciones |
 
-### Variables de entorno (configuradas en Azure App Service → Settings → Environment variables — NO incluir valores aquí)
+### Variables de entorno (configuradas en Azure App Service → Configuración → Variables de entorno — NO incluir valores aquí)
 ```
-DATABASE_URL=<ver Azure Portal → gpro-app → Environment variables>
+DATABASE_URL=<ver Azure Portal → gpro-app → Configuración → Variables de entorno>
 NEXTAUTH_SECRET=<ver Azure Portal>
 NEXTAUTH_URL=https://gpro.proconty.com
 CRON_SECRET=<ver Azure Portal>
 RESEND_API_KEY=<ver Azure Portal>
+NEXT_PUBLIC_APP_VERSION=<versión mostrada en el pie del sidebar, ver sección 2.1>
 ```
 El cron de recordatorios ya no corre vía `vercel.json` — lo dispara `.github/workflows/cron-recordatorios.yml` (GitHub Actions, diario 13:00 UTC) llamando a `/api/cron/recordatorios` sobre la URL de Azure.
+
+---
+
+## 2.1 DEPLOY EN AZURE — LO QUE HAY QUE SABER SIEMPRE
+
+> ⚠️ Sección crítica. Leer antes de asumir que un push a `main` se refleja en producción.
+
+### La rama que despliega es `main-azure`, NO `main`
+- El workflow de GitHub Actions (`.github/workflows/main-azure_gpro-app.yml`, vive únicamente
+  en la rama `main-azure`) solo se dispara con `push` a **`main-azure`**.
+- `main` quedó congelado desde el 26 de mayo de 2026 (commit `407e3a6`) mientras que
+  `main-azure` acumuló meses de desarrollo (v1.3.x → v1.6.2+) que **nunca se mergearon de
+  vuelta a `main`**. Es decir: `main` NO refleja el estado real de producción.
+- **Antes de fusionar cualquier cambio a producción**: verificar contra `origin/main-azure`
+  (no contra `main`), y resolver conflictos manualmente si hay divergencia — un merge/rebase
+  a ciegas puede pisar features que solo existen en `main-azure`.
+- Verificar el origen/rama conectada en: Azure Portal → recurso `gpro-app` → **Centro de
+  implementación → Configuración** (organización, repositorio y rama exactos).
+
+### Cómo verificar que un deploy corrió
+- Azure Portal → `gpro-app` → Centro de implementación → **Registros**: muestra cada
+  implementación con hora, commit y estado ("Se realizó correctamente" / en curso / error).
+- El build corre `prisma generate` + `next build` con `DATABASE_URL`, `NEXTAUTH_SECRET`,
+  `NEXTAUTH_URL` como secrets de GitHub Actions — no incluye `NEXT_PUBLIC_APP_VERSION`.
+
+### Acceso directo a producción (cuando hace falta correr un script puntual)
+- Base de datos: **no hay acceso TCP directo** desde entornos en la nube (solo HTTPS
+  saliente). Para correr scripts contra la base de producción, usar la consola del propio
+  App Service:
+  - Azure Portal → `gpro-app` → Herramientas de desarrollo → **SSH** (terminal dentro del
+    contenedor real, con `DATABASE_URL` y demás variables ya cargadas como entorno).
+  - O el explorador de archivos de Kudu (`https://<nombre-app>.scm.azurewebsites.net`) para
+    subir un script por drag-and-drop y correrlo con `node`.
+  - Los scripts puntuales de este tipo se guardan en `/scripts` (ver `import-perfiles-2026.js`,
+    `rename-lider-certificado.js` como ejemplo de convención).
+
+### Versión visible en el sidebar
+- El pie del sidebar (`src/app/(dashboard)/layout.jsx`) muestra
+  `` v{process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'} ``.
+- El workflow de build **no pasa** `NEXT_PUBLIC_APP_VERSION`, así que el valor que se ve en
+  producción sale de la Application Setting `NEXT_PUBLIC_APP_VERSION` configurada
+  directamente en Azure Portal → `gpro-app` → Configuración → Variables de entorno (no del
+  build de GitHub Actions).
+
+### 🔴 REGLA OBLIGATORIA: autoincrementar la versión en cada deploy
+- **Todo cambio que se despliega a producción debe incrementar la versión**, siguiendo
+  semver simplificado:
+  - `patch` (x.y.**Z**) → fixes y ajustes menores.
+  - `minor` (x.**Y**.0) → features nuevas.
+  - `major` (**X**.0.0) → cambios arquitectónicos grandes (ej. migración de BD, cambio de
+    modelo de datos core).
+- Convención de mensaje de commit ya usada en el historial de `main-azure`:
+  `feat: <descripción> vX.Y.Z` o `fix: <descripción> vX.Y.Z`.
+- Al mergear a `main-azure`, actualizar también la Application Setting
+  `NEXT_PUBLIC_APP_VERSION` en Azure Portal para que el sidebar refleje la versión nueva
+  (el bump en el commit message por sí solo NO actualiza lo que ve el usuario en pantalla).
+- Nunca pushear a `main-azure` sin haber decidido y documentado el número de versión.
 
 ---
 
@@ -655,7 +713,8 @@ Una historia está DONE cuando:
 - [ ] Toast de éxito y error funcionando
 - [ ] Loading state implementado
 - [ ] Probado en Chrome
-- [ ] Push a `main-azure` y deploy verde en Azure App Service (GitHub Actions)
+- [ ] Versión incrementada (commit `vX.Y.Z` + Application Setting `NEXT_PUBLIC_APP_VERSION` en Azure, ver sección 2.1)
+- [ ] Push a `main-azure` y deploy verde en Azure App Service (Centro de implementación → Registros)
 
 ---
 
@@ -674,7 +733,7 @@ Stack real del proyecto:
 - PrimeReact 10 + PrimeFlex (NO Tailwind)
 - NextAuth.js v4 para auth (NO Sanctum)
 - Prisma 5 + PostgreSQL en Azure Database for PostgreSQL (NO MySQL/Eloquent)
-- Deploy en Azure App Service, rama `main-azure`
+- Deploy en Azure App Service vía GitHub Actions, rama `main-azure` (NO Vercel, NO `main`)
 
 Lo que ya existe (Sprint 0 completado):
 - Auth funcionando: src/lib/auth.js + src/app/api/auth/[...nextauth]/route.js
@@ -696,11 +755,10 @@ Señala qué regla de negocio del CLAUDE.md implementa cada sección.
 | App producción (fallback Azure) | https://gpro-app-b5hbhngha7gfh3d7.westus-01.azurewebsites.net |
 | Login admin | admin@proconty.com / [ver gestor de contraseñas] |
 | GitHub repo | https://github.com/dsProconty/GPRO |
-| Rama de deploy | `main-azure` |
-| Azure Portal | Resource Group `rg-gpro` → App Service `gpro-app` |
-| Azure PostgreSQL | Servidor `gpro-db` (Flexible Server, Postgres 16) |
-| DB name | neondb |
-| Vercel/Neon (legacy, respaldo, no producción) | https://vercel.com/dsprocontys-projects/gpro · https://console.neon.tech |
+| Rama de deploy | `main-azure` (⚠️ no `main`, ver sección 2.1) |
+| Azure Portal | App Service `gpro-app` (grupo de recursos `rg-gpro`, suscripción MCPP) |
+| DB | Azure Database for PostgreSQL Flexible Server — host `gpro-db.postgres.database.azure.com`, db `neondb` (nombre heredado de la migración desde Neon) |
+| Vercel/Neon (legado, respaldo, no producción) | https://vercel.com/dsprocontys-projects/gpro · https://console.neon.tech |
 
 ---
 
