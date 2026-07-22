@@ -11,16 +11,13 @@ import { InputText } from '@/components/shared/InputText'
 import { InputText as PrInputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Calendar } from 'primereact/calendar'
+import { InputNumber } from 'primereact/inputnumber'
 import { Tag } from 'primereact/tag'
 import { Dialog } from 'primereact/dialog'
 import { Toast } from 'primereact/toast'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { ProgressSpinner } from 'primereact/progressspinner'
-import { InputTextarea } from '@/components/shared/InputTextarea'
-import { InputNumber } from 'primereact/inputnumber'
-import { InputSwitch } from 'primereact/inputswitch'
 import { configuracionService, SEVERITY_COLORS } from '@/services/configuracionService'
-import { perfilConsultorService, NIVEL_OPTIONS } from '@/services/perfilConsultorService'
 import { formatDate, formatCurrency } from '@/utils/format'
 import axios from 'axios'
 
@@ -199,78 +196,6 @@ function EstadoPropuestaDialog({ visible, onHide, onSave, estadoLabel }) {
   )
 }
 
-// ─── Dialog crear/editar perfil de consultor ─────────────────────────────────
-// Nota: el precio al cliente ya no se gestiona aquí — se define en Tarifarios (por empresa).
-// El costoHora aquí es un valor de respaldo si el empleado no tiene costo definido.
-function PerfilConsultorDialog({ visible, onHide, onSave, perfil }) {
-  const isEdit = !!perfil
-  const [form, setForm] = useState({ nombre: '', nivel: 'Senior', costoHora: null, precioHora: null, activo: true })
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    if (visible) {
-      setForm(perfil
-        ? { nombre: perfil.nombre, nivel: perfil.nivel, costoHora: Number(perfil.costoHora), precioHora: Number(perfil.precioHora), activo: perfil.activo }
-        : { nombre: '', nivel: 'Senior', costoHora: null, precioHora: null, activo: true }
-      )
-      setError('')
-    }
-  }, [visible, perfil])
-
-  const handleSave = async () => {
-    if (!form.nombre.trim()) { setError('El nombre del rol es requerido'); return }
-    setSaving(true)
-    try {
-      if (isEdit) {
-        await perfilConsultorService.update(perfil.id, form)
-      } else {
-        await perfilConsultorService.create(form)
-      }
-      onSave()
-    } catch (err) {
-      setError(err.response?.data?.message || 'Error al guardar')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const footer = (
-    <div className="flex justify-content-end gap-2">
-      <Button label="Cancelar" icon="pi pi-times" severity="secondary" outlined onClick={onHide} disabled={saving} />
-      <Button label={isEdit ? 'Guardar cambios' : 'Crear perfil'} icon="pi pi-check" onClick={handleSave} loading={saving} />
-    </div>
-  )
-
-  return (
-    <Dialog visible={visible} onHide={onHide} header={isEdit ? 'Editar Perfil' : 'Nuevo Perfil de Consultor'} style={{ width: '420px' }} footer={footer} modal>
-      <div className="flex flex-column gap-3 mt-2">
-        {error && <div className="p-2 border-round text-red-600 text-sm surface-100">{error}</div>}
-        <div className="grid">
-          <div className="col-8">
-            <div className="flex flex-column gap-1">
-              <label className="text-sm font-medium">Rol <span className="text-red-500">*</span></label>
-              <PrInputText value={form.nombre} onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))} placeholder="Ej: Full Stack, QA, PM" className="w-full" />
-            </div>
-          </div>
-          <div className="col-4">
-            <div className="flex flex-column gap-1">
-              <label className="text-sm font-medium">Nivel <span className="text-red-500">*</span></label>
-              <Dropdown value={form.nivel} options={NIVEL_OPTIONS} optionLabel="label" optionValue="value" onChange={(e) => setForm((p) => ({ ...p, nivel: e.value }))} />
-            </div>
-          </div>
-        </div>
-        {isEdit && (
-          <div className="flex align-items-center gap-2">
-            <InputSwitch checked={form.activo} onChange={(e) => setForm((p) => ({ ...p, activo: e.value }))} />
-            <label className="text-sm">Perfil activo</label>
-          </div>
-        )}
-      </div>
-    </Dialog>
-  )
-}
-
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function ConfiguracionPage() {
   const { data: session, status } = useSession()
@@ -282,12 +207,10 @@ export default function ConfiguracionPage() {
   const [estadosPropuesta, setEstadosPropuesta] = useState([])
   const [empresaForm, setEmpresaForm] = useState({ nombre: '', moneda: 'USD', logoUrl: '', direccion: '', telefono: '', email: '' })
   const [empresaSaving, setEmpresaSaving] = useState(false)
-  const [perfiles, setPerfiles] = useState([])
 
   // Dialogs
   const [epDialog, setEpDialog] = useState({ visible: false, estado: null })       // estado proyecto
   const [elDialog, setElDialog] = useState({ visible: false, estadoLabel: null })  // label propuesta
-  const [pfDialog, setPfDialog] = useState({ visible: false, perfil: null })       // perfil consultor
 
   const [backfillDialog, setBackfillDialog] = useState({ visible: false, resultados: [], mensaje: '' })
   const [backfillLoading, setBackfillLoading] = useState(false)
@@ -312,14 +235,10 @@ export default function ConfiguracionPage() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [cfgRes, pfRes] = await Promise.allSettled([
-        configuracionService.getAll(),
-        perfilConsultorService.getAll(),
-      ])
-      if (cfgRes.status === 'rejected') throw cfgRes.reason
-      setEstadosProyecto(cfgRes.value.data.data.estadosProyecto)
-      setEstadosPropuesta(cfgRes.value.data.data.estadosPropuesta)
-      const emp = cfgRes.value.data.data.empresa || {}
+      const cfgRes = await configuracionService.getAll()
+      setEstadosProyecto(cfgRes.data.data.estadosProyecto)
+      setEstadosPropuesta(cfgRes.data.data.estadosPropuesta)
+      const emp = cfgRes.data.data.empresa || {}
       setEmpresaForm({
         nombre:    emp.nombre    || '',
         moneda:    emp.moneda    || 'USD',
@@ -328,7 +247,6 @@ export default function ConfiguracionPage() {
         telefono:  emp.telefono  || '',
         email:     emp.email     || '',
       })
-      if (pfRes.status === 'fulfilled') setPerfiles(pfRes.value.data.data)
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar la configuración', life: 4000 })
     } finally {
@@ -345,12 +263,6 @@ export default function ConfiguracionPage() {
   const handleSaveEstadoPropuesta = () => {
     setElDialog({ visible: false, estadoLabel: null })
     toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Nombre de estado actualizado', life: 3000 })
-    loadAll()
-  }
-
-  const handleSavePerfil = () => {
-    setPfDialog({ visible: false, perfil: null })
-    toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Perfil guardado', life: 3000 })
     loadAll()
   }
 
@@ -433,35 +345,6 @@ export default function ConfiguracionPage() {
         }
       },
     })
-  }
-
-  const confirmDeletePerfil = (perfil) => {
-    confirmDialog({
-      message: `¿Eliminar el perfil "${perfil.nombre} ${perfil.nivel}"? Solo es posible si no está en uso en ningún caso de negocio.`,
-      header: 'Confirmar eliminación',
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Eliminar',
-      rejectLabel: 'Cancelar',
-      acceptClassName: 'p-button-danger',
-      accept: async () => {
-        try {
-          await perfilConsultorService.remove(perfil.id)
-          toast.current.show({ severity: 'success', summary: 'Eliminado', detail: 'Perfil eliminado', life: 3000 })
-          loadAll()
-        } catch (err) {
-          toast.current.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'No se pudo eliminar', life: 5000 })
-        }
-      },
-    })
-  }
-
-  const toggleActivoPerfil = async (perfil) => {
-    try {
-      await perfilConsultorService.update(perfil.id, { ...perfil, activo: !perfil.activo })
-      loadAll()
-    } catch {
-      toast.current.show({ severity: 'error', summary: 'Error', detail: 'No se pudo actualizar', life: 3000 })
-    }
   }
 
   const handleSaveEmpresa = async () => {
@@ -604,41 +487,6 @@ export default function ConfiguracionPage() {
           </div>
         </div>
       </div>
-
-      {/* ── Perfiles de Consultor ── */}
-      <Card className="mt-4">
-        <div className="flex align-items-center justify-content-between mb-3">
-          <div>
-            <h3 className="m-0 font-semibold"><i className="pi pi-id-card mr-2" />Perfiles de Consultor</h3>
-            <p className="text-color-secondary text-xs mt-1 mb-0">
-              Roles (Full Stack Senior, QA, PM…). El precio al cliente se gestiona en
-              <strong> Tarifarios</strong> y el costo por consultor en <strong>Empleados</strong>.
-            </p>
-          </div>
-          <Button label="Nuevo perfil" icon="pi pi-plus" size="small" onClick={() => setPfDialog({ visible: true, perfil: null })} />
-        </div>
-        <DataTable value={perfiles} emptyMessage="Sin perfiles registrados" size="small" stripedRows>
-          <Column header="Rol" body={(r) => <span className="font-semibold">{r.nombre}</span>} />
-          <Column header="Nivel" body={(r) => (
-            <Tag
-              value={r.nivel}
-              severity={r.nivel === 'Senior' ? 'success' : r.nivel === 'Semi Senior' ? 'info' : 'secondary'}
-              style={{ fontSize: '0.75rem' }}
-            />
-          )} style={{ width: '130px' }} />
-          <Column header="Activo" body={(r) => (
-            <InputSwitch checked={r.activo} onChange={() => toggleActivoPerfil(r)} />
-          )} style={{ width: '80px' }} />
-          <Column header="Acciones" style={{ width: '90px' }} body={(r) => (
-            <div className="flex gap-1">
-              <Button icon="pi pi-pencil" rounded text severity="info" size="small" tooltip="Editar" tooltipOptions={{ position: 'top' }}
-                onClick={() => setPfDialog({ visible: true, perfil: r })} />
-              <Button icon="pi pi-trash" rounded text severity="danger" size="small" tooltip="Eliminar" tooltipOptions={{ position: 'top' }}
-                onClick={() => confirmDeletePerfil(r)} />
-            </div>
-          )} />
-        </DataTable>
-      </Card>
 
       {/* ── Datos de la Empresa ── */}
       <Card className="mt-4">
@@ -883,13 +731,6 @@ export default function ConfiguracionPage() {
         onSave={handleSaveEstadoPropuesta}
         estadoLabel={elDialog.estadoLabel}
       />
-      <PerfilConsultorDialog
-        visible={pfDialog.visible}
-        onHide={() => setPfDialog({ visible: false, perfil: null })}
-        onSave={handleSavePerfil}
-        perfil={pfDialog.perfil}
-      />
-
       <Dialog
         header="Vista previa — Cierre financiero retroactivo"
         visible={backfillDialog.visible}
