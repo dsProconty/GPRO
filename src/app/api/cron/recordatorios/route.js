@@ -17,13 +17,21 @@ export async function GET(request) {
 
   const hoy = new Date()
   const diaHoy = hoy.getDate()
+  const mesHoy = hoy.getMonth() + 1
 
   let enviados = 0
   let errores = 0
 
   try {
     const recordatorios = await prisma.recordatorioFactura.findMany({
-      where: { activo: true, diaMes: diaHoy },
+      where: {
+        activo: true,
+        diaMes: diaHoy,
+        OR: [
+          { frecuencia: 'mensual' },
+          { frecuencia: 'anual', mes: mesHoy },
+        ],
+      },
       include: {
         proyecto: {
           select: { id: true, detalle: true, empresa: { select: { nombre: true } } },

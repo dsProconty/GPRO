@@ -4,17 +4,20 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
+import { FilterMatchMode } from 'primereact/api'
 import { Button } from 'primereact/button'
 import { InputText } from '@/components/shared/InputText'
 import { IconField } from 'primereact/iconfield'
 import { InputIcon } from 'primereact/inputicon'
 import { Dropdown } from 'primereact/dropdown'
 import { Calendar } from 'primereact/calendar'
+import { Dialog } from 'primereact/dialog'
 import { Tag } from 'primereact/tag'
 import { Toast } from 'primereact/toast'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { ProgressSpinner } from 'primereact/progressspinner'
 import ProyectoFormDialog from '@/components/shared/ProyectoFormDialog'
+import ProyectoFacturasDialog from '@/components/shared/ProyectoFacturasDialog'
 import { proyectoService } from '@/services/proyectoService'
 import { empresaService } from '@/services/empresaService'
 import { empleadoService } from '@/services/empleadoService'
@@ -25,6 +28,30 @@ import * as XLSX from 'xlsx'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
 const ESTADOS_PROPUESTAS = ['Elaboracion_Propuesta', 'Rechazado']
+
+const SESSION_KEY = 'gpro_proyectos_filtros'
+
+const leerFiltrosGuardados = () => {
+  if (typeof window === 'undefined') return {}
+  try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}') } catch { return {} }
+}
+
+const INIT_TABLE_FILTERS = {
+  codigo:           { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  detalle:          { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  'empresa.nombre': { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  aplicativo:       { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  ot:               { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  'estado.nombre':  { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+}
+
+const INIT_TABLE_FILTERS_CERRADOS = {
+  codigo:           { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  detalle:          { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  'empresa.nombre': { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  aplicativo:       { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  'estado.nombre':  { operator: 'and', constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+}
 
 const ESTADO_CONFIG = {
   Adjudicado:            { severity: 'success',   label: 'Adjudicado'        },
@@ -54,30 +81,58 @@ export default function ProyectosPage() {
   const [estadoFiltro, setEstadoFiltro] = useState(null)
   const [responsableFiltro, setResponsableFiltro] = useState(null)
   const [fechaRango, setFechaRango] = useState(null)
+  const [tableFilters, setTableFilters] = useState(INIT_TABLE_FILTERS)
+  const [tableFiltersCerrados, setTableFiltersCerrados] = useState(INIT_TABLE_FILTERS_CERRADOS)
+  const filtrosListos = useRef(false)
+
+  // Guardar filtros — solo después de que la restauración inicial haya ocurrido
+  useEffect(() => {
+    if (!filtrosListos.current) return
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      globalFilter,
+      estadoFiltro,
+      responsableFiltro,
+      fechaRango: fechaRango ? fechaRango.map((d) => (d ? d.toISOString() : null)) : null,
+      tableFilters,
+      tableFiltersCerrados,
+    }))
+  }, [globalFilter, estadoFiltro, responsableFiltro, fechaRango, tableFilters, tableFiltersCerrados])
   const [dialogVisible, setDialogVisible] = useState(false)
   const [selectedProyecto, setSelectedProyecto] = useState(null)
+  const [facturasDialogVisible, setFacturasDialogVisible] = useState(false)
+  const [proyectoParaFacturas, setProyectoParaFacturas] = useState(null)
   const [visibleRows, setVisibleRows] = useState([])
   const [cerradosExpanded, setCerradosExpanded] = useState(false)
+  const [cierreFinancieroDialog, setCierreFinancieroDialog] = useState({ visible: false, proyecto: null, fecha: null, saving: false })
 
   useEffect(() => {
-    loadAll()
+    const saved = leerFiltrosGuardados()
+    if (saved.globalFilter)         setGlobalFilter(saved.globalFilter)
+    if (saved.estadoFiltro)         setEstadoFiltro(saved.estadoFiltro)
+    if (saved.responsableFiltro)    setResponsableFiltro(saved.responsableFiltro)
+    if (saved.fechaRango)           setFechaRango(saved.fechaRango.map((d) => (d ? new Date(d) : null)))
+    if (saved.tableFilters)         setTableFilters(saved.tableFilters)
+    if (saved.tableFiltersCerrados) setTableFiltersCerrados(saved.tableFiltersCerrados)
+    filtrosListos.current = true
+    loadAll(saved.estadoFiltro || null)
   }, [])
 
-  const loadAll = async () => {
+  const loadAll = async (estadoId = null) => {
     setLoading(true)
     try {
-      const [proyRes, empRes, estRes, cfgRes] = await Promise.all([
-        proyectoService.getAll(),
+      const [proyRes, empRes, estRes, cfgRes] = await Promise.allSettled([
+        estadoId ? proyectoService.getAll({ estado_id: estadoId }) : proyectoService.getAll(),
         empresaService.getAll(),
         axios.get('/api/v1/estados'),
         configuracionService.getAll(),
       ])
-      setProyectos(proyRes.data)
-      setEmpresas(empRes.data)
-      setEstados(estRes.data.data)
-      if (cfgRes.data.data?.empresa?.moneda) setMoneda(cfgRes.data.data.empresa.moneda)
-      // Empleados se cargan aparte para no bloquear si el endpoint falla
-      empleadoService.getAll().then((r) => setEmpleados(r.data)).catch(() => {})
+      if (proyRes.status === 'rejected') throw proyRes.reason
+      setProyectos(proyRes.value.data)
+      if (empRes.status === 'fulfilled') setEmpresas(empRes.value.data)
+      if (estRes.status === 'fulfilled') setEstados(estRes.value.data.data)
+      if (cfgRes.status === 'fulfilled' && cfgRes.value.data.data?.empresa?.moneda) setMoneda(cfgRes.value.data.data.empresa.moneda)
+      // Empleados para responsables: endpoint ligero sin permiso especial
+      axios.get('/api/v1/empleados/opciones').then((r) => setEmpleados(r.data.data || [])).catch(() => {})
     } catch {
       toast.current.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los proyectos', life: 4000 })
     } finally {
@@ -163,14 +218,41 @@ export default function ProyectosPage() {
   const tiempoVidaTemplate = (row) =>
     calcTiempoVida(row.fechaCreacion, row.fechaCierre)
 
+  const openFacturas = (row) => { setProyectoParaFacturas(row); setFacturasDialogVisible(true) }
+
+  const abrirCorregirCierreFinanciero = (row) => {
+    setCierreFinancieroDialog({
+      visible: true,
+      proyecto: row,
+      fecha: row.fechaCierreFinanciero ? new Date(row.fechaCierreFinanciero) : null,
+      saving: false,
+    })
+  }
+
+  const guardarCierreFinancieroManual = async () => {
+    const { proyecto, fecha } = cierreFinancieroDialog
+    setCierreFinancieroDialog((p) => ({ ...p, saving: true }))
+    try {
+      const fechaStr = fecha ? fecha.toISOString().slice(0, 10) : null
+      await axios.patch(`/api/v1/proyectos/${proyecto.id}/cierre-financiero`, { fecha: fechaStr })
+      toast.current.show({ severity: 'success', summary: 'Guardado', detail: 'Cierre financiero actualizado', life: 3000 })
+      setCierreFinancieroDialog({ visible: false, proyecto: null, fecha: null, saving: false })
+      loadProyectos(estadoFiltro)
+    } catch (err) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'Error al actualizar el cierre financiero', life: 4000 })
+      setCierreFinancieroDialog((p) => ({ ...p, saving: false }))
+    }
+  }
+
   const accionesTemplate = (row) => (
-    <div className="flex gap-1">
-      <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
+    <div className="flex align-items-center" style={{ gap: '2px' }}>
+      <Button icon="pi pi-eye" rounded severity="success" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
+      <Button icon="pi pi-file" rounded severity="info" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Facturas" tooltipOptions={{ position: 'top' }} onClick={() => openFacturas(row)} />
       {(puede(PERMISOS.PROYECTOS.EDITAR) && puedeEditarProyecto(row.estadoId)) && (
-        <Button icon="pi pi-pencil" rounded text severity="info" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => openEdit(row)} />
+        <Button icon="pi pi-pencil" rounded text severity="secondary" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => openEdit(row)} />
       )}
       {puede(PERMISOS.PROYECTOS.ELIMINAR) && (
-        <Button icon="pi pi-trash" rounded text severity="danger" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => confirmDelete(row)} />
+        <Button icon="pi pi-trash" rounded text severity="danger" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => confirmDelete(row)} />
       )}
     </div>
   )
@@ -183,7 +265,8 @@ export default function ProyectosPage() {
       lista = lista.filter((p) =>
         p.detalle?.toLowerCase().includes(term) ||
         p.empresa?.nombre?.toLowerCase().includes(term) ||
-        p.codigo?.toLowerCase().includes(term)
+        p.codigo?.toLowerCase().includes(term) ||
+        p.facturas?.some((f) => f.numFactura?.toLowerCase().includes(term))
       )
     }
     return lista
@@ -214,7 +297,8 @@ export default function ProyectosPage() {
         p.ot?.toLowerCase().includes(term) ||
         p.codigo?.toLowerCase().includes(term) ||
         p.estado?.nombre?.toLowerCase().includes(term) ||
-        p.responsables?.some((r) => `${r.empleado?.nombre} ${r.empleado?.apellido}`.toLowerCase().includes(term))
+        p.responsables?.some((r) => `${r.empleado?.nombre} ${r.empleado?.apellido}`.toLowerCase().includes(term)) ||
+        p.facturas?.some((f) => f.numFactura?.toLowerCase().includes(term))
       )
     }
     return lista
@@ -332,6 +416,22 @@ export default function ProyectosPage() {
 
         <div className="flex gap-2" style={{ flexShrink: 0 }}>
           <Button label="Exportar Excel" icon="pi pi-file-excel" severity="success" outlined onClick={exportarExcel} disabled={proyectosFiltrados.length === 0} />
+          <Button
+            label="Limpiar filtros"
+            icon="pi pi-filter-slash"
+            severity="secondary"
+            outlined
+            onClick={() => {
+              setGlobalFilter('')
+              setEstadoFiltro(null)
+              setResponsableFiltro(null)
+              setFechaRango(null)
+              setTableFilters(INIT_TABLE_FILTERS)
+              setTableFiltersCerrados(INIT_TABLE_FILTERS_CERRADOS)
+              sessionStorage.removeItem(SESSION_KEY)
+              loadProyectos(null)
+            }}
+          />
           {puede(PERMISOS.PROYECTOS.CREAR) && (
             <Button label="Nuevo Proyecto" icon="pi pi-plus" onClick={openCreate} />
           )}
@@ -341,7 +441,7 @@ export default function ProyectosPage() {
       <div className="flex flex-wrap gap-3 mb-3">
         <IconField iconPosition="left" className="flex-1" style={{ minWidth: '200px' }}>
           <InputIcon className="pi pi-search" />
-          <InputText value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Buscar proyecto..." className="w-full" />
+          <InputText value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Buscar proyecto, cliente, N° factura..." className="w-full" />
         </IconField>
         <Dropdown
           value={estadoFiltro}
@@ -378,18 +478,19 @@ export default function ProyectosPage() {
 
       <DataTable
         value={proyectosFiltrados}
+        filters={tableFilters}
+        onFilter={(e) => setTableFilters(e.filters)}
         globalFilter={globalFilter}
         onValueChange={(rows) => setVisibleRows(rows)}
         loading={loading}
         paginator
-        rows={10}
-        rowsPerPageOptions={[10, 25, 50]}
+        rows={50}
+        rowsPerPageOptions={[25, 50, 100]}
         emptyMessage="No hay proyectos registrados"
         stripedRows
         scrollable
         filterDisplay="menu"
       >
-        <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
         <Column field="detalle" header="Proyecto" body={detalleTemplate} sortable filter filterPlaceholder="Buscar proyecto..." style={{ minWidth: '180px' }} />
         <Column field="empresa.nombre" header="Cliente" body={(row) => row.empresa?.nombre} sortable filter filterPlaceholder="Buscar cliente..." />
         <Column field="aplicativo" header="Aplicativo" body={(row) => row.aplicativo || '—'} sortable filter filterPlaceholder="Buscar aplicativo..." style={{ width: '120px' }} />
@@ -401,7 +502,8 @@ export default function ProyectosPage() {
         <Column field="fechaCreacion" header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable style={{ width: '115px' }} />
         <Column field="fechaCierre" header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable style={{ width: '115px' }} />
         <Column field="estado.nombre" header="Estado" body={estadoTemplate} sortable filter filterPlaceholder="Buscar estado..." style={{ width: '140px' }} />
-        <Column header="Acciones" body={accionesTemplate} style={{ width: '120px' }} />
+        <Column header="Acciones" body={accionesTemplate} style={{ width: '125px' }} />
+        <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '130px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
       </DataTable>
 
       {/* ── Proyectos Cerrados ─────────────────────────────────────────── */}
@@ -425,18 +527,20 @@ export default function ProyectosPage() {
           <div style={{ border: '1px solid #d1d5db', borderTop: 'none', borderRadius: '0 0 6px 6px', opacity: 0.85 }}>
             <DataTable
               value={proyectosCerrados}
+              filters={tableFiltersCerrados}
+              onFilter={(e) => setTableFiltersCerrados(e.filters)}
               paginator
-              rows={10}
-              rowsPerPageOptions={[10, 25, 50]}
+              rows={50}
+              rowsPerPageOptions={[25, 50, 100]}
               emptyMessage="No hay proyectos cerrados"
               stripedRows
               scrollable
               size="small"
               filterDisplay="menu"
             >
-              <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
               <Column field="detalle" header="Proyecto" body={detalleTemplate} sortable filter filterPlaceholder="Buscar proyecto..." style={{ minWidth: '180px' }} />
               <Column field="empresa.nombre" header="Cliente" body={(row) => row.empresa?.nombre} sortable filter filterPlaceholder="Buscar cliente..." />
+              <Column field="aplicativo" header="Aplicativo" body={(row) => row.aplicativo || '—'} sortable filter filterPlaceholder="Buscar aplicativo..." style={{ width: '130px' }} />
               <Column field="estado.nombre" header="Estado" body={estadoTemplate} sortable filter filterPlaceholder="Buscar estado..." style={{ width: '130px' }} />
               <Column field="valor" header="Valor" body={valorTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
               <Column field="facturado" header="Facturado" body={facturadoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
@@ -444,9 +548,30 @@ export default function ProyectosPage() {
               <Column field="saldo" header="Saldo" body={saldoTemplate} sortable dataType="numeric" style={{ textAlign: 'right' }} />
               <Column field="fechaCreacion" header="Fecha Inicio" body={(row) => formatDate(row.fechaCreacion)} sortable style={{ width: '115px' }} />
               <Column field="fechaCierre" header="Fecha Cierre" body={(row) => formatDate(row.fechaCierre)} sortable style={{ width: '115px' }} />
-              <Column header="Acciones" body={(row) => (
-                <Button icon="pi pi-eye" rounded text severity="success" tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
-              )} style={{ width: '80px' }} />
+              <Column
+                field="fechaCierreFinanciero"
+                header="Cierre Financiero"
+                sortable
+                style={{ width: '150px' }}
+                body={(row) => (
+                  <div className="flex align-items-center gap-1">
+                    <span>{row.fechaCierreFinanciero ? formatDate(row.fechaCierreFinanciero) : '—'}</span>
+                    {puede(PERMISOS.PROYECTOS.CERRAR_FINANCIERO) && (
+                      <Button icon="pi pi-pencil" rounded text severity="secondary" size="small"
+                        style={{ width: '22px', height: '22px' }}
+                        tooltip="Corregir fecha" tooltipOptions={{ position: 'top' }}
+                        onClick={() => abrirCorregirCierreFinanciero(row)} />
+                    )}
+                  </div>
+                )}
+              />
+              <Column header="Acciones" style={{ width: '70px' }} body={(row) => (
+                <div className="flex align-items-center" style={{ gap: '2px' }}>
+                  <Button icon="pi pi-eye" rounded severity="success" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Ver detalle" tooltipOptions={{ position: 'top' }} onClick={() => router.push(`/proyectos/${row.id}`)} />
+                  <Button icon="pi pi-file" rounded severity="info" size="small" style={{ width: '28px', height: '28px', padding: 0 }} tooltip="Facturas" tooltipOptions={{ position: 'top' }} onClick={() => openFacturas(row)} />
+                </div>
+              )} />
+              <Column field="codigo" header="Código" body={(row) => row.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '130px', fontFamily: 'monospace', fontSize: '0.85rem' }} />
             </DataTable>
           </div>
         )}
@@ -461,6 +586,44 @@ export default function ProyectosPage() {
         estados={estados}
         empleados={empleados}
       />
+
+      <ProyectoFacturasDialog
+        visible={facturasDialogVisible}
+        onHide={() => setFacturasDialogVisible(false)}
+        proyecto={proyectoParaFacturas}
+        onSave={() => loadProyectos(estadoFiltro)}
+      />
+
+      <Dialog
+        header="Corregir cierre financiero"
+        visible={cierreFinancieroDialog.visible}
+        onHide={() => setCierreFinancieroDialog({ visible: false, proyecto: null, fecha: null, saving: false })}
+        style={{ width: '380px' }}
+        modal
+        footer={
+          <div className="flex justify-content-end gap-2">
+            <Button label="Cancelar" severity="secondary" outlined
+              onClick={() => setCierreFinancieroDialog({ visible: false, proyecto: null, fecha: null, saving: false })}
+              disabled={cierreFinancieroDialog.saving} />
+            <Button label="Guardar" icon="pi pi-check" loading={cierreFinancieroDialog.saving} onClick={guardarCierreFinancieroManual} />
+          </div>
+        }
+      >
+        <p className="text-color-secondary text-sm mb-3">{cierreFinancieroDialog.proyecto?.detalle}</p>
+        <div className="flex flex-column gap-1">
+          <label className="text-sm font-medium">Fecha de cierre financiero</label>
+          <Calendar
+            value={cierreFinancieroDialog.fecha}
+            onChange={(e) => setCierreFinancieroDialog((p) => ({ ...p, fecha: e.value || null }))}
+            dateFormat="dd/mm/yy"
+            placeholder="Elegir fecha"
+            showIcon
+            readOnlyInput
+            className="w-full"
+          />
+          <small className="text-color-secondary mt-1">Dejar vacío revierte el cierre financiero (lo vuelve a marcar como pendiente).</small>
+        </div>
+      </Dialog>
     </div>
   )
 }

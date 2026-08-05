@@ -12,7 +12,9 @@ export async function GET() {
   }
 
   try {
-    const diaHoy = new Date().getDate()
+    const hoy = new Date()
+    const diaHoy = hoy.getDate()
+    const mesHoy = hoy.getMonth() + 1
 
     const [proyectos, facturas, pagos, estados, recordatoriosHoy] = await Promise.all([
       prisma.proyecto.findMany({
@@ -25,12 +27,21 @@ export async function GET() {
         select: { valor: true, fecha: true, facturaId: true, factura: { select: { proyectoId: true } } },
       }),
       prisma.estado.findMany({ select: { id: true, nombre: true } }),
-      prisma.recordatorioFactura.count({ where: { activo: true, diaMes: diaHoy } }),
+      prisma.recordatorioFactura.count({
+        where: {
+          activo: true,
+          diaMes: diaHoy,
+          OR: [
+            { frecuencia: 'mensual' },
+            { frecuencia: 'anual', mes: mesHoy },
+          ],
+        },
+      }),
     ])
 
     // ── KPIs básicos ────────────────────────────────────────────
-    const ESTADOS_ACTIVOS = [1, 2, 3]
-    const proyectosActivos = proyectos.filter((p) => ESTADOS_ACTIVOS.includes(p.estadoId)).length
+    const ESTADOS_INACTIVOS = new Set(['Cerrado', 'Rechazado'])
+    const proyectosActivos = proyectos.filter((p) => !ESTADOS_INACTIVOS.has(p.estado.nombre)).length
     const totalProyectos = proyectos.length
     const facturadoTotal = facturas.reduce((s, f) => s + Number(f.valor), 0)
     const cobradoTotal = pagos.reduce((s, p) => s + Number(p.valor), 0)
@@ -46,7 +57,7 @@ export async function GET() {
     const porMes = generarUltimos12Meses(facturas, pagos)
 
     // ── Top 5 Clientes por facturado ─────────────────────────────
-    const topClientes = await obtenerTopClientes()
+    const { top: topClientes, totalActivas: totalEmpresasActivas } = await obtenerTopClientes()
 
     return NextResponse.json({
       success: true,
@@ -60,6 +71,7 @@ export async function GET() {
         porEstado,
         porMes,
         topClientes,
+        totalEmpresasActivas,
       },
       message: '',
     })
@@ -80,14 +92,14 @@ function generarUltimos12Meses(facturas, pagos) {
     const facturado = facturas
       .filter((f) => {
         const d = new Date(f.fechaFactura)
-        return d.getFullYear() === anio && d.getMonth() === mes
+        return d.getUTCFullYear() === anio && d.getUTCMonth() === mes
       })
       .reduce((s, f) => s + Number(f.valor), 0)
 
     const cobrado = pagos
       .filter((p) => {
         const d = new Date(p.fecha)
-        return d.getFullYear() === anio && d.getMonth() === mes
+        return d.getUTCFullYear() === anio && d.getUTCMonth() === mes
       })
       .reduce((s, p) => s + Number(p.valor), 0)
 
@@ -114,7 +126,7 @@ async function obtenerTopClientes() {
     },
   })
 
-  return empresas
+  const todas = empresas
     .map((e) => ({
       nombre: e.nombre,
       total: e.proyectos.reduce(
@@ -124,5 +136,6 @@ async function obtenerTopClientes() {
     }))
     .filter((e) => e.total > 0)
     .sort((a, b) => b.total - a.total)
-    .slice(0, 5)
+
+  return { top: todas.slice(0, 5), totalActivas: todas.length }
 }

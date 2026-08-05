@@ -11,6 +11,7 @@ import { Dialog } from 'primereact/dialog'
 import { Dropdown } from 'primereact/dropdown'
 import { InputNumber } from 'primereact/inputnumber'
 import { ProgressBar } from 'primereact/progressbar'
+import axios from 'axios'
 import { propuestaService } from '@/services/propuestaService'
 import { empresaService } from '@/services/empresaService'
 import { usuarioService } from '@/services/usuarioService'
@@ -37,7 +38,7 @@ const TRANSICIONES_KEYS = {
   Rechazada: [],
 }
 
-const DIALOG_VACIO = { visible: false, saving: false, perfilId: null, horas: null, empleadoId: null, precioHora: null, editando: false }
+const DIALOG_VACIO = { visible: false, saving: false, id: null, perfilId: null, horas: null, empleadoId: null, precioHora: null, editando: false }
 
 export default function PropuestaDetallePage({ params }) {
   const toast = useRef(null)
@@ -48,6 +49,7 @@ export default function PropuestaDetallePage({ params }) {
   const [propuesta, setPropuesta] = useState(null)
   const [empresas, setEmpresas] = useState([])
   const [usuarios, setUsuarios] = useState([])
+  const [empleadosOpciones, setEmpleadosOpciones] = useState([])
   const [propuestaConfig, setPropuestaConfig] = useState({})
   const [loading, setLoading] = useState(true)
 
@@ -68,7 +70,7 @@ export default function PropuestaDetallePage({ params }) {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [propRes, empRes, usrRes, cfgRes, casoRes, pfRes, emplRes] = await Promise.all([
+      const [propRes, empRes, usrRes, cfgRes, casoRes, pfRes, emplRes, opcionesRes] = await Promise.allSettled([
         propuestaService.getById(id),
         empresaService.getAll(),
         usuarioService.getAll(),
@@ -76,16 +78,21 @@ export default function PropuestaDetallePage({ params }) {
         propuestaService.getCasoNegocio(id),
         perfilConsultorService.getAll({ activo: true }),
         empleadoService.getAll({ activo: true }),
+        axios.get('/api/v1/empleados/opciones'),
       ])
-      setPropuesta(propRes.data)
-      setEmpresas(empRes.data)
-      setUsuarios(usrRes.data)
-      setPropuestaConfig(buildPropuestaConfig(cfgRes.data.data.estadosPropuesta))
-      setCasoLineas(casoRes.data.lineas)
-      setCasoResumen(casoRes.data.resumen)
-      setCasoTarifario(casoRes.data.tarifario)
-      setPerfilesActivos(pfRes.data.data)
-      setEmpleados(emplRes.data || [])
+      if (propRes.status === 'rejected') throw propRes.reason
+      setPropuesta(propRes.value.data)
+      if (empRes.status === 'fulfilled') setEmpresas(empRes.value.data)
+      if (usrRes.status === 'fulfilled') setUsuarios(usrRes.value.data)
+      if (cfgRes.status === 'fulfilled') setPropuestaConfig(buildPropuestaConfig(cfgRes.value.data.data.estadosPropuesta))
+      if (casoRes.status === 'fulfilled') {
+        setCasoLineas(casoRes.value.data.lineas)
+        setCasoResumen(casoRes.value.data.resumen)
+        setCasoTarifario(casoRes.value.data.tarifario)
+      }
+      if (pfRes.status === 'fulfilled') setPerfilesActivos(pfRes.value.data.data)
+      if (emplRes.status === 'fulfilled') setEmpleados(emplRes.value.data || [])
+      if (opcionesRes.status === 'fulfilled') setEmpleadosOpciones(opcionesRes.value.data.data || [])
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar la propuesta', life: 4000 })
     } finally {
@@ -111,6 +118,7 @@ export default function PropuestaDetallePage({ params }) {
       visible: true,
       saving: false,
       editando: true,
+      id: linea.id,
       perfilId: linea.perfilId,
       horas: linea.horas,
       empleadoId: linea.empleadoId || null,
@@ -123,6 +131,7 @@ export default function PropuestaDetallePage({ params }) {
     setCasoDialog((p) => ({ ...p, saving: true }))
     try {
       await propuestaService.upsertLineaCaso(id, {
+        lineaId:    casoDialog.id || null,
         perfilId:   casoDialog.perfilId,
         horas:      casoDialog.horas,
         empleadoId: casoDialog.empleadoId || null,
@@ -137,9 +146,9 @@ export default function PropuestaDetallePage({ params }) {
     }
   }
 
-  const handleDeleteLinea = async (perfilId) => {
+  const handleDeleteLinea = async (lineaId) => {
     try {
-      await propuestaService.deleteLineaCaso(id, perfilId)
+      await propuestaService.deleteLineaCaso(id, lineaId)
       toast.current.show({ severity: 'success', summary: 'Eliminado', detail: 'Línea eliminada', life: 3000 })
       loadCaso()
     } catch (err) {
@@ -321,15 +330,56 @@ export default function PropuestaDetallePage({ params }) {
             </div>
           </div>
         </div>
-        <div className="col-12 md:col-3">
-          <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>💰</div>
-            <div>
-              <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Valor estimado</div>
-              <div className="font-bold text-sm" style={{ color: '#15803d' }}>{propuesta.valorEstimado ? formatCurrency(propuesta.valorEstimado) : '—'}</div>
+        {propuesta.tipoPropuesta === 'Mensualizada' && propuesta.valorMensual ? (
+          <>
+            <div className="col-12 md:col-3">
+              <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
+                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>📅</div>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Valor mensual</div>
+                  <div className="font-bold text-sm" style={{ color: '#2563eb' }}>{formatCurrency(propuesta.valorMensual)}</div>
+                  {propuesta.mesesContrato && <div style={{ fontSize: '11px', color: '#94a3b8' }}>× {propuesta.mesesContrato} meses</div>}
+                </div>
+              </div>
+            </div>
+            <div className="col-12 md:col-3">
+              <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
+                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>💰</div>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Valor total</div>
+                  <div className="font-bold text-sm" style={{ color: '#15803d' }}>{formatCurrency(propuesta.valorEstimado)}</div>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="col-12 md:col-3">
+            <div className="surface-card border-round p-3 shadow-1 flex align-items-center gap-3">
+              <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>💰</div>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '3px' }}>Valor estimado</div>
+                <div className="font-bold text-sm" style={{ color: '#15803d' }}>{propuesta.valorEstimado ? formatCurrency(propuesta.valorEstimado) : '—'}</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+        {propuesta.clientes?.length > 0 && (
+          <div className="col-12 md:col-6">
+            <div className="surface-card border-round p-3 shadow-1 flex align-items-start gap-3">
+              <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>👤</div>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#94a3b8', marginBottom: '5px' }}>Punto(s) de contacto</div>
+                <div className="flex flex-wrap gap-1">
+                  {propuesta.clientes.map((c) => (
+                    <span key={c.clienteId} style={{ background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A', borderRadius: '20px', padding: '2px 10px', fontSize: '12px', fontWeight: 500 }}>
+                      {c.cliente.nombre} {c.cliente.apellido}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Pipeline de estado ── */}
@@ -530,7 +580,7 @@ export default function PropuestaDetallePage({ params }) {
                 </thead>
                 <tbody>
                   {casoLineas.map((l, idx) => (
-                    <tr key={l.perfilId} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 1 ? '#fafbfc' : '#fff' }}>
+                    <tr key={l.id} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 1 ? '#fafbfc' : '#fff' }}>
                       <td style={{ padding: '12px' }}>
                         <div className="font-semibold" style={{ fontSize: '13px' }}>{l.perfil.nombre}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
@@ -551,7 +601,7 @@ export default function PropuestaDetallePage({ params }) {
                         {!esTerminal && (
                           <div className="flex gap-1 justify-content-end">
                             <Button icon="pi pi-pencil" rounded text severity="info" size="small" tooltip="Editar" tooltipOptions={{ position: 'top' }} onClick={() => abrirEditarLinea(l)} />
-                            <Button icon="pi pi-trash" rounded text severity="danger" size="small" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => handleDeleteLinea(l.perfilId)} />
+                            <Button icon="pi pi-trash" rounded text severity="danger" size="small" tooltip="Eliminar" tooltipOptions={{ position: 'top' }} onClick={() => handleDeleteLinea(l.id)} />
                           </div>
                         )}
                       </td>
@@ -684,7 +734,7 @@ export default function PropuestaDetallePage({ params }) {
         }}
         propuesta={propuesta}
         empresas={empresas}
-        usuarios={usuarios}
+        empleadosResp={empleadosOpciones}
       />
       <CambiarEstadoPropuestaDialog
         visible={estadoDialog.visible}

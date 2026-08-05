@@ -102,7 +102,9 @@ export default function CasosNegocioPage() {
     const totalPrecio = fuente.reduce((s, c) => s + c.resumen.totalPrecio,  0)
     const totalFact   = fuente.reduce((s, c) => s + c.financiero.facturado, 0)
     const totalPagado = fuente.reduce((s, c) => s + c.financiero.pagado,    0)
-    const saldoCobrar = totalFact - totalPagado
+    // Saldo por cobrar = todo lo que el proyecto todavia debe cobrar, facturado o no
+    // (Ingreso Estimado - Cobrado), no solo lo facturado pendiente de pago.
+    const saldoCobrar = totalPrecio - totalPagado
     const gm          = totalPrecio - totalCosto
     const gmPct       = totalPrecio > 0 ? Math.round((gm / totalPrecio) * 100) : 0
     const pctCobrado  = totalFact   > 0 ? Math.round((totalPagado / totalFact) * 100) : 0
@@ -122,7 +124,7 @@ export default function CasosNegocioPage() {
       },
       {
         label: 'Facturado (saldo)',
-        data: [kpi.saldoCobrar],
+        data: [Math.max(0, kpi.totalFact - kpi.totalPagado)],
         backgroundColor: '#f59e0b',
         borderRadius: 0,
       },

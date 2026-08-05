@@ -44,6 +44,8 @@ const ESTADO_CONFIG = {
   'Entregado':             { severity: 'success',   label: 'Entregado'       },
 }
 
+const MESES_ABREV = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+
 const PIPELINE_STEPS = [
   { id: 3, nombre: 'Adjudicado' },
   { id: 1, nombre: 'En Ejecución' },
@@ -64,11 +66,13 @@ export default function ProyectoDetallePage({ params }) {
   const [estados, setEstados] = useState([])
   const [empresas, setEmpresas] = useState([])
   const [usuarios, setUsuarios] = useState([])
+  const [empleadosOpciones, setEmpleadosOpciones] = useState([])
 
   const [loadingProyecto, setLoadingProyecto] = useState(true)
   const [loadingFacturas, setLoadingFacturas] = useState(false)
   const [loadingObs, setLoadingObs] = useState(false)
   const [savingEstado, setSavingEstado] = useState(false)
+  const [savingCierreFinanciero, setSavingCierreFinanciero] = useState(false)
   const [expandedRows, setExpandedRows] = useState(null)
 
   // Dialogs
@@ -78,6 +82,7 @@ export default function ProyectoDetallePage({ params }) {
   const [selectedPago, setSelectedPago] = useState(null)
   const [facturaParaPago, setFacturaParaPago] = useState(null)
   const [obsDialogVisible, setObsDialogVisible] = useState(false)
+  const [respuestaAObservacion, setRespuestaAObservacion] = useState(null)
   const [editDialogVisible, setEditDialogVisible] = useState(false)
 
   // Historial de estado
@@ -95,7 +100,7 @@ export default function ProyectoDetallePage({ params }) {
   const [addLineaVisible, setAddLineaVisible] = useState(false)
   const [editingLinea, setEditingLinea] = useState(null)  // linea al editar
   const [savingLinea, setSavingLinea] = useState(false)
-  const [lineaForm, setLineaForm] = useState({ perfilId: null, horas: null, empleadoId: null, precioHora: null })
+  const [lineaForm, setLineaForm] = useState({ lineaId: null, perfilId: null, horas: null, empleadoId: null, precioHora: null })
 
   useEffect(() => {
     loadAll()
@@ -104,7 +109,7 @@ export default function ProyectoDetallePage({ params }) {
   const loadAll = async () => {
     setLoadingProyecto(true)
     try {
-      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes, cfgRes, perfilesRes, emplRes] = await Promise.all([
+      const [proyRes, factRes, obsRes, estRes, empRes, usrRes, recRes, cfgRes, perfilesRes, emplRes, opcionesRes] = await Promise.allSettled([
         proyectoService.getById(id),
         facturaService.getAll({ proyecto_id: id }),
         observacionService.getAll({ proyecto_id: id }),
@@ -115,17 +120,25 @@ export default function ProyectoDetallePage({ params }) {
         configuracionService.getAll(),
         axios.get('/api/v1/perfiles-consultor?activo=true'),
         empleadoService.getAll({ activo: true }),
+        axios.get('/api/v1/empleados/opciones'),
       ])
-      setProyecto(proyRes.data)
-      setFacturas(factRes.data)
-      setObservaciones(obsRes.data)
-      setEstados(estRes.data.data)
-      setEmpresas(empRes.data.data)
-      setUsuarios(usrRes.data.data)
-      setRecordatorios(recRes.data)
-      if (cfgRes.data.data?.empresa?.moneda) setMoneda(cfgRes.data.data.empresa.moneda)
-      setPerfilesConsultor(perfilesRes.data.data || [])
-      setEmpleados(emplRes.data || [])
+
+      // El proyecto es crítico — si falla, mostrar error
+      if (proyRes.status === 'rejected') throw new Error('No se pudo cargar el proyecto')
+
+
+      setProyecto(proyRes.value.data)
+      if (factRes.status === 'fulfilled')    setFacturas(factRes.value.data)
+      if (obsRes.status === 'fulfilled')     setObservaciones(obsRes.value.data)
+      if (estRes.status === 'fulfilled')     setEstados(estRes.value.data.data)
+      if (empRes.status === 'fulfilled')     setEmpresas(empRes.value.data.data)
+      if (usrRes.status === 'fulfilled')     setUsuarios(usrRes.value.data.data)
+      if (recRes.status === 'fulfilled')     setRecordatorios(recRes.value.data)
+      if (cfgRes.status === 'fulfilled' && cfgRes.value.data.data?.empresa?.moneda) setMoneda(cfgRes.value.data.data.empresa.moneda)
+      if (perfilesRes.status === 'fulfilled') setPerfilesConsultor(perfilesRes.value.data.data || [])
+      if (emplRes.status === 'fulfilled')    setEmpleados(emplRes.value.data || [])
+      if (opcionesRes.status === 'fulfilled') setEmpleadosOpciones(opcionesRes.value.data.data || [])
+
       // Historial de estado (no bloquea si falla)
       axios.get(`/api/v1/proyectos/${id}/estado-logs`)
         .then((r) => setEstadoLogs(r.data.data || []))
@@ -172,6 +185,22 @@ export default function ProyectoDetallePage({ params }) {
     }
   }
 
+  // Agrupa observaciones en hilos: comentario raíz + sus respuestas (un solo nivel)
+  const hilosObservaciones = useMemo(() => {
+    const raices = observaciones.filter((o) => !o.respuestaAId)
+    const respuestasPorRaiz = {}
+    observaciones.forEach((o) => {
+      if (o.respuestaAId) {
+        if (!respuestasPorRaiz[o.respuestaAId]) respuestasPorRaiz[o.respuestaAId] = []
+        respuestasPorRaiz[o.respuestaAId].push(o)
+      }
+    })
+    Object.values(respuestasPorRaiz).forEach((arr) =>
+      arr.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+    )
+    return raices.map((raiz) => ({ raiz, respuestas: respuestasPorRaiz[raiz.id] || [] }))
+  }, [observaciones])
+
   // Resumen financiero reactivo
   const resumen = useMemo(() => {
     const facturado = facturas.reduce((s, f) => s + f.valor, 0)
@@ -206,6 +235,47 @@ export default function ProyectoDetallePage({ params }) {
     } finally {
       setSavingEstado(false)
     }
+  }
+
+  // === Cierre financiero ===
+  const ejecutarCierreFinanciero = async (fecha) => {
+    setSavingCierreFinanciero(true)
+    try {
+      const res = await axios.patch(`/api/v1/proyectos/${id}/cierre-financiero`, { fecha })
+      setProyecto((p) => ({ ...p, fechaCierreFinanciero: res.data.data.fechaCierreFinanciero }))
+      toast.current.show({ severity: 'success', summary: fecha ? 'Cerrado financieramente' : 'Cierre financiero revertido', detail: res.data.message, life: 3000 })
+    } catch (err) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: err.response?.data?.message || 'Error al actualizar el cierre financiero', life: 4000 })
+    } finally {
+      setSavingCierreFinanciero(false)
+    }
+  }
+
+  const handleCerrarFinanciero = () => {
+    const hoy = new Date().toISOString().slice(0, 10)
+    if (resumen.saldo > 0.001) {
+      confirmDialog({
+        message: `Este proyecto tiene un saldo pendiente de ${formatCurrency(resumen.saldo, moneda)}. ¿Confirmas el cierre financiero de todas formas?`,
+        header: 'Cerrar financiero con saldo pendiente',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Sí, cerrar',
+        rejectLabel: 'Cancelar',
+        accept: () => ejecutarCierreFinanciero(hoy),
+      })
+    } else {
+      ejecutarCierreFinanciero(hoy)
+    }
+  }
+
+  const handleReabrirFinanciero = () => {
+    confirmDialog({
+      message: '¿Reabrir el cierre financiero de este proyecto?',
+      header: 'Reabrir cierre financiero',
+      icon: 'pi pi-question-circle',
+      acceptLabel: 'Sí, reabrir',
+      rejectLabel: 'Cancelar',
+      accept: () => ejecutarCierreFinanciero(null),
+    })
   }
 
   // === Facturas ===
@@ -271,9 +341,13 @@ export default function ProyectoDetallePage({ params }) {
   // === Observaciones ===
   const handleSaveObservacion = () => {
     setObsDialogVisible(false)
+    setRespuestaAObservacion(null)
     toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Observación registrada', life: 3000 })
     loadObservaciones()
   }
+
+  const abrirNuevaObservacion = () => { setRespuestaAObservacion(null); setObsDialogVisible(true) }
+  const abrirResponderObservacion = (obs) => { setRespuestaAObservacion(obs); setObsDialogVisible(true) }
 
   // === Recordatorios ===
   const loadRecordatorios = async () => {
@@ -294,7 +368,7 @@ export default function ProyectoDetallePage({ params }) {
 
   const confirmDeleteRecordatorio = (rec) => {
     confirmDialog({
-      message: `¿Eliminar el recordatorio del día ${rec.diaMes} de cada mes?`,
+      message: `¿Eliminar el recordatorio del día ${rec.diaMes}${rec.frecuencia === 'anual' ? ` de ${MESES_ABREV[rec.mes - 1]}` : ' de cada mes'}?`,
       header: 'Confirmar eliminación',
       icon: 'pi pi-exclamation-triangle',
       acceptLabel: 'Eliminar',
@@ -340,6 +414,7 @@ export default function ProyectoDetallePage({ params }) {
   const openAddLinea = (linea = null) => {
     setEditingLinea(linea)
     setLineaForm({
+      lineaId:    linea?.id ?? null,
       perfilId:   linea?.perfilConsultorId ?? null,
       horas:      linea?.horas ?? null,
       empleadoId: linea?.empleadoId ?? null,
@@ -356,6 +431,7 @@ export default function ProyectoDetallePage({ params }) {
     setSavingLinea(true)
     try {
       await axios.post(`/api/v1/proyectos/${id}/caso-negocio`, {
+        lineaId:    lineaForm.lineaId || null,
         perfilId:   lineaForm.perfilId,
         horas:      lineaForm.horas,
         empleadoId: lineaForm.empleadoId || null,
@@ -371,7 +447,7 @@ export default function ProyectoDetallePage({ params }) {
     }
   }
 
-  const handleDeleteLinea = (perfilConsultorId) => {
+  const handleDeleteLinea = (lineaId) => {
     confirmDialog({
       message: '¿Eliminar esta línea del caso de negocio?',
       header: 'Confirmar eliminación',
@@ -381,7 +457,7 @@ export default function ProyectoDetallePage({ params }) {
       acceptClassName: 'p-button-danger',
       accept: async () => {
         try {
-          await axios.delete(`/api/v1/proyectos/${id}/caso-negocio?perfilId=${perfilConsultorId}`)
+          await axios.delete(`/api/v1/proyectos/${id}/caso-negocio?lineaId=${lineaId}`)
           toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Línea eliminada', life: 3000 })
           loadCasoNegocio()
         } catch (err) {
@@ -481,23 +557,34 @@ export default function ProyectoDetallePage({ params }) {
       </div>
 
       {/* ── KPI Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '10px', marginBottom: '14px' }}>
-        {[
+      {(() => {
+        const esMensual = !!proyecto.valorMensual
+        const cols = esMensual ? 'repeat(7,1fr)' : 'repeat(5,1fr)'
+        const cards = [
           { icon: '🏢', bg: '#EFF6FF', label: 'Empresa', value: proyecto.empresa?.nombre || '—', valueColor: '#1e293b' },
           { icon: '📅', bg: '#F1F5F9', label: 'Fecha inicio', value: formatDate(proyecto.fechaCreacion), valueColor: '#1e293b' },
           { icon: '🏁', bg: '#FFF7ED', label: 'Fecha de cierre', value: formatDate(proyecto.fechaCierre) || 'Sin definir', valueColor: proyecto.fechaCierre ? '#1e293b' : '#94a3b8' },
           { icon: '🖥️', bg: '#F5F3FF', label: 'Aplicativo', value: proyecto.aplicativo || '—', valueColor: '#1e293b' },
-          { icon: '💰', bg: '#F0FDF4', label: 'Valor contrato', value: formatCurrency(proyecto.valor, moneda), valueColor: '#15803D' },
-        ].map((k) => (
-          <div key={k.label} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 1px 2px rgba(0,0,0,.04)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: k.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>{k.icon}</div>
-            <div>
-              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '3px' }}>{k.label}</div>
-              <div style={{ fontSize: '14.5px', fontWeight: 700, color: k.valueColor }}>{k.value}</div>
-            </div>
+          ...(esMensual ? [
+            { icon: '📅', bg: '#EFF6FF', label: 'Valor mensual', value: formatCurrency(proyecto.valorMensual, moneda), valueColor: '#2563eb' },
+            { icon: '🔢', bg: '#F0F9FF', label: 'Meses', value: `${proyecto.mesesContrato} meses`, valueColor: '#0369a1' },
+          ] : []),
+          { icon: '💰', bg: '#F0FDF4', label: esMensual ? 'Valor total' : 'Valor contrato', value: formatCurrency(proyecto.valor, moneda), valueColor: '#15803D' },
+        ]
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: cols, gap: '10px', marginBottom: '14px' }}>
+            {cards.map((k) => (
+              <div key={k.label} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 1px 2px rgba(0,0,0,.04)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: k.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>{k.icon}</div>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#94a3b8', marginBottom: '3px' }}>{k.label}</div>
+                  <div style={{ fontSize: '14.5px', fontWeight: 700, color: k.valueColor }}>{k.value}</div>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        )
+      })()}
 
       {/* ── Pipeline de estado ── */}
       <Card className="mb-3">
@@ -681,6 +768,39 @@ export default function ProyectoDetallePage({ params }) {
           <div style={{ height: '8px', background: '#f1f3f4', borderRadius: '20px', overflow: 'hidden' }}>
             <div style={{ width: `${resumen.pctFacturado}%`, height: '100%', borderRadius: '20px', background: 'linear-gradient(90deg,#1D4ED8,#4F8EF7)' }} />
           </div>
+
+          {/* Cierre financiero — solo aplica una vez que hay algo facturado */}
+          <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #e2e8f0' }}>
+            {(() => {
+              if (proyecto.fechaCierreFinanciero) {
+                // Modificar/reabrir un cierre financiero YA asignado siempre requiere
+                // el permiso especial, sin importar el saldo (es una correccion).
+                const puedeReabrir = puede(PERMISOS.PROYECTOS.CERRAR_FINANCIERO)
+                return (
+                  <div className="flex align-items-center justify-content-between flex-wrap gap-2">
+                    <Tag severity="success" value={`✅ Cerrado financieramente · ${formatDate(proyecto.fechaCierreFinanciero)}`} />
+                    {puedeReabrir && (
+                      <Button label="Reabrir" icon="pi pi-lock-open" size="small" text severity="secondary"
+                        loading={savingCierreFinanciero} onClick={handleReabrirFinanciero} />
+                    )}
+                  </div>
+                )
+              }
+              // Un proyecto recien creado tiene facturado=0 y saldo=0 "por defecto":
+              // no debe ofrecerse el cierre financiero hasta que exista al menos una factura.
+              if (resumen.facturado <= 0.001) return null
+              // Primer cierre: alcanza con editar si ya esta pagado, o requiere el
+              // permiso especial si se quiere forzar con saldo pendiente.
+              const puedeCerrar = resumen.saldo > 0.001
+                ? puede(PERMISOS.PROYECTOS.CERRAR_FINANCIERO)
+                : puede(PERMISOS.PROYECTOS.EDITAR)
+              return puedeCerrar && (
+                <Button label="Cerrar financieramente" icon="pi pi-lock" size="small" outlined
+                  severity={resumen.saldo > 0.001 ? 'warning' : 'success'}
+                  loading={savingCierreFinanciero} onClick={handleCerrarFinanciero} />
+              )
+            })()}
+          </div>
         </Card>
       </div>
 
@@ -756,7 +876,7 @@ export default function ProyectoDetallePage({ params }) {
                   const lineaMargenPct = l.precio > 0 ? Math.round(((l.precio - l.costo) / l.precio) * 100) : 0
                   const mc = lineaMargenPct >= 40 ? { bg: '#DCFCE7', color: '#15803D' } : lineaMargenPct >= 20 ? { bg: '#FEFCE8', color: '#854D0E' } : { bg: '#FEF2F2', color: '#B91C1C' }
                   return (
-                  <div key={l.perfilConsultorId}
+                  <div key={l.id}
                     style={{ display: 'grid', gridTemplateColumns: '2.4fr 0.7fr 1fr 1fr 1.1fr 1.1fr 1fr 80px', gap: '0', borderTop: '1px solid var(--surface-border)', padding: '10px 12px', alignItems: 'center', background: idx % 2 === 1 ? 'var(--surface-50)' : '#fff' }}
                   >
                     <div>
@@ -780,7 +900,7 @@ export default function ProyectoDetallePage({ params }) {
                       {puede(PERMISOS.CASOS_NEGOCIO.EDITAR) && (
                         <div className="flex gap-1 justify-content-end">
                           <Button icon="pi pi-pencil" rounded text severity="info" size="small" onClick={() => openAddLinea(l)} tooltip="Editar" tooltipOptions={{ position: 'top' }} />
-                          <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => handleDeleteLinea(l.perfilConsultorId)} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} />
+                          <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => handleDeleteLinea(l.id)} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} />
                         </div>
                       )}
                     </div>
@@ -810,7 +930,7 @@ export default function ProyectoDetallePage({ params }) {
         <div className="flex justify-content-between align-items-center mb-3">
           <div>
             <h3 className="m-0 font-semibold"><i className="pi pi-bell mr-2" />Recordatorios de Facturación</h3>
-            <p className="text-color-secondary text-xs mt-1 mb-0">Alertas automáticas por email en un día fijo cada mes</p>
+            <p className="text-color-secondary text-xs mt-1 mb-0">Alertas automáticas por email, mensuales o anuales</p>
           </div>
           {puede(PERMISOS.RECORDATORIOS.CREAR) && (
             <Button label="Nuevo Recordatorio" icon="pi pi-plus" size="small" severity="warning" outlined
@@ -823,7 +943,14 @@ export default function ProyectoDetallePage({ params }) {
           <p className="text-color-secondary text-sm m-0">No hay recordatorios configurados para este proyecto.</p>
         ) : (
           <DataTable value={recordatorios} size="small" stripedRows emptyMessage="Sin recordatorios">
-            <Column header="Día" body={(r) => <span className="font-bold text-primary">Día {r.diaMes}</span>} style={{ width: '80px' }} />
+            <Column header="Día" body={(r) => (
+              <span className="font-bold text-primary">
+                Día {r.diaMes}{r.frecuencia === 'anual' ? ` ${MESES_ABREV[r.mes - 1]}` : ''}
+              </span>
+            )} style={{ width: '95px' }} />
+            <Column header="Frecuencia" body={(r) => (
+              <Tag value={r.frecuencia === 'anual' ? '🗓️ Anual' : '📅 Mensual'} severity={r.frecuencia === 'anual' ? 'info' : 'secondary'} />
+            )} style={{ width: '100px' }} />
             <Column field="descripcion" header="Descripción" />
             <Column header="Destinatarios" body={(r) => (
               <span className="text-sm text-color-secondary" title={r.destinatarios}>
@@ -914,7 +1041,7 @@ export default function ProyectoDetallePage({ params }) {
             <p className="text-color-secondary text-xs mt-1 mb-0">Bitácora inmutable del proyecto</p>
           </div>
           {puede(PERMISOS.OBSERVACIONES.CREAR) && (
-            <Button label="Nueva observación" icon="pi pi-plus" size="small" onClick={() => setObsDialogVisible(true)} />
+            <Button label="Nueva observación" icon="pi pi-plus" size="small" onClick={abrirNuevaObservacion} />
           )}
         </div>
         {loadingObs ? (
@@ -922,14 +1049,45 @@ export default function ProyectoDetallePage({ params }) {
         ) : observaciones.length === 0 ? (
           <p className="text-color-secondary text-sm m-0">No hay observaciones registradas.</p>
         ) : (
-          <div className="flex flex-column gap-2">
-            {observaciones.map((obs) => (
-              <div key={obs.id} className="surface-50 border-round p-3 border-left-3" style={{ borderColor: 'var(--primary-color)' }}>
-                <div className="flex justify-content-between align-items-center mb-1">
-                  <span className="font-semibold text-sm"><i className="pi pi-user mr-1" />{obs.user?.name}</span>
-                  <span className="text-color-secondary text-xs">{new Date(obs.createdAt).toLocaleString('es-EC')}</span>
+          <div className="flex flex-column gap-3">
+            {hilosObservaciones.map(({ raiz, respuestas }) => (
+              <div key={raiz.id} className="border-round overflow-hidden" style={{ border: '1px solid var(--surface-border)' }}>
+                {/* Comentario original */}
+                <div className="p-3 border-left-3" style={{ background: 'var(--surface-50)', borderColor: 'var(--primary-color)' }}>
+                  <div className="flex justify-content-between align-items-center mb-1">
+                    <span className="font-semibold text-sm"><i className="pi pi-user mr-1" />{raiz.user?.name}</span>
+                    <span className="text-color-secondary text-xs">
+                      {new Date(raiz.createdAt).toLocaleString('es-EC')}
+                      <span className="ml-2" style={{ opacity: 0.4 }}>#{raiz.id}</span>
+                    </span>
+                  </div>
+                  <p className="m-0 text-sm" style={{ whiteSpace: 'pre-wrap' }}>{raiz.descripcion}</p>
                 </div>
-                <p className="m-0 text-sm" style={{ whiteSpace: 'pre-wrap' }}>{obs.descripcion}</p>
+
+                {/* Respuestas — misma burbuja, tinte distinto para diferenciarlas */}
+                {respuestas.map((r) => (
+                  <div key={r.id} className="p-3 border-left-3"
+                    style={{ background: '#EFF6FF', borderColor: '#2E75B6', borderTop: '1px solid var(--surface-border)' }}>
+                    <div className="flex justify-content-between align-items-center mb-1">
+                      <span className="font-semibold text-sm" style={{ color: '#1D4ED8' }}>
+                        <i className="pi pi-reply mr-1" />{r.user?.name}
+                      </span>
+                      <span className="text-color-secondary text-xs">
+                        {new Date(r.createdAt).toLocaleString('es-EC')}
+                        <span className="ml-2" style={{ opacity: 0.4 }}>#{r.id}</span>
+                      </span>
+                    </div>
+                    <p className="m-0 text-sm" style={{ whiteSpace: 'pre-wrap' }}>{r.descripcion}</p>
+                  </div>
+                ))}
+
+                {/* Responder — siempre apunta al comentario raíz (un solo nivel) */}
+                {puede(PERMISOS.OBSERVACIONES.CREAR) && (
+                  <div className="px-3 py-2" style={{ borderTop: '1px solid var(--surface-border)' }}>
+                    <Button label="Responder" icon="pi pi-reply" text size="small" className="p-0"
+                      onClick={() => abrirResponderObservacion(raiz)} />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -983,10 +1141,17 @@ export default function ProyectoDetallePage({ params }) {
       )}
 
       {/* ── Dialogs ── */}
-      <FacturaFormDialog visible={facturaDialogVisible} onHide={() => setFacturaDialogVisible(false)} onSave={handleSaveFactura} factura={selectedFactura} proyectoId={id} />
+      <FacturaFormDialog visible={facturaDialogVisible} onHide={() => setFacturaDialogVisible(false)} onSave={handleSaveFactura} factura={selectedFactura} proyectoId={id}
+        valorDefault={proyecto?.valorMensual ? Number(proyecto.valorMensual) : Number(proyecto?.valor ?? 0)} />
       <PagoFormDialog visible={pagoDialogVisible} onHide={() => setPagoDialogVisible(false)} onSave={handleSavePago} pago={selectedPago} factura={facturaParaPago} />
-      <ObservacionFormDialog visible={obsDialogVisible} onHide={() => setObsDialogVisible(false)} onSave={handleSaveObservacion} proyectoId={id} />
-      <ProyectoFormDialog visible={editDialogVisible} onHide={() => setEditDialogVisible(false)} onSave={handleSaveProyecto} proyecto={proyecto} empresas={empresas} estados={estados} usuarios={usuarios} />
+      <ObservacionFormDialog
+        visible={obsDialogVisible}
+        onHide={() => { setObsDialogVisible(false); setRespuestaAObservacion(null) }}
+        onSave={handleSaveObservacion}
+        proyectoId={id}
+        respuestaA={respuestaAObservacion}
+      />
+      <ProyectoFormDialog visible={editDialogVisible} onHide={() => setEditDialogVisible(false)} onSave={handleSaveProyecto} proyecto={proyecto} empresas={empresas} estados={estados} empleados={empleadosOpciones} />
       <RecordatorioFormDialog visible={recDialogVisible} onHide={() => setRecDialogVisible(false)} onSave={handleSaveRecordatorio} recordatorio={selectedRecordatorio} proyectoId={id} />
 
       {/* Dialog: agregar/editar línea de caso de negocio */}

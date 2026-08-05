@@ -34,7 +34,7 @@ export default function PagoFormDialog({ visible, onHide, onSave, pago, factura 
           observacion: pago.observacion || '',
         })
       } else {
-        setForm(emptyForm)
+        setForm({ valor: saldoDisponible, fecha: null, observacion: '' })
       }
       setErrors({})
     }

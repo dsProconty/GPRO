@@ -10,7 +10,7 @@ const PROYECTO_INCLUDE = {
   estado: { select: { id: true, nombre: true, color: true } },
   clientes: { include: { cliente: { select: { id: true, nombre: true, apellido: true } } } },
   responsables: { include: { empleado: { select: { id: true, nombre: true, apellido: true } } } },
-  facturas: { select: { valor: true, pagos: { select: { valor: true } } } },
+  facturas: { select: { numFactura: true, valor: true, pagos: { select: { valor: true } } } },
 }
 
 function calcularCampos(proyecto) {
@@ -19,7 +19,7 @@ function calcularCampos(proyecto) {
     (sum, f) => sum + f.pagos.reduce((s, p) => s + Number(p.valor), 0),
     0
   )
-  const saldo = facturado - pagado
+  const saldo = Number(proyecto.valor) - pagado
 
   const fin = proyecto.fechaCierre ? new Date(proyecto.fechaCierre) : new Date()
   const inicio = new Date(proyecto.fechaCreacion)

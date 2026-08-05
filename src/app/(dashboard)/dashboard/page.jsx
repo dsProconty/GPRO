@@ -11,11 +11,18 @@ import { formatCurrency, formatDate } from '@/utils/format'
 
 // ── Colores de estado ──────────────────────────────────────────────────────────
 const ESTADO_COLORS = {
-  Prefactibilidad:       '#f59e0b',
-  Elaboracion_Propuesta: '#3b82f6',
-  Adjudicado:            '#22c55e',
-  Rechazado:             '#ef4444',
-  Cerrado:               '#6b7280',
+  // Nombres reales en BD (migrados desde Neon)
+  'Ejecución':             '#3b82f6',
+  'Entregado':             '#f59e0b',
+  'Facturado':             '#8b5cf6',
+  'Cerrado':               '#6b7280',
+  // Nombres seed.js (por compatibilidad)
+  'En Ejecución':          '#3b82f6',
+  'Por Facturar':          '#f59e0b',
+  'Adjudicado':            '#22c55e',
+  'Rechazado':             '#ef4444',
+  'Prefactibilidad':       '#f59e0b',
+  'Elaboracion_Propuesta': '#3b82f6',
 }
 
 // ── Sparkline SVG ──────────────────────────────────────────────────────────────
@@ -235,13 +242,63 @@ export default function DashboardPage() {
   }
 
   const donutData = kpis?.porEstado?.length ? {
-    labels: kpis.porEstado.map((e) => e.nombre.replace('_', ' ')),
-    datasets: [{ data: kpis.porEstado.map((e) => e.total), backgroundColor: kpis.porEstado.map((e) => ESTADO_COLORS[e.nombre] || '#6b7280'), borderWidth: 3, borderColor: '#fff' }],
+    labels: kpis.porEstado.map((e) => {
+      const pct = kpis.totalProyectos > 0 ? Math.round((e.total / kpis.totalProyectos) * 100) : 0
+      return `${e.nombre.replace('_', ' ')}  ${e.total} (${pct}%)`
+    }),
+    datasets: [{
+      data: kpis.porEstado.map((e) => e.total),
+      backgroundColor: kpis.porEstado.map((e) => ESTADO_COLORS[e.nombre] || '#6b7280'),
+      borderWidth: 4,
+      borderColor: '#fff',
+      hoverBorderWidth: 4,
+      hoverOffset: 6,
+    }],
   } : null
 
   const donutOptions = {
-    responsive: true, maintainAspectRatio: false, cutout: '68%',
-    plugins: { legend: { position: 'right', labels: { usePointStyle: true, padding: 12, font: { size: 12 } } } },
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '72%',
+    animation: { animateRotate: true, duration: 700 },
+    plugins: {
+      legend: {
+        position: 'right',
+        labels: {
+          usePointStyle: true,
+          pointStyle: 'circle',
+          padding: 16,
+          font: { size: 12, weight: '500' },
+          color: '#374151',
+          generateLabels: (chart) => {
+            const data = chart.data
+            return data.labels.map((label, i) => ({
+              text: label,
+              fillStyle: data.datasets[0].backgroundColor[i],
+              strokeStyle: data.datasets[0].backgroundColor[i],
+              pointStyle: 'circle',
+              hidden: false,
+              index: i,
+            }))
+          },
+        },
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const total = ctx.dataset.data.reduce((a, b) => a + b, 0)
+            const pct = total > 0 ? Math.round((ctx.raw / total) * 100) : 0
+            return `  ${ctx.raw} proyectos (${pct}%)`
+          },
+          title: (items) => items[0].label.split('  ')[0],
+        },
+        backgroundColor: '#1e293b',
+        titleColor: '#f8fafc',
+        bodyColor: '#cbd5e1',
+        cornerRadius: 8,
+        padding: 10,
+      },
+    },
   }
 
   // ── Filtro alertas (sin cambios) ───────────────────────────────────────────
@@ -261,11 +318,16 @@ export default function DashboardPage() {
 
   // ── Estado labels ──────────────────────────────────────────────────────────
   const ESTADO_LABEL = {
-    Prefactibilidad:       'Prefactibilidad',
-    Elaboracion_Propuesta: 'Elab. Propuesta',
-    Adjudicado:            'Adjudicado',
-    Rechazado:             'Rechazado',
-    Cerrado:               'Cerrado',
+    'Ejecución':             'En Ejecución',
+    'Entregado':             'Entregado',
+    'Facturado':             'Facturado',
+    'Cerrado':               'Cerrado',
+    'En Ejecución':          'En Ejecución',
+    'Por Facturar':          'Por Facturar',
+    'Adjudicado':            'Adjudicado',
+    'Rechazado':             'Rechazado',
+    'Prefactibilidad':       'Prefactibilidad',
+    'Elaboracion_Propuesta': 'Elab. Propuesta',
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -355,7 +417,7 @@ export default function DashboardPage() {
         {/* Líneas */}
         <div style={card}>
           <div style={{ marginBottom: '14px' }}>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>Facturación vs Costos</h3>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>Facturación vs Cobrado</h3>
             <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94a3b8' }}>Últimos 12 meses</p>
           </div>
           {loadingKpis ? (
@@ -375,22 +437,45 @@ export default function DashboardPage() {
 
         {/* Donut */}
         <div style={card}>
-          <div style={{ marginBottom: '14px' }}>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>Proyectos por estado</h3>
+          <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>Proyectos por estado</h3>
+              <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94a3b8' }}>Distribución actual</p>
+            </div>
+            {kpis?.proyectosActivos > 0 && (
+              <span style={{ background: '#eff6ff', color: '#2563eb', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: 700 }}>
+                {kpis.proyectosActivos} activos
+              </span>
+            )}
           </div>
           {loadingKpis ? (
             <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <ProgressSpinner style={{ width: '32px', height: '32px' }} />
             </div>
           ) : donutData ? (
-            <div style={{ position: 'relative', height: '260px' }}>
-              <Chart type="doughnut" data={donutData} options={donutOptions} style={{ height: '100%' }} />
-              {kpis?.totalProyectos > 0 && (
-                <div style={{ position: 'absolute', top: '50%', left: '32%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none' }}>
-                  <div style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a' }}>{kpis.totalProyectos}</div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8' }}>Total</div>
-                </div>
-              )}
+            <div style={{ height: '260px' }}>
+              <Chart type="doughnut" data={donutData} options={donutOptions}
+                plugins={[{
+                  id: 'centerLabel',
+                  afterDraw(chart) {
+                    const { ctx, chartArea } = chart
+                    if (!chartArea || !kpis?.totalProyectos) return
+                    const cx = (chartArea.left + chartArea.right) / 2
+                    const cy = (chartArea.top + chartArea.bottom) / 2
+                    ctx.save()
+                    ctx.textAlign = 'center'
+                    ctx.textBaseline = 'middle'
+                    ctx.font = 'bold 28px system-ui, -apple-system, sans-serif'
+                    ctx.fillStyle = '#0f172a'
+                    ctx.fillText(String(kpis.totalProyectos), cx, cy - 9)
+                    ctx.font = '500 11px system-ui, -apple-system, sans-serif'
+                    ctx.fillStyle = '#94a3b8'
+                    ctx.fillText('TOTAL', cx, cy + 13)
+                    ctx.restore()
+                  }
+                }]}
+                style={{ height: '100%' }}
+              />
             </div>
           ) : (
             <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>
@@ -572,10 +657,10 @@ export default function DashboardPage() {
       {/* ─── ROW 5: KPIs SECUNDARIOS ─────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px' }}>
         {[
-          { icon: 'pi-sync',         color: '#8b5cf6', bg: '#f5f3ff', label: 'MRR (ingresos rec.)',  value: loadingKpis ? '—' : formatCurrency(mesActual?.facturado ?? 0), sub: `+${deltaFact !== null ? Math.abs(deltaFact).toFixed(1) : '—'}% vs mes ant.`, deltaUp: deltaFact > 0 },
-          { icon: 'pi-users',        color: '#0ea5e9', bg: '#f0f9ff', label: 'Clientes activos',     value: loadingKpis ? '—' : String(kpis?.topClientes?.length ?? '—'), sub: 'con facturación' },
-          { icon: 'pi-briefcase',    color: '#10b981', bg: '#f0fdf4', label: 'Proyectos activos',    value: loadingKpis ? '—' : String(kpis?.proyectosActivos ?? '—'),     sub: '+ 1 vs mes anterior' },
-          { icon: 'pi-check-square', color: '#f59e0b', bg: '#fffbeb', label: 'Proyectos finalizados',value: loadingKpis ? '—' : String(kpis?.porEstado?.find((e) => e.nombre === 'Cerrado')?.total ?? 0), sub: '+ 2 vs mes anterior' },
+          { icon: 'pi-sync',         color: '#8b5cf6', bg: '#f5f3ff', label: 'MRR (ingresos rec.)',  value: loadingKpis ? '—' : formatCurrency(mesActual?.facturado ?? 0), sub: `${deltaFact !== null ? (deltaFact > 0 ? '▲ ' : '▼ ') + Math.abs(deltaFact).toFixed(1) + '% vs mes ant.' : 'Sin datos ant.'}`, deltaUp: deltaFact > 0 },
+          { icon: 'pi-users',        color: '#0ea5e9', bg: '#f0f9ff', label: 'Clientes activos',     value: loadingKpis ? '—' : String(kpis?.totalEmpresasActivas ?? '—'), sub: 'con facturación' },
+          { icon: 'pi-alert-circle', color: '#ef4444', bg: '#fef2f2', label: 'Proyectos con mora',   value: loadingAlertas ? '—' : String(new Set(alertas.map((a) => a.proyecto?.id)).size), sub: 'con facturas > 30 días' },
+          { icon: 'pi-check-square', color: '#f59e0b', bg: '#fffbeb', label: 'Proyectos finalizados',value: loadingKpis ? '—' : String(kpis?.porEstado?.find((e) => e.nombre === 'Cerrado')?.total ?? 0), sub: 'total cerrados' },
         ].map((c) => (
           <div key={c.label}
             style={{ ...card, display: 'flex', alignItems: 'center', gap: '14px' }}

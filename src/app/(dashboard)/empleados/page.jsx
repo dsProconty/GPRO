@@ -46,12 +46,13 @@ export default function EmpleadosPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [empRes, perRes] = await Promise.all([
+      const [empRes, perRes] = await Promise.allSettled([
         empleadoService.getAll(),
         axios.get('/api/v1/perfiles-consultor'),
       ])
-      setEmpleados(empRes.data || [])
-      setPerfiles(perRes.data.data || [])
+      if (empRes.status === 'rejected') throw empRes.reason
+      setEmpleados(empRes.value.data || [])
+      if (perRes.status === 'fulfilled') setPerfiles(perRes.value.data.data || [])
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los empleados' })
     } finally {

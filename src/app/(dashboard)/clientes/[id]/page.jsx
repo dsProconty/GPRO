@@ -40,15 +40,16 @@ export default function ClienteDetallePage({ params }) {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [clienteRes, contactosRes, tarifRes] = await Promise.all([
+      const [clienteRes, contactosRes, tarifRes] = await Promise.allSettled([
         empresaService.getById(id),
         clienteService.getAll({ empresa_id: id }),
         tarifarioService.getAll({ activo: true }),
       ])
-      setCliente(clienteRes.data)
-      setContactos(contactosRes.data)
-      setTarifarios(tarifRes.data.data || [])
-      setTarifarioSeleccionado(clienteRes.data?.tarifarioId || null)
+      if (clienteRes.status === 'rejected') throw clienteRes.reason
+      setCliente(clienteRes.value.data)
+      setTarifarioSeleccionado(clienteRes.value.data?.tarifarioId || null)
+      if (contactosRes.status === 'fulfilled') setContactos(contactosRes.value.data)
+      if (tarifRes.status === 'fulfilled') setTarifarios(tarifRes.value.data.data || [])
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar el cliente', life: 4000 })
     } finally {

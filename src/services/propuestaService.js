@@ -37,8 +37,8 @@ export const propuestaService = {
     const response = await axios.post(`/api/v1/propuestas/${id}/caso-negocio`, data)
     return response.data
   },
-  async deleteLineaCaso(id, perfilId) {
-    const response = await axios.delete(`/api/v1/propuestas/${id}/caso-negocio?perfilId=${perfilId}`)
+  async deleteLineaCaso(id, lineaId) {
+    const response = await axios.delete(`/api/v1/propuestas/${id}/caso-negocio?lineaId=${lineaId}`)
     return response.data
   },
   async cargarTarifario(id) {

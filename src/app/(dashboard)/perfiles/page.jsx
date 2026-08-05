@@ -38,6 +38,7 @@ const MODULOS = [
     especiales: [
       { key: 'cambiarEstado', label: 'Cambiar Estado' },
       { key: 'pdf', label: 'Descargar PDF' },
+      { key: 'cerrarFinanciero', label: 'Cerrar financiero con saldo pendiente' },
     ],
   },
   {
@@ -107,6 +108,37 @@ const MODULOS = [
   {
     key: 'recordatorios',
     label: 'Recordatorios',
+    acciones: [
+      { key: 'ver', label: 'Ver' },
+      { key: 'crear', label: 'Crear' },
+      { key: 'editar', label: 'Editar' },
+      { key: 'eliminar', label: 'Eliminar' },
+    ],
+    especiales: [],
+  },
+  {
+    key: 'casosNegocio',
+    label: 'Casos de Negocio',
+    acciones: [
+      { key: 'ver', label: 'Ver' },
+      { key: 'editar', label: 'Editar' },
+    ],
+    especiales: [],
+  },
+  {
+    key: 'empleados',
+    label: 'Empleados',
+    acciones: [
+      { key: 'ver', label: 'Ver' },
+      { key: 'crear', label: 'Crear' },
+      { key: 'editar', label: 'Editar' },
+      { key: 'eliminar', label: 'Eliminar' },
+    ],
+    especiales: [],
+  },
+  {
+    key: 'tarifarios',
+    label: 'Tarifarios',
     acciones: [
       { key: 'ver', label: 'Ver' },
       { key: 'crear', label: 'Crear' },

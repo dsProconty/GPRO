@@ -8,14 +8,27 @@ import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
 import { Button } from 'primereact/button'
 import { InputText } from '@/components/shared/InputText'
+import { InputText as PrInputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
+import { Calendar } from 'primereact/calendar'
+import { InputNumber } from 'primereact/inputnumber'
 import { Tag } from 'primereact/tag'
 import { Dialog } from 'primereact/dialog'
 import { Toast } from 'primereact/toast'
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { ProgressSpinner } from 'primereact/progressspinner'
 import { configuracionService, SEVERITY_COLORS } from '@/services/configuracionService'
+import { formatDate, formatCurrency } from '@/utils/format'
 import axios from 'axios'
+
+const FUENTE_CONFIG = {
+  estado_log:      { label: 'Historial de estado', severity: 'success' },
+  fecha_cierre:     { label: 'Fecha cierre operativo', severity: 'info' },
+  manual:           { label: 'Fecha manual', severity: 'success' },
+  saldo_pendiente:  { label: 'Saldo pendiente — omitido', severity: 'warning' },
+  sin_facturas:     { label: 'Sin facturas — omitido', severity: 'secondary' },
+  sin_dato:         { label: 'Sin dato confiable — omitido', severity: 'danger' },
+}
 
 const MONEDA_OPTIONS = [
   { label: 'USD — Dólar estadounidense',  value: 'USD' },
@@ -96,11 +109,11 @@ function EstadoProyectoDialog({ visible, onHide, onSave, estado }) {
         {error && <div className="p-2 border-round text-red-600 text-sm surface-100">{error}</div>}
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Nombre <span className="text-red-500">*</span></label>
-          <InputText value={form.nombre} onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))} placeholder="Ej: En Ejecución" />
+          <PrInputText value={form.nombre} onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))} placeholder="Ej: En Ejecución" className="w-full" />
         </div>
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Descripción</label>
-          <InputText value={form.descripcion} onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))} placeholder="Descripción opcional" />
+          <PrInputText value={form.descripcion} onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))} placeholder="Descripción opcional" className="w-full" />
         </div>
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Color / Severidad</label>
@@ -157,7 +170,7 @@ function EstadoPropuestaDialog({ visible, onHide, onSave, estadoLabel }) {
         </div>
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Nombre visible <span className="text-red-500">*</span></label>
-          <InputText value={form.label} onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))} placeholder="Ej: Generando Propuesta" />
+          <PrInputText value={form.label} onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))} placeholder="Ej: Generando Propuesta" className="w-full" />
         </div>
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Color / Severidad</label>
@@ -198,6 +211,16 @@ export default function ConfiguracionPage() {
   // Dialogs
   const [epDialog, setEpDialog] = useState({ visible: false, estado: null })       // estado proyecto
   const [elDialog, setElDialog] = useState({ visible: false, estadoLabel: null })  // label propuesta
+
+  const [backfillDialog, setBackfillDialog] = useState({ visible: false, resultados: [], mensaje: '' })
+  const [backfillLoading, setBackfillLoading] = useState(false)
+  const [backfillAplicando, setBackfillAplicando] = useState(false)
+  const [manualDates, setManualDates] = useState({}) // { [proyectoId]: Date }
+
+  const [eliminarObsId, setEliminarObsId] = useState(null)
+  const [eliminarObsPreview, setEliminarObsPreview] = useState(null)
+  const [eliminarObsLoading, setEliminarObsLoading] = useState(false)
+  const [eliminarObsAplicando, setEliminarObsAplicando] = useState(false)
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -241,6 +264,87 @@ export default function ConfiguracionPage() {
     setElDialog({ visible: false, estadoLabel: null })
     toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Nombre de estado actualizado', life: 3000 })
     loadAll()
+  }
+
+  const handlePreviewCierreFinanciero = async () => {
+    setBackfillLoading(true)
+    try {
+      const res = await axios.post('/api/v1/admin/backfill-cierre-financiero', { aplicar: false })
+      setManualDates({})
+      setBackfillDialog({ visible: true, resultados: res.data.data, mensaje: res.data.message })
+    } catch (e) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 6000 })
+    } finally {
+      setBackfillLoading(false)
+    }
+  }
+
+  const handleAplicarCierreFinanciero = () => {
+    const overrideEntries = Object.entries(manualDates).filter(([, d]) => d)
+    const aplicables = backfillDialog.resultados.filter(
+      (r) => r.fechaTentativa || manualDates[r.id]
+    ).length
+    confirmDialog({
+      message: `Se asignará fecha de cierre financiero a ${aplicables} proyecto(s)${overrideEntries.length > 0 ? ` (${overrideEntries.length} con fecha ingresada manualmente)` : ''}. Esta acción escribe directamente en la base de datos. ¿Confirmas?`,
+      header: 'Aplicar cierre financiero retroactivo',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Sí, aplicar',
+      rejectLabel: 'Cancelar',
+      accept: async () => {
+        setBackfillAplicando(true)
+        try {
+          const overrides = Object.fromEntries(
+            overrideEntries.map(([id, d]) => [id, d.toISOString().slice(0, 10)])
+          )
+          const res = await axios.post('/api/v1/admin/backfill-cierre-financiero', { aplicar: true, overrides })
+          setBackfillDialog({ visible: true, resultados: res.data.data, mensaje: res.data.message })
+          setManualDates({})
+          toast.current.show({ severity: 'success', summary: 'Aplicado', detail: res.data.message, life: 6000 })
+        } catch (e) {
+          toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 6000 })
+        } finally {
+          setBackfillAplicando(false)
+        }
+      },
+    })
+  }
+
+  const handleBuscarObservacion = async () => {
+    if (!eliminarObsId) return
+    setEliminarObsLoading(true)
+    setEliminarObsPreview(null)
+    try {
+      const res = await axios.post('/api/v1/admin/eliminar-observacion', { id: eliminarObsId, aplicar: false })
+      setEliminarObsPreview(res.data.data)
+    } catch (e) {
+      toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 6000 })
+    } finally {
+      setEliminarObsLoading(false)
+    }
+  }
+
+  const handleEliminarObservacion = () => {
+    confirmDialog({
+      message: `¿Eliminar definitivamente la observación #${eliminarObsPreview.id} de "${eliminarObsPreview.autor}"? Esta acción no se puede deshacer.`,
+      header: 'Eliminar observación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Sí, eliminar',
+      rejectLabel: 'Cancelar',
+      acceptClassName: 'p-button-danger',
+      accept: async () => {
+        setEliminarObsAplicando(true)
+        try {
+          const res = await axios.post('/api/v1/admin/eliminar-observacion', { id: eliminarObsId, aplicar: true })
+          toast.current.show({ severity: 'success', summary: 'Eliminada', detail: res.data.message, life: 4000 })
+          setEliminarObsPreview(null)
+          setEliminarObsId(null)
+        } catch (e) {
+          toast.current.show({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || e.message, life: 6000 })
+        } finally {
+          setEliminarObsAplicando(false)
+        }
+      },
+    })
   }
 
   const handleSaveEmpresa = async () => {
@@ -558,6 +662,59 @@ export default function ConfiguracionPage() {
               }}
             />
           </div>
+          <div className="flex align-items-center justify-content-between p-3 surface-100 border-round">
+            <div>
+              <p className="m-0 font-semibold text-sm">5. Backfill de cierre financiero (proyectos cerrados)</p>
+              <p className="m-0 text-color-secondary text-xs mt-1">Calcula una fecha tentativa de cierre financiero para proyectos ya Cerrados, usando el historial de cambios de estado o la fecha de cierre operativo. Solo vista previa hasta que confirmes aplicar</p>
+            </div>
+            <Button
+              label="Vista previa"
+              icon="pi pi-search"
+              severity="secondary"
+              size="small"
+              loading={backfillLoading}
+              onClick={handlePreviewCierreFinanciero}
+            />
+          </div>
+          <div className="p-3 surface-100 border-round">
+            <p className="m-0 font-semibold text-sm mb-1">6. Eliminar observación por error</p>
+            <p className="m-0 text-color-secondary text-xs mb-2">
+              Corrige un comentario duplicado o mal registrado. El ID aparece atenuado junto a la fecha de cada observación en el detalle del proyecto (ej. #123)
+            </p>
+            <div className="flex flex-column gap-1" style={{ maxWidth: '320px' }}>
+              <label className="text-xs font-medium">ID de la observación</label>
+              <div className="flex gap-2">
+                <InputNumber value={eliminarObsId} onValueChange={(e) => { setEliminarObsId(e.value); setEliminarObsPreview(null) }}
+                  placeholder="Ej: 123" useGrouping={false} className="flex-1" />
+                <Button label="Buscar" icon="pi pi-search" severity="secondary" size="small" outlined
+                  loading={eliminarObsLoading} disabled={!eliminarObsId} onClick={handleBuscarObservacion} />
+              </div>
+            </div>
+
+            {eliminarObsPreview && (
+              <div className="mt-3 p-3 surface-0 border-round" style={{ border: '1px solid var(--surface-border)' }}>
+                <div className="flex justify-content-between align-items-center mb-2">
+                  <span className="text-sm font-semibold">{eliminarObsPreview.autor} · {eliminarObsPreview.proyecto}</span>
+                  <span className="text-xs text-color-secondary">{formatDate(eliminarObsPreview.createdAt)}</span>
+                </div>
+                <p className="text-sm m-0 mb-2" style={{ whiteSpace: 'pre-wrap' }}>{eliminarObsPreview.descripcion}</p>
+                {eliminarObsPreview.respondeA && (
+                  <p className="text-xs text-color-secondary m-0 mb-2">
+                    <i className="pi pi-reply mr-1" />En respuesta a {eliminarObsPreview.respondeA.autor}
+                  </p>
+                )}
+                {eliminarObsPreview.tieneRespuestas ? (
+                  <p className="text-orange-600 text-xs m-0">
+                    <i className="pi pi-exclamation-triangle mr-1" />
+                    Tiene {eliminarObsPreview.cantidadRespuestas} respuesta(s) encadenada(s) — no se puede eliminar.
+                  </p>
+                ) : (
+                  <Button label="Eliminar definitivamente" icon="pi pi-trash" severity="danger" size="small"
+                    loading={eliminarObsAplicando} onClick={handleEliminarObservacion} />
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 
@@ -574,6 +731,79 @@ export default function ConfiguracionPage() {
         onSave={handleSaveEstadoPropuesta}
         estadoLabel={elDialog.estadoLabel}
       />
+      <Dialog
+        header="Vista previa — Cierre financiero retroactivo"
+        visible={backfillDialog.visible}
+        onHide={() => setBackfillDialog({ visible: false, resultados: [], mensaje: '' })}
+        style={{ width: '900px', maxWidth: '95vw' }}
+        modal
+        footer={
+          <div className="flex justify-content-end gap-2">
+            <Button label="Cerrar" severity="secondary" outlined onClick={() => setBackfillDialog({ visible: false, resultados: [], mensaje: '' })} />
+            <Button
+              label="Aplicar cambios"
+              icon="pi pi-check"
+              severity="danger"
+              loading={backfillAplicando}
+              disabled={!backfillDialog.resultados.some((r) => (r.fechaTentativa || manualDates[r.id]) && !r.aplicado)}
+              onClick={handleAplicarCierreFinanciero}
+            />
+          </div>
+        }
+      >
+        <p className="text-color-secondary text-sm mb-3">{backfillDialog.mensaje}</p>
+        <DataTable value={backfillDialog.resultados} dataKey="id" size="small" stripedRows scrollable style={{ maxHeight: '55vh' }} filterDisplay="menu">
+          <Column field="codigo" header="Código" body={(r) => r.codigo || '—'} sortable filter filterPlaceholder="Buscar código..." style={{ width: '110px', fontFamily: 'monospace', fontSize: '0.8rem' }} />
+          <Column field="detalle" header="Proyecto" sortable filter filterPlaceholder="Buscar proyecto..." />
+          <Column field="facturado" header="Facturado" body={(r) => formatCurrency(r.facturado)} sortable dataType="numeric" style={{ textAlign: 'right' }} />
+          <Column field="saldo" header="Saldo" body={(r) => formatCurrency(r.saldo)} sortable dataType="numeric" style={{ textAlign: 'right' }} />
+          <Column
+            field="fuente"
+            header="Fuente"
+            body={(r) => (
+              <Tag value={FUENTE_CONFIG[r.fuente]?.label || r.fuente} severity={FUENTE_CONFIG[r.fuente]?.severity || 'secondary'} />
+            )}
+            sortable
+            filter
+            filterElement={(options) => (
+              <Dropdown
+                value={options.value}
+                options={Object.entries(FUENTE_CONFIG).map(([key, cfg]) => ({ label: cfg.label, value: key }))}
+                onChange={(e) => options.filterApplyCallback(e.value)}
+                placeholder="Todas"
+                showClear
+                style={{ minWidth: '200px' }}
+              />
+            )}
+          />
+          <Column
+            field="fechaTentativa"
+            header="Fecha tentativa"
+            sortable
+            style={{ width: '160px' }}
+            body={(r) => {
+              if (r.aplicado) return formatDate(r.fechaTentativa)
+              if (r.fuente === 'sin_facturas' || r.fuente === 'saldo_pendiente') return '—'
+              const valorActual = manualDates[r.id] !== undefined
+                ? manualDates[r.id]
+                : (r.fechaTentativa ? new Date(r.fechaTentativa) : null)
+              return (
+                <Calendar
+                  value={valorActual}
+                  onChange={(e) => setManualDates((prev) => ({ ...prev, [r.id]: e.value || null }))}
+                  dateFormat="dd/mm/yy"
+                  placeholder="Elegir fecha"
+                  showIcon
+                  readOnlyInput
+                  style={{ width: '140px' }}
+                  inputStyle={{ fontSize: '0.8rem', padding: '4px 6px' }}
+                />
+              )
+            }}
+          />
+          <Column field="aplicado" header="Estado" body={(r) => r.aplicado ? <Tag value="✅ Aplicado" severity="success" /> : ''} sortable style={{ width: '110px' }} />
+        </DataTable>
+      </Dialog>
     </div>
   )
 }

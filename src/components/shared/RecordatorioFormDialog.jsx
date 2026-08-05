@@ -7,14 +7,28 @@ import { InputText } from '@/components/shared/InputText'
 import { InputNumber } from 'primereact/inputnumber'
 import { InputTextarea } from '@/components/shared/InputTextarea'
 import { InputSwitch } from 'primereact/inputswitch'
+import { SelectButton } from 'primereact/selectbutton'
+import { Dropdown } from 'primereact/dropdown'
 import { Toast } from 'primereact/toast'
 import { recordatorioService } from '@/services/recordatorioService'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+const FRECUENCIA_OPTIONS = [
+  { label: '📅 Mensual', value: 'mensual' },
+  { label: '🗓️ Anual', value: 'anual' },
+]
+
+const MES_OPTIONS = [
+  { label: 'Enero', value: 1 }, { label: 'Febrero', value: 2 }, { label: 'Marzo', value: 3 },
+  { label: 'Abril', value: 4 }, { label: 'Mayo', value: 5 }, { label: 'Junio', value: 6 },
+  { label: 'Julio', value: 7 }, { label: 'Agosto', value: 8 }, { label: 'Septiembre', value: 9 },
+  { label: 'Octubre', value: 10 }, { label: 'Noviembre', value: 11 }, { label: 'Diciembre', value: 12 },
+]
+
 export default function RecordatorioFormDialog({ visible, onHide, onSave, recordatorio, proyectoId }) {
   const toast = useRef(null)
-  const emptyForm = { diaMes: null, descripcion: '', destinatarios: '', activo: true }
+  const emptyForm = { diaMes: null, frecuencia: 'mensual', mes: null, descripcion: '', destinatarios: '', activo: true }
 
   const [form, setForm] = useState(emptyForm)
   const [errors, setErrors] = useState({})
@@ -25,6 +39,8 @@ export default function RecordatorioFormDialog({ visible, onHide, onSave, record
       if (recordatorio) {
         setForm({
           diaMes: recordatorio.diaMes,
+          frecuencia: recordatorio.frecuencia || 'mensual',
+          mes: recordatorio.mes || null,
           descripcion: recordatorio.descripcion,
           destinatarios: recordatorio.destinatarios,
           activo: recordatorio.activo,
@@ -40,6 +56,8 @@ export default function RecordatorioFormDialog({ visible, onHide, onSave, record
     const e = {}
     if (!form.diaMes || form.diaMes < 1 || form.diaMes > 28)
       e.diaMes = 'El día debe ser entre 1 y 28'
+    if (form.frecuencia === 'anual' && !form.mes)
+      e.mes = 'Selecciona el mes'
     if (!form.descripcion.trim())
       e.descripcion = 'La descripción es requerida'
     if (!form.destinatarios.trim()) {
@@ -92,26 +110,60 @@ export default function RecordatorioFormDialog({ visible, onHide, onSave, record
       >
         <div className="flex flex-column gap-3 pt-2">
 
-          {/* Día del mes */}
+          {/* Frecuencia */}
           <div className="field mb-0">
-            <label className="font-semibold block mb-1">
-              Día del mes <span className="text-red-500">*</span>
-              <span className="text-color-secondary font-normal text-sm ml-2">(1 al 28)</span>
-            </label>
-            <InputNumber
-              value={form.diaMes}
-              onValueChange={(e) => setForm({ ...form, diaMes: e.value })}
-              min={1}
-              max={28}
-              showButtons
-              className={`w-full ${errors.diaMes ? 'p-invalid' : ''}`}
-              placeholder="Ej: 6"
+            <label className="font-semibold block mb-1">Frecuencia</label>
+            <SelectButton
+              value={form.frecuencia}
+              options={FRECUENCIA_OPTIONS}
+              onChange={(e) => {
+                if (e.value) setForm({ ...form, frecuencia: e.value })
+              }}
             />
-            {errors.diaMes && <small className="p-error">{errors.diaMes}</small>}
-            <small className="text-color-secondary">
-              El sistema enviará el email cada mes en este día.
-            </small>
+            {form.frecuencia === 'anual' && (
+              <small className="text-color-secondary">
+                Ideal para renovaciones de servicios anuales.
+              </small>
+            )}
           </div>
+
+          {/* Día / Mes */}
+          <div className={form.frecuencia === 'anual' ? 'grid formgrid' : ''}>
+            <div className={`field mb-0 ${form.frecuencia === 'anual' ? 'col-6' : ''}`}>
+              <label className="font-semibold block mb-1">
+                Día <span className="text-red-500">*</span>
+                <span className="text-color-secondary font-normal text-sm ml-2">(1 al 28)</span>
+              </label>
+              <InputNumber
+                value={form.diaMes}
+                onValueChange={(e) => setForm({ ...form, diaMes: e.value })}
+                min={1}
+                max={28}
+                showButtons
+                className={`w-full ${errors.diaMes ? 'p-invalid' : ''}`}
+                placeholder="Ej: 6"
+              />
+              {errors.diaMes && <small className="p-error">{errors.diaMes}</small>}
+            </div>
+            {form.frecuencia === 'anual' && (
+              <div className="field mb-0 col-6">
+                <label className="font-semibold block mb-1">Mes <span className="text-red-500">*</span></label>
+                <Dropdown
+                  value={form.mes}
+                  options={MES_OPTIONS}
+                  onChange={(e) => setForm({ ...form, mes: e.value })}
+                  placeholder="Selecciona el mes"
+                  className={`w-full ${errors.mes ? 'p-invalid' : ''}`}
+                />
+                {errors.mes && <small className="p-error">{errors.mes}</small>}
+              </div>
+            )}
+          </div>
+          <small className="text-color-secondary" style={{ marginTop: '-8px' }}>
+            {form.frecuencia === 'anual'
+              ? 'El sistema enviará el email una vez al año, en el día y mes elegidos.'
+              : 'El sistema enviará el email cada mes en este día.'}
+          </small>
 
           {/* Descripción */}
           <div className="field mb-0">
@@ -150,7 +202,12 @@ export default function RecordatorioFormDialog({ visible, onHide, onSave, record
             />
             <span className="text-sm">
               {form.activo
-                ? <span className="text-green-600 font-semibold">Activo — se enviará el día {form.diaMes || '?'} de cada mes</span>
+                ? <span className="text-green-600 font-semibold">
+                    Activo — se enviará el día {form.diaMes || '?'}
+                    {form.frecuencia === 'anual'
+                      ? ` de ${MES_OPTIONS.find((m) => m.value === form.mes)?.label || '?'}, cada año`
+                      : ' de cada mes'}
+                  </span>
                 : <span className="text-color-secondary">Inactivo — no se enviarán emails</span>
               }
             </span>

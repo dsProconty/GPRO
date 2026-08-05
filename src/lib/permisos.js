@@ -15,6 +15,7 @@ export const PERMISOS = {
     ELIMINAR:      'proyectos.eliminar',
     CAMBIAR_ESTADO:'proyectos.cambiarEstado',
     PDF:           'proyectos.pdf',
+    CERRAR_FINANCIERO: 'proyectos.cerrarFinanciero',
   },
   PROPUESTAS: {
     VER:           'propuestas.ver',

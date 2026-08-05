@@ -8,11 +8,13 @@ import { tienePermiso, PERMISOS } from '@/lib/permisos'
 export async function GET(request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
-  // Catálogo con costos internos: requiere acceso a casos de negocio, empleados o tarifarios
+  // Catálogo con costos internos: requiere acceso a casos de negocio, empleados, tarifarios, propuestas o proyectos
   const puedeVer =
     tienePermiso(session, PERMISOS.CASOS_NEGOCIO.VER) ||
     tienePermiso(session, PERMISOS.EMPLEADOS.VER) ||
-    tienePermiso(session, PERMISOS.TARIFARIOS.VER)
+    tienePermiso(session, PERMISOS.TARIFARIOS.VER) ||
+    tienePermiso(session, PERMISOS.PROPUESTAS.VER) ||
+    tienePermiso(session, PERMISOS.PROYECTOS.VER)
   if (!puedeVer) {
     return NextResponse.json({ success: false, message: 'Sin permiso para ver perfiles de consultor' }, { status: 403 })
   }
