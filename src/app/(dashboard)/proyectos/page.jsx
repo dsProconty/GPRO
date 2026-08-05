@@ -480,7 +480,6 @@ export default function ProyectosPage() {
         value={proyectosFiltrados}
         filters={tableFilters}
         onFilter={(e) => setTableFilters(e.filters)}
-        globalFilter={globalFilter}
         onValueChange={(rows) => setVisibleRows(rows)}
         loading={loading}
         paginator
