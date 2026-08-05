@@ -265,7 +265,8 @@ export default function ProyectosPage() {
       lista = lista.filter((p) =>
         p.detalle?.toLowerCase().includes(term) ||
         p.empresa?.nombre?.toLowerCase().includes(term) ||
-        p.codigo?.toLowerCase().includes(term)
+        p.codigo?.toLowerCase().includes(term) ||
+        p.facturas?.some((f) => f.numFactura?.toLowerCase().includes(term))
       )
     }
     return lista
@@ -296,7 +297,8 @@ export default function ProyectosPage() {
         p.ot?.toLowerCase().includes(term) ||
         p.codigo?.toLowerCase().includes(term) ||
         p.estado?.nombre?.toLowerCase().includes(term) ||
-        p.responsables?.some((r) => `${r.empleado?.nombre} ${r.empleado?.apellido}`.toLowerCase().includes(term))
+        p.responsables?.some((r) => `${r.empleado?.nombre} ${r.empleado?.apellido}`.toLowerCase().includes(term)) ||
+        p.facturas?.some((f) => f.numFactura?.toLowerCase().includes(term))
       )
     }
     return lista
@@ -439,7 +441,7 @@ export default function ProyectosPage() {
       <div className="flex flex-wrap gap-3 mb-3">
         <IconField iconPosition="left" className="flex-1" style={{ minWidth: '200px' }}>
           <InputIcon className="pi pi-search" />
-          <InputText value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Buscar proyecto..." className="w-full" />
+          <InputText value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Buscar proyecto, cliente, N° factura..." className="w-full" />
         </IconField>
         <Dropdown
           value={estadoFiltro}

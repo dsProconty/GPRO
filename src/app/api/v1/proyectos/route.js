@@ -10,7 +10,7 @@ const PROYECTO_INCLUDE = {
   estado: { select: { id: true, nombre: true, color: true } },
   clientes: { include: { cliente: { select: { id: true, nombre: true, apellido: true } } } },
   responsables: { include: { empleado: { select: { id: true, nombre: true, apellido: true } } } },
-  facturas: { select: { valor: true, pagos: { select: { valor: true } } } },
+  facturas: { select: { numFactura: true, valor: true, pagos: { select: { valor: true } } } },
 }
 
 function calcularCampos(proyecto) {
