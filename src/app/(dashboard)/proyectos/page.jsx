@@ -29,6 +29,11 @@ import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
 const ESTADOS_PROPUESTAS = ['Elaboracion_Propuesta', 'Rechazado']
 
+// Los números de factura no siempre se cargaron con el mismo formato
+// (ej. "001-001-0000123" vs "001 - 001 - 0000123"). Se ignoran espacios
+// y guiones para poder buscarlos sin importar cómo quedaron guardados.
+const normFactura = (s) => s?.replace(/[\s-]/g, '') ?? ''
+
 const SESSION_KEY = 'gpro_proyectos_filtros'
 
 const leerFiltrosGuardados = () => {
@@ -266,7 +271,7 @@ export default function ProyectosPage() {
         p.detalle?.toLowerCase().includes(term) ||
         p.empresa?.nombre?.toLowerCase().includes(term) ||
         p.codigo?.toLowerCase().includes(term) ||
-        p.facturas?.some((f) => f.numFactura?.toLowerCase().includes(term))
+        p.facturas?.some((f) => normFactura(f.numFactura).toLowerCase().includes(normFactura(term)))
       )
     }
     return lista
@@ -298,7 +303,7 @@ export default function ProyectosPage() {
         p.codigo?.toLowerCase().includes(term) ||
         p.estado?.nombre?.toLowerCase().includes(term) ||
         p.responsables?.some((r) => `${r.empleado?.nombre} ${r.empleado?.apellido}`.toLowerCase().includes(term)) ||
-        p.facturas?.some((f) => f.numFactura?.toLowerCase().includes(term))
+        p.facturas?.some((f) => normFactura(f.numFactura).toLowerCase().includes(normFactura(term)))
       )
     }
     return lista
