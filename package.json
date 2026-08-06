@@ -1,6 +1,6 @@
 {
   "name": "gpro",
-  "version": "1.6.2",
+  "version": "1.7.3",
   "description": "GPRO - Gestor de Proyectos Proconty",
   "private": true,
   "scripts": {
