@@ -1,0 +1,1054 @@
+<!doctype html>
+<title>Oportunidades GPRO</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #f8f9fa;
+    --surface: #ffffff;
+    --surface-2: #f4f5f7;
+    --border: #e2e4e8;
+    --ink: #16233b;
+    --ink-muted: #62718a;
+    --ink-faint: #94a2b8;
+    --brand-start: #1e3a5f;
+    --brand-end: #2e75b6;
+    --accent: #3b6fed;
+    --accent-ink: #ffffff;
+    --shadow: 0 1px 2px rgba(22,35,59,.06), 0 8px 24px -12px rgba(22,35,59,.12);
+
+    --sev-secondary-bg: #eef1f5;
+    --sev-secondary-ink: #64748b;
+    --sev-warning-bg: #fef3c7;
+    --sev-warning-ink: #f59e0b;
+    --sev-info-bg: #e0f2fe;
+    --sev-info-ink: #3b82f6;
+    --sev-success-bg: #dcfce7;
+    --sev-success-ink: #22c55e;
+    --sev-danger-bg: #fee2e2;
+    --sev-danger-ink: #ef4444;
+    --sev-suspenso-bg: #ede9fe;
+    --sev-suspenso-ink: #8b5cf6;
+    --sev-secondary-text: #47536b;
+    --sev-warning-text: #92640a;
+    --sev-info-text: #0369a1;
+    --sev-success-text: #15803d;
+    --sev-danger-text: #b91c1c;
+    --sev-suspenso-text: #6d28d9;
+  }
+
+  /* GPRO es una app de un solo tema (claro) — este mockup se mantiene
+     blanco siempre, sin importar el modo claro/oscuro del sistema. */
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  h1, h2, h3, h4 { text-wrap: balance; margin: 0; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  button { font-family: inherit; }
+  a { color: var(--accent); }
+
+  /* ---------- shell ---------- */
+  .shell { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 258px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar-brand {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+    min-height: 64px;
+  }
+  .brand-mark {
+    width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--brand-start), var(--brand-end));
+    display: flex; align-items: center; justify-content: center;
+  }
+  .brand-mark svg { width: 18px; height: 18px; stroke: #fff; }
+  .brand-name { font-weight: 800; font-size: 1.02rem; letter-spacing: -.01em; }
+  .brand-sub { font-size: .72rem; color: var(--ink-faint); }
+
+  .nav { flex: 1; overflow-y: auto; padding: 14px 12px; }
+  .nav-section { margin-bottom: 14px; }
+  .nav-label {
+    display: block; padding: 4px 12px 6px;
+    font-size: .68rem; font-weight: 700; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .nav-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; border-radius: 8px;
+    color: var(--ink-muted); font-weight: 500; font-size: .87rem;
+    text-decoration: none; cursor: default;
+  }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .nav-item.active { background: var(--accent); color: var(--accent-ink); }
+
+  .sidebar-foot { padding: 12px; border-top: 1px solid var(--border); }
+  .user-chip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 9px; background: var(--surface-2);
+  }
+  .user-avatar {
+    width: 30px; height: 30px; border-radius: 999px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--brand-start), var(--brand-end));
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .8rem;
+  }
+  .user-meta { flex: 1; min-width: 0; }
+  .user-name { font-size: .82rem; font-weight: 600; }
+  .user-role { font-size: .7rem; color: var(--ink-faint); }
+
+  /* ---------- main ---------- */
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .topbar {
+    height: 64px; flex-shrink: 0;
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 24px; background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  .topbar-title { font-weight: 600; }
+  .topbar-date { margin-left: auto; color: var(--ink-faint); font-size: .82rem; text-transform: capitalize; }
+  .icon-btn {
+    width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent;
+    color: var(--ink-muted); display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .icon-btn svg { width: 17px; height: 17px; }
+  .icon-btn:hover { background: var(--surface-2); }
+
+  .content { flex: 1; padding: 26px 28px 40px; }
+
+  .page-head { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+  .page-head-top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px 16px; flex-wrap: wrap;
+  }
+  .page-head h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: -.015em; flex-shrink: 0; }
+  .page-head .kpi-pills { flex: 1; min-width: 280px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    border-radius: 9px; border: 1px solid transparent;
+    padding: 9px 16px; font-size: .86rem; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+  }
+  .btn svg { width: 15px; height: 15px; }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); }
+  .btn-primary:hover { filter: brightness(1.06); }
+  .btn-ghost { background: transparent; border-color: var(--border); color: var(--ink); }
+  .btn-ghost:hover { background: var(--surface-2); }
+  .btn-sm { padding: 6px 12px; font-size: .78rem; }
+
+  /* ---------- KPI pills ---------- */
+  .kpi-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .kpi-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface); font-size: .78rem; font-weight: 600; color: var(--ink);
+    white-space: nowrap;
+  }
+  .kpi-pill svg { width: 13px; height: 13px; color: var(--ink-muted); flex-shrink: 0; }
+  .kpi-pill .dot { width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0; }
+  .dot-secondary { background: var(--sev-secondary-ink); }
+  .dot-warning { background: var(--sev-warning-ink); }
+  .dot-info { background: var(--sev-info-ink); }
+  .dot-success { background: var(--sev-success-ink); }
+  .dot-danger { background: var(--sev-danger-ink); }
+  .dot-suspenso { background: var(--sev-suspenso-ink); }
+  .dot-accent { background: var(--accent); }
+
+  /* ---------- pipeline chart ---------- */
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 20px; box-shadow: var(--shadow); margin-bottom: 18px;
+  }
+  .chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .chart-head h3 { font-size: .92rem; font-weight: 700; }
+  .chart-total { font-size: .78rem; color: var(--ink-muted); }
+  .chart-total strong { color: var(--ink); }
+  .bar-row { display: grid; grid-template-columns: 132px 1fr 92px; align-items: center; gap: 12px; margin-bottom: 11px; }
+  .bar-row:last-child { margin-bottom: 0; }
+  .bar-label { font-size: .78rem; font-weight: 600; color: var(--ink-muted); }
+  .bar-track { height: 14px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; }
+  .bar-value { font-size: .82rem; font-weight: 700; text-align: right; }
+  .chart-note { font-size: .72rem; color: var(--ink-faint); margin-top: 12px; }
+
+  /* ---------- filters ---------- */
+  .filters { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .search { flex: 1; min-width: 220px; position: relative; }
+  .search svg {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    width: 15px; height: 15px; color: var(--ink-faint);
+  }
+  .search input {
+    width: 100%; padding: 9px 12px 9px 34px; border-radius: 9px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink); font-size: .85rem;
+  }
+  select {
+    padding: 9px 30px 9px 12px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--surface) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M0 0l5 6 5-6z" fill="%2394a2b8"/></svg>') no-repeat right 12px center;
+    color: var(--ink); font-size: .85rem; appearance: none; min-width: 180px; cursor: pointer;
+  }
+  input::placeholder, textarea::placeholder { color: var(--ink-faint); }
+  input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* ---------- table ---------- */
+  .table-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 1020px; }
+  thead th {
+    text-align: left; font-size: .7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--ink-faint);
+    padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2);
+    white-space: nowrap;
+  }
+  tbody td { padding: 13px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface-2); }
+  .oport-title { font-weight: 600; }
+  .oport-empresa { font-size: .78rem; color: var(--ink-muted); margin-top: 1px; }
+
+  .contact-cell { display: flex; flex-direction: column; gap: 1px; }
+  .contact-cell .name { font-weight: 500; font-size: .84rem; }
+  .contact-cell .role { font-size: .74rem; color: var(--ink-faint); }
+  .contact-cell .more { font-size: .7rem; color: var(--accent); font-weight: 600; margin-top: 2px; }
+
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 999px; font-size: .74rem; font-weight: 700;
+  }
+  .tag-secondary { background: var(--sev-secondary-ink); color: #fff; }
+  .tag-warning { background: var(--sev-warning-ink); color: #fff; }
+  .tag-info { background: var(--sev-info-ink); color: #fff; }
+  .tag-success { background: var(--sev-success-ink); color: #fff; }
+  .tag-danger { background: var(--sev-danger-ink); color: #fff; }
+  .tag-suspenso { background: var(--sev-suspenso-ink); color: #fff; }
+
+  .origin { font-size: .78rem; color: var(--ink-muted); }
+  .value { text-align: right; font-weight: 600; }
+
+  .resp { display: flex; align-items: center; gap: 8px; }
+  .resp .av {
+    width: 24px; height: 24px; border-radius: 999px; flex-shrink: 0;
+    background: var(--surface-2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: .68rem; font-weight: 700; color: var(--ink-muted);
+  }
+  .resp span:last-child { font-size: .82rem; }
+
+  .activity { font-size: .8rem; color: var(--ink-muted); }
+
+  .prop-link {
+    display: inline-flex; align-items: center; gap: 4px; margin-top: 3px;
+    font-size: .72rem; font-weight: 600; color: var(--sev-success-ink);
+  }
+  .prop-link svg { width: 11px; height: 11px; }
+  .side-note { font-size: .72rem; color: var(--ink-faint); margin-top: 2px; max-width: 220px; }
+  .side-note.suspenso { color: var(--sev-suspenso-text); }
+
+  .row-actions { display: flex; gap: 2px; justify-content: flex-end; }
+  .row-actions button {
+    width: 28px; height: 28px; border-radius: 999px; border: 1px solid transparent; background: transparent;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .row-actions button svg { width: 14px; height: 14px; }
+  .row-actions button.view { color: var(--sev-success-ink); }
+  .row-actions button.stage { color: var(--sev-info-ink); }
+  .row-actions button.edit { color: var(--accent); }
+  .row-actions button.danger { color: var(--sev-danger-ink); }
+  .row-actions button:hover { background: var(--surface-2); border-color: var(--border); }
+
+  .table-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; font-size: .76rem; color: var(--ink-faint); border-top: 1px solid var(--border);
+  }
+
+  /* ---------- modals ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(10,16,30,.5);
+    display: none; align-items: flex-start; justify-content: center;
+    padding: 6vh 16px; overflow-y: auto; z-index: 50;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    width: 100%; max-width: 520px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: 0 24px 60px -20px rgba(10,16,30,.5);
+  }
+  .modal.modal-lg { max-width: 680px; }
+  .modal-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+  }
+  .modal-head h3 { font-size: 1.02rem; font-weight: 700; }
+  .modal-head .det-sub { font-size: .8rem; color: var(--ink-muted); margin-top: 2px; }
+  .modal-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .modal-body.scroll { max-height: 68vh; overflow-y: auto; }
+  .modal-foot { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+  .det-tags { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .det-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
+  .det-grid .field label { text-transform: uppercase; letter-spacing: .04em; font-size: .68rem; }
+  .det-grid .field .v { font-size: .85rem; color: var(--ink); }
+  .det-desc { margin: 0; font-size: .85rem; color: var(--ink-muted); line-height: 1.55; }
+
+  .det-section { border-top: 1px solid var(--border); padding-top: 14px; }
+  .det-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .det-section-head h4 { font-size: .82rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--ink-muted); }
+
+  .contacts-list { display: flex; flex-direction: column; gap: 10px; }
+  .contact-row {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    border: 1px solid var(--border); border-radius: 9px; background: var(--surface-2);
+  }
+  .contact-row .av {
+    width: 30px; height: 30px; border-radius: 999px; flex-shrink: 0; background: var(--surface);
+    border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+    font-size: .72rem; font-weight: 700; color: var(--ink-muted);
+  }
+  .contact-row .info { flex: 1; min-width: 0; }
+  .contact-row .info .n { font-size: .84rem; font-weight: 600; }
+  .contact-row .info .r { font-size: .74rem; color: var(--ink-faint); }
+  .contact-row .info .l { font-size: .74rem; color: var(--ink-muted); margin-top: 2px; }
+
+  .timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+  .timeline li { display: flex; gap: 10px; padding-bottom: 14px; position: relative; }
+  .timeline li::before { content: ''; position: absolute; left: 3px; top: 16px; bottom: 0; width: 1px; background: var(--border); }
+  .timeline li:last-child::before { display: none; }
+  .timeline li:last-child { padding-bottom: 0; }
+  .timeline .tdot { width: 7px; height: 7px; border-radius: 999px; background: var(--accent); margin-top: 5px; flex-shrink: 0; }
+  .timeline .tbody { flex: 1; font-size: .82rem; color: var(--ink); line-height: 1.5; }
+  .timeline .tmeta { font-size: .72rem; color: var(--ink-faint); margin-top: 2px; }
+  .timeline .stage-move { font-weight: 600; }
+  .timeline .stage-move .arrow { color: var(--ink-faint); margin: 0 4px; }
+
+  .det-add { display: flex; gap: 8px; margin-top: 12px; }
+  .det-add textarea { flex: 1; min-height: 40px; resize: none; }
+  .det-add button { flex-shrink: 0; align-self: flex-end; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: .76rem; font-weight: 600; color: var(--ink-muted); }
+  .field .req { color: var(--sev-danger-ink); }
+  .field input, .field textarea, .field select {
+    width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--ink); font-size: .85rem; font-family: inherit;
+  }
+  .field textarea { resize: vertical; min-height: 60px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .banner { display: flex; gap: 10px; padding: 11px 13px; border-radius: 9px; font-size: .8rem; line-height: 1.4; }
+  .banner svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
+  .banner-success { background: var(--sev-success-bg); color: var(--sev-success-text); }
+  .banner-danger { background: var(--sev-danger-bg); color: var(--sev-danger-text); }
+  .banner-suspenso { background: var(--sev-suspenso-bg); color: var(--sev-suspenso-text); }
+
+  .stage-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+  .stage-opt {
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px;
+    font-size: .8rem; font-weight: 600; cursor: pointer; background: var(--surface); color: var(--ink-muted);
+  }
+  .stage-opt.current { background: var(--surface-2); color: var(--ink-faint); cursor: not-allowed; }
+  .stage-opt.selected { border-color: var(--accent); background: var(--sev-info-bg); color: var(--sev-info-text); }
+
+  .hint { font-size: .72rem; color: var(--ink-faint); }
+
+  .contact-form-list { display: flex; flex-direction: column; gap: 12px; }
+  .contact-form-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px; position: relative; display: flex; flex-direction: column; gap: 10px; }
+  .contact-form-card .remove-contact {
+    position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 999px;
+    border: none; background: var(--surface-2); color: var(--ink-faint); display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .contact-form-card .remove-contact svg { width: 11px; height: 11px; }
+  .contact-form-card .remove-contact:hover { color: var(--sev-danger-ink); }
+
+  .th-flex { display: flex; align-items: center; gap: 5px; }
+  .th-flex.end { justify-content: flex-end; }
+  .th-flex svg { width: 12px; height: 12px; opacity: .55; flex-shrink: 0; }
+  .th-sort { display: inline-flex; flex-direction: column; gap: 1px; }
+  .th-filter { margin-left: auto; }
+</style>
+
+<div class="shell">
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V8a1 1 0 0 1 1-1h5V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h5a1 1 0 0 1 1 1v13"/><path d="M4 21h16"/><path d="M9 21v-5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5"/></svg></div>
+      <div>
+        <div class="brand-name">GPRO</div>
+        <div class="brand-sub">Proconty</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">
+        <span class="nav-label">Principal</span>
+        <ul class="nav-list">
+          <li><a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Dashboard</a></li>
+          <li><a class="nav-item active" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>Oportunidades</a></li>
+          <li><a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>Propuestas</a></li>
+          <li><a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Proyectos</a></li>
+          <li><a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>Casos de Negocio</a></li>
+        </ul>
+      </div>
+      <div class="nav-section">
+        <span class="nav-label">Configuración</span>
+        <ul class="nav-list">
+          <li><a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Clientes</a></li>
+          <li><a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 4v2M16 4v2"/></svg>Empleados</a></li>
+          <li><a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Tarifarios</a></li>
+          <li><a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Usuarios</a></li>
+        </ul>
+      </div>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="user-chip">
+        <div class="user-avatar">M</div>
+        <div class="user-meta">
+          <div class="user-name">María Fernanda Ruiz</div>
+          <div class="user-role">Ejecutiva Comercial</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================== MAIN ===================== -->
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" aria-label="Alternar menú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+      <span class="topbar-title">GPRO · Proconty</span>
+      <span class="topbar-date" id="topDate"></span>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div class="page-head-top">
+          <h1>Oportunidades</h1>
+
+          <div class="kpi-pills" aria-label="Indicadores del embudo">
+            <span class="kpi-pill">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
+              9 total
+            </span>
+            <span class="kpi-pill"><span class="dot dot-secondary"></span>3 Prospección</span>
+            <span class="kpi-pill"><span class="dot dot-warning"></span>1 Solicitud de RFI</span>
+            <span class="kpi-pill"><span class="dot dot-info"></span>2 Entrega de RFI</span>
+            <span class="kpi-pill"><span class="dot dot-success"></span>1 Solicitud de RFP</span>
+            <span class="kpi-pill"><span class="dot dot-suspenso"></span>1 En Suspenso</span>
+            <span class="kpi-pill"><span class="dot dot-danger"></span>1 Perdida</span>
+            <span class="kpi-pill"><span class="dot dot-accent"></span>50% conversión a Propuesta</span>
+          </div>
+
+          <button class="btn btn-primary" onclick="openModal('modal-nueva')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Nueva Oportunidad
+          </button>
+        </div>
+      </div>
+
+      <!-- Pipeline: valor por etapa -->
+      <div class="chart-card">
+        <div class="chart-head">
+          <h3>Pipeline · valor por etapa</h3>
+          <span class="chart-total"><strong class="mono">$154,800.00</strong> en oportunidades abiertas</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Prospección</span>
+          <div class="bar-track"><div class="bar-fill" style="width:46%;background:var(--sev-secondary-ink)"></div></div>
+          <span class="bar-value mono">$27,700</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Solicitud de RFI</span>
+          <div class="bar-track"><div class="bar-fill" style="width:15%;background:var(--sev-warning-ink)"></div></div>
+          <span class="bar-value mono">$9,200</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Entrega de RFI</span>
+          <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--sev-info-ink)"></div></div>
+          <span class="bar-value mono">$60,500</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Solicitud de RFP</span>
+          <div class="bar-track"><div class="bar-fill" style="width:43%;background:var(--sev-success-ink)"></div></div>
+          <span class="bar-value mono">$26,000</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">En Suspenso</span>
+          <div class="bar-track"><div class="bar-fill" style="width:52%;background:var(--sev-suspenso-ink)"></div></div>
+          <span class="bar-value mono">$31,400</span>
+        </div>
+        <div class="chart-note">No incluye oportunidades en etapa Perdida ($11,000 adicionales).</div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="filters">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" placeholder="Buscar por empresa, título o contacto..." value="" />
+        </div>
+        <select aria-label="Filtrar por etapa">
+          <option>Todas las etapas</option>
+          <option>Prospección</option>
+          <option>Solicitud de RFI</option>
+          <option>Entrega de RFI</option>
+          <option>Solicitud de RFP</option>
+          <option>En Suspenso</option>
+          <option>Perdida</option>
+        </select>
+        <select aria-label="Filtrar por responsable">
+          <option>Todos los responsables</option>
+          <option>María Fernanda Ruiz</option>
+          <option>Diego Sánchez</option>
+        </select>
+      </div>
+
+      <!-- Tabla -->
+      <div class="table-card">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th><span class="th-flex">Oportunidad<span class="th-sort"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5-5 5 5H7zM7 14l5 5 5-5H7z"/></svg></span><svg class="th-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z"/></svg></span></th>
+                <th>Contacto</th>
+                <th><span class="th-flex">Origen<svg class="th-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z"/></svg></span></th>
+                <th><span class="th-flex">Etapa<span class="th-sort"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5-5 5 5H7zM7 14l5 5 5-5H7z"/></svg></span><svg class="th-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z"/></svg></span></th>
+                <th style="text-align:right"><span class="th-flex end">Valor est.<span class="th-sort"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5-5 5 5H7zM7 14l5 5 5-5H7z"/></svg></span></span></th>
+                <th>Responsable</th>
+                <th><span class="th-flex">Última actividad<span class="th-sort"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5-5 5 5H7zM7 14l5 5 5-5H7z"/></svg></span></span></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tabla-body"></tbody>
+          </table>
+        </div>
+        <div class="table-foot">
+          <span>Mostrando 9 de 9 oportunidades</span>
+          <span class="mono">1–9</span>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ===================== MODAL: NUEVA OPORTUNIDAD ===================== -->
+<div class="overlay" id="modal-nueva">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <h3>Nueva Oportunidad</h3>
+      <button class="icon-btn" onclick="closeModal('modal-nueva')" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body scroll">
+      <div class="field">
+        <label>Título de la oportunidad <span class="req">*</span></label>
+        <input type="text" placeholder="Ej. Consultoría de procesos logísticos" />
+      </div>
+      <div class="field">
+        <label>Empresa / prospecto <span class="req">*</span></label>
+        <input type="text" placeholder="Nombre legal tal como aparece en el RUC" />
+        <span class="hint">Escribe el nombre legal (RUC), no abreviaturas ni nombres comerciales — así evitamos duplicados cuando esto se convierta en cliente.</span>
+      </div>
+
+      <div class="field">
+        <label>Contactos</label>
+      </div>
+      <div class="contact-form-list" id="nueva-contactos">
+        <div class="contact-form-card">
+          <div class="field-row">
+            <div class="field"><label>Nombre</label><input type="text" placeholder="Nombre del contacto" /></div>
+            <div class="field"><label>Cargo</label><input type="text" placeholder="Ej. Gerente de Compras" /></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Teléfono</label><input type="text" placeholder="09XXXXXXXX" /></div>
+            <div class="field"><label>Correo</label><input type="text" placeholder="contacto@empresa.com" /></div>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" style="align-self:flex-start" onclick="agregarContactoNuevo()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Agregar otro contacto
+      </button>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Origen</label>
+          <select>
+            <option>Referido</option>
+            <option>LinkedIn</option>
+            <option>Networking</option>
+            <option>Web</option>
+            <option>Llamada fría</option>
+            <option>Otro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Valor estimado (USD)</label>
+          <input type="text" placeholder="$ 0.00" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Descripción</label>
+        <textarea placeholder="Detalle breve de lo que necesita el prospecto..."></textarea>
+      </div>
+      <span class="hint">La oportunidad se crea en etapa <strong>Prospección</strong>.</span>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-nueva')">Cancelar</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-nueva')">Guardar oportunidad</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: CAMBIAR ETAPA ===================== -->
+<div class="overlay" id="modal-etapa">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="etapa-titulo">Cambiar etapa</h3>
+      <button class="icon-btn" onclick="closeModal('modal-etapa')" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Etapa actual</label>
+        <span class="tag" id="etapa-actual-tag" style="width:fit-content"></span>
+      </div>
+      <div class="field">
+        <label>Nueva etapa</label>
+        <div class="stage-picker" id="etapa-picker"></div>
+      </div>
+      <div class="banner banner-success" id="banner-rfp" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10-3-3"/></svg>
+        <span id="banner-rfp-texto"></span>
+      </div>
+      <div class="banner banner-suspenso" id="banner-suspenso" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+        <span>La oportunidad puede reactivarse más adelante — "En Suspenso" no es un cierre definitivo.</span>
+      </div>
+      <div class="field" id="motivo-field" style="display:none">
+        <label>Motivo de pérdida</label>
+        <textarea placeholder="Ej. presupuesto insuficiente, eligió otro proveedor..."></textarea>
+      </div>
+      <div class="field">
+        <label>Nota (opcional)</label>
+        <textarea placeholder="Detalle del cambio de etapa..."></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-etapa')">Cancelar</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-etapa')">Confirmar cambio</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: DETALLE DE OPORTUNIDAD ===================== -->
+<div class="overlay" id="modal-detalle">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <div>
+        <h3 id="det-titulo"></h3>
+        <div class="det-sub" id="det-empresa"></div>
+      </div>
+      <button class="icon-btn" onclick="closeModal('modal-detalle')" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body scroll">
+      <div class="det-tags">
+        <span class="tag" id="det-etapa"></span>
+        <span class="activity" id="det-activity"></span>
+      </div>
+
+      <div class="det-grid">
+        <div class="field"><label>Origen</label><div class="v" id="det-origen"></div></div>
+        <div class="field"><label>Valor estimado</label><div class="v mono" id="det-valor"></div></div>
+        <div class="field"><label>Responsable</label><div class="v" id="det-responsable"></div></div>
+        <div class="field"><label>Fecha de creación</label><div class="v mono" id="det-fecha"></div></div>
+      </div>
+
+      <div class="field">
+        <label>Descripción</label>
+        <p class="det-desc" id="det-descripcion"></p>
+      </div>
+
+      <div class="det-section">
+        <div class="det-section-head"><h4>Contactos</h4></div>
+        <div class="contacts-list" id="det-contactos"></div>
+      </div>
+
+      <div class="banner banner-success" id="det-propuesta-banner" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10-3-3"/></svg>
+        <span id="det-propuesta-texto"></span>
+      </div>
+      <div class="banner banner-suspenso" id="det-suspenso-banner" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+        <span id="det-suspenso-texto"></span>
+      </div>
+      <div class="banner banner-danger" id="det-motivo-banner" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+        <span id="det-motivo-texto"></span>
+      </div>
+
+      <div class="det-section">
+        <div class="det-section-head"><h4>Seguimientos</h4></div>
+        <ul class="timeline" id="det-seguimientos"></ul>
+        <div class="det-add">
+          <textarea id="det-nuevo-seguimiento" placeholder="Registrar una llamada, correo o reunión..."></textarea>
+          <button class="btn btn-ghost" onclick="agregarSeguimiento()">Agregar</button>
+        </div>
+      </div>
+
+      <div class="det-section">
+        <div class="det-section-head"><h4>Trazabilidad de etapa</h4></div>
+        <ul class="timeline" id="det-logs"></ul>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-detalle')">Cerrar</button>
+      <button class="btn btn-primary" id="det-cambiar-etapa-btn">Cambiar etapa</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  document.querySelectorAll('.overlay').forEach(function (ov) {
+    ov.addEventListener('click', function (e) { if (e.target === ov) closeModal(ov.id); });
+  });
+
+  try {
+    var d = new Date();
+    var s = d.toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('topDate').textContent = s;
+  } catch (e) {}
+
+  /* ---------- Modelo de etapas (validado con Yleana el 4/sep) ---------- */
+  var ETAPAS = [
+    { key: 'Prospección',      tag: 'tag-secondary' },
+    { key: 'Solicitud de RFI', tag: 'tag-warning' },
+    { key: 'Entrega de RFI',   tag: 'tag-info' },
+    { key: 'Solicitud de RFP', tag: 'tag-success', hook: true },
+    { key: 'En Suspenso',      tag: 'tag-suspenso' },
+    { key: 'Perdida',          tag: 'tag-danger' },
+  ];
+  function etapaTag(key) {
+    var e = ETAPAS.filter(function (x) { return x.key === key; })[0];
+    return e ? e.tag : 'tag-secondary';
+  }
+
+  var OPORTUNIDADES = [
+    { // 0
+      titulo: 'Migración a facturación electrónica', empresa: 'Constructora Andina S.A.',
+      contactos: [
+        { nombre: 'Patricia Yépez', cargo: 'Gerente de Compras', telefono: '099 245 3312', correo: 'p.yepez@constandina.ec' },
+        { nombre: 'Fernando Ortiz', cargo: 'Director Financiero', telefono: '', correo: 'f.ortiz@constandina.ec' },
+      ],
+      origen: 'Referido', etapa: 'Entrega de RFI', valor: '$18,500.00', responsable: 'María Fernanda Ruiz',
+      fecha: '18/8/2026', actividad: 'hace 12 días',
+      descripcion: 'Necesitan migrar su facturación física a un esquema electrónico integrado con el SRI antes de fin de año.',
+      propuesta: null, motivoPerdida: null, suspensoNota: null,
+      seguimientos: [
+        { fecha: '22 ago', autor: 'María F.', texto: 'Enviamos el paquete de información (RFI) que pidió Patricia. Quedó en revisarlo con Fernando.' },
+        { fecha: '19 ago', autor: 'María F.', texto: 'Primera llamada. Patricia confirma interés y solicita información detallada de nuestros servicios.' },
+      ],
+      logs: [
+        { fecha: '18 ago', de: null, a: 'Prospección', autor: 'María F.', nota: 'Registrada tras evento de la cámara de construcción.' },
+        { fecha: '19 ago', de: 'Prospección', a: 'Solicitud de RFI', autor: 'María F.', nota: 'Cliente pidió información formal.' },
+        { fecha: '22 ago', de: 'Solicitud de RFI', a: 'Entrega de RFI', autor: 'María F.', nota: 'Se entregó el paquete de información solicitado.' },
+      ],
+    },
+    { // 1
+      titulo: 'Consultoría de procesos logísticos', empresa: 'Distribuidora Sierra Norte',
+      contactos: [ { nombre: 'Iván Torres', cargo: 'Gerente de Operaciones', telefono: '', correo: 'ivan.torres@dsn.ec' } ],
+      origen: 'LinkedIn', etapa: 'Solicitud de RFI', valor: '$9,200.00', responsable: 'María Fernanda Ruiz',
+      fecha: '28/8/2026', actividad: 'hace 2 días',
+      descripcion: 'Buscan optimizar tiempos de despacho en su bodega central. Iván decide junto con gerencia general.',
+      propuesta: null, motivoPerdida: null, suspensoNota: null,
+      seguimientos: [
+        { fecha: '1 sep', autor: 'María F.', texto: 'Reunión virtual de 30 min. Iván pidió que le enviemos información sobre casos similares que hayamos hecho.' },
+        { fecha: '28 ago', autor: 'María F.', texto: 'Contacto por LinkedIn, Iván responde interesado el mismo día.' },
+      ],
+      logs: [
+        { fecha: '28 ago', de: null, a: 'Prospección', autor: 'María F.', nota: '' },
+        { fecha: '1 sep', de: 'Prospección', a: 'Solicitud de RFI', autor: 'María F.', nota: 'Pidió información de casos similares.' },
+      ],
+    },
+    { // 2
+      titulo: 'Implementación módulo de inventario', empresa: 'Farmacéutica Quito Salud',
+      contactos: [
+        { nombre: 'Gabriela Naranjo', cargo: 'Jefa de Sistemas', telefono: '098 811 0027', correo: '' },
+        { nombre: 'Marco Villagómez', cargo: 'Director de Operaciones', telefono: '', correo: 'm.villagomez@qsalud.ec' },
+      ],
+      origen: 'Networking', etapa: 'Solicitud de RFP', valor: '$26,000.00', responsable: 'María Fernanda Ruiz',
+      fecha: '12/8/2026', actividad: 'hace 1 día',
+      descripcion: 'Requieren trazabilidad de lotes por caducidad para cumplir con ARCSA.',
+      propuesta: { codigo: 'PROP-0044', estado: 'Factibilidad' }, motivoPerdida: null, suspensoNota: null,
+      seguimientos: [
+        { fecha: '2 sep', autor: 'María F.', texto: 'Marco llamó para pedir formalmente una propuesta. Ya se generó automáticamente en Propuestas.' },
+        { fecha: '25 ago', autor: 'María F.', texto: 'Entregamos el RFI completo con casos de éxito y ficha técnica.' },
+        { fecha: '14 ago', autor: 'María F.', texto: 'Reunión de levantamiento de requerimientos en planta.' },
+      ],
+      logs: [
+        { fecha: '12 ago', de: null, a: 'Prospección', autor: 'María F.', nota: '' },
+        { fecha: '16 ago', de: 'Prospección', a: 'Solicitud de RFI', autor: 'María F.', nota: '' },
+        { fecha: '25 ago', de: 'Solicitud de RFI', a: 'Entrega de RFI', autor: 'María F.', nota: '' },
+        { fecha: '2 sep', de: 'Entrega de RFI', a: 'Solicitud de RFP', autor: 'María F.', nota: 'Cliente solicitó formalmente una propuesta. Se generó automáticamente PROP-0044 en estado Factibilidad.' },
+      ],
+    },
+    { // 3
+      titulo: 'Rediseño de portal de proveedores', empresa: 'Grupo Vial del Pacífico',
+      contactos: [ { nombre: 'Andrés Bermeo', cargo: 'Gerente de TI', telefono: '', correo: 'a.bermeo@gvp.com.ec' } ],
+      origen: 'Web', etapa: 'En Suspenso', valor: '$31,400.00', responsable: 'María Fernanda Ruiz',
+      fecha: '3/8/2026', actividad: 'hace 3 días',
+      descripcion: 'El portal actual de proveedores no soporta la carga de facturas electrónicas.',
+      propuesta: null, motivoPerdida: null,
+      suspensoNota: 'El cliente pausó el proyecto por una reestructuración del presupuesto 2027. Revisar en enero.',
+      seguimientos: [
+        { fecha: '31 ago', autor: 'María F.', texto: 'Andrés avisó que el proyecto queda en pausa hasta que se defina el presupuesto del próximo año.' },
+        { fecha: '20 ago', autor: 'María F.', texto: 'Ajustamos alcance y forma de pago según lo conversado con finanzas.' },
+        { fecha: '9 ago', autor: 'María F.', texto: 'Reunión de levantamiento, muy buena recepción del equipo técnico.' },
+      ],
+      logs: [
+        { fecha: '3 ago', de: null, a: 'Prospección', autor: 'María F.', nota: '' },
+        { fecha: '9 ago', de: 'Prospección', a: 'Solicitud de RFI', autor: 'María F.', nota: '' },
+        { fecha: '18 ago', de: 'Solicitud de RFI', a: 'Entrega de RFI', autor: 'María F.', nota: '' },
+        { fecha: '31 ago', de: 'Entrega de RFI', a: 'En Suspenso', autor: 'María F.', nota: 'Reestructuración de presupuesto 2027.' },
+      ],
+    },
+    { // 4
+      titulo: 'Auditoría de procesos de exportación', empresa: 'Café Andes Export',
+      contactos: [ { nombre: 'Lucía Peñaherrera', cargo: 'Gerente General', telefono: '099 502 7741', correo: '' } ],
+      origen: 'Referido', etapa: 'Prospección', valor: '$7,800.00', responsable: 'Diego Sánchez',
+      fecha: '3/9/2026', actividad: 'hoy',
+      descripcion: 'Referida por un cliente actual. Quiere una revisión de sus procesos de exportación antes de la temporada alta de cosecha.',
+      propuesta: null, motivoPerdida: null, suspensoNota: null,
+      seguimientos: [ { fecha: 'hoy', autor: 'Diego S.', texto: 'Primer contacto telefónico. Lucía pide agendar una llamada para la próxima semana.' } ],
+      logs: [ { fecha: 'hoy', de: null, a: 'Prospección', autor: 'Diego S.', nota: 'Referida por Textiles Cotopaxi.' } ],
+    },
+    { // 5
+      titulo: 'Sistema de trazabilidad de lotes', empresa: 'Textiles Cotopaxi',
+      contactos: [ { nombre: 'Roberto Salazar', cargo: 'Jefe de Producción', telefono: '', correo: 'rsalazar@textcot.ec' } ],
+      origen: 'Llamada fría', etapa: 'Prospección', valor: '$14,300.00', responsable: 'Diego Sánchez',
+      fecha: '25/8/2026', actividad: 'hace 9 días',
+      descripcion: 'Contacto inicial por llamada fría. Interesados en trazabilidad de lotes de producción, sin presupuesto confirmado aún.',
+      propuesta: null, motivoPerdida: null, suspensoNota: null,
+      seguimientos: [ { fecha: '25 ago', autor: 'Diego S.', texto: 'Llamada fría inicial. Roberto pidió que le escriba un correo con más información.' } ],
+      logs: [ { fecha: '25 ago', de: null, a: 'Prospección', autor: 'Diego S.', nota: '' } ],
+    },
+    { // 6
+      titulo: 'Plataforma de control de flota', empresa: 'Hidroeléctrica Pichincha',
+      contactos: [ { nombre: 'Estefanía Cruz', cargo: 'Jefa de Mantenimiento', telefono: '098 244 5510', correo: '' } ],
+      origen: 'Referido', etapa: 'Entrega de RFI', valor: '$42,000.00', responsable: 'Diego Sánchez',
+      fecha: '10/8/2026', actividad: 'hace 8 días',
+      descripcion: 'Necesitan monitorear en tiempo real la flota de camionetas de mantenimiento entre subestaciones.',
+      propuesta: null, motivoPerdida: null, suspensoNota: null,
+      seguimientos: [
+        { fecha: '26 ago', autor: 'Diego S.', texto: 'Entregamos ficha técnica y casos de referencia. Estefanía dijo que lo revisa con el área técnica.' },
+        { fecha: '15 ago', autor: 'Diego S.', texto: 'Reunión de levantamiento con jefatura de mantenimiento.' },
+      ],
+      logs: [
+        { fecha: '10 ago', de: null, a: 'Prospección', autor: 'Diego S.', nota: '' },
+        { fecha: '13 ago', de: 'Prospección', a: 'Solicitud de RFI', autor: 'Diego S.', nota: '' },
+        { fecha: '26 ago', de: 'Solicitud de RFI', a: 'Entrega de RFI', autor: 'Diego S.', nota: '' },
+      ],
+    },
+    { // 7
+      titulo: 'Optimización de rutas de reparto', empresa: 'Agroindustrias El Valle',
+      contactos: [ { nombre: 'Jorge Villacís', cargo: 'Gerente de Logística', telefono: '', correo: 'jvillacis@agrovalle.ec' } ],
+      origen: 'Networking', etapa: 'Prospección', valor: '$5,600.00', responsable: 'María Fernanda Ruiz',
+      fecha: '2/9/2026', actividad: 'hace 1 día',
+      descripcion: 'Conocidos en una feria agroindustrial. Buscan reducir costos de combustible optimizando rutas de reparto.',
+      propuesta: null, motivoPerdida: null, suspensoNota: null,
+      seguimientos: [ { fecha: '2 sep', autor: 'María F.', texto: 'Intercambio de correos tras la feria. Jorge pide una propuesta preliminar.' } ],
+      logs: [ { fecha: '2 sep', de: null, a: 'Prospección', autor: 'María F.', nota: 'Contacto en feria AgroExpo 2026.' } ],
+    },
+    { // 8
+      titulo: 'Sistema de turnos para planta', empresa: 'Manufacturas del Norte',
+      contactos: [ { nombre: 'Carla Montenegro', cargo: 'Jefa de RRHH', telefono: '', correo: 'c.montenegro@mnorte.ec' } ],
+      origen: 'Web', etapa: 'Perdida', valor: '$11,000.00', responsable: 'Diego Sánchez',
+      fecha: '5/8/2026', actividad: 'hace 15 días',
+      descripcion: 'Solicitaron cotización por el formulario web para un sistema de turnos de planta con control biométrico.',
+      propuesta: null, motivoPerdida: 'Eligió a otro proveedor por precio.', suspensoNota: null,
+      seguimientos: [
+        { fecha: '19 ago', autor: 'Diego S.', texto: 'Carla informó que optaron por una propuesta más económica de otro proveedor.' },
+        { fecha: '9 ago', autor: 'Diego S.', texto: 'Enviamos el RFI según lo solicitado en el formulario web.' },
+      ],
+      logs: [
+        { fecha: '5 ago', de: null, a: 'Prospección', autor: 'Diego S.', nota: '' },
+        { fecha: '8 ago', de: 'Prospección', a: 'Solicitud de RFI', autor: 'Diego S.', nota: '' },
+        { fecha: '12 ago', de: 'Solicitud de RFI', a: 'Entrega de RFI', autor: 'Diego S.', nota: '' },
+        { fecha: '19 ago', de: 'Entrega de RFI', a: 'Perdida', autor: 'Diego S.', nota: 'Eligió a otro proveedor por precio.' },
+      ],
+    },
+  ];
+
+  /* ---------- Render de la tabla ---------- */
+  function iniciales(nombre) { return nombre.split(' ').map(function (p) { return p[0]; }).slice(0, 1).join('').toUpperCase(); }
+  function apellidoCorto(nombre) { var partes = nombre.split(' '); return partes[0] + ' ' + (partes[1] ? partes[1][0] + '.' : ''); }
+
+  function renderTabla() {
+    var tbody = document.getElementById('tabla-body');
+    tbody.innerHTML = OPORTUNIDADES.map(function (o, i) {
+      var c0 = o.contactos[0];
+      var masContactos = o.contactos.length > 1 ? '<span class="more">+' + (o.contactos.length - 1) + ' más</span>' : '';
+      var etapaHtml = '<span class="tag ' + etapaTag(o.etapa) + '">' + o.etapa + '</span>';
+      if (o.propuesta) {
+        etapaHtml += '<div class="prop-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg>' + o.propuesta.codigo + ' · ' + o.propuesta.estado + '</div>';
+      }
+      if (o.suspensoNota) {
+        etapaHtml += '<div class="side-note suspenso">' + o.suspensoNota + '</div>';
+      }
+      if (o.motivoPerdida) {
+        etapaHtml += '<div class="side-note">Motivo: ' + o.motivoPerdida + '</div>';
+      }
+      var acciones = '<button class="view" aria-label="Ver detalle" onclick="openDetalle(' + i + ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>';
+      if (o.etapa !== 'Solicitud de RFP') {
+        acciones += '<button class="stage" aria-label="Cambiar etapa" onclick="openEtapaModal(' + i + ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>';
+        acciones += '<button class="edit" aria-label="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>';
+        acciones += '<button class="danger" aria-label="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></button>';
+      }
+
+      return '<tr>' +
+        '<td><div class="oport-title">' + o.titulo + '</div><div class="oport-empresa">' + o.empresa + '</div></td>' +
+        '<td><div class="contact-cell"><span class="name">' + c0.nombre + '</span><span class="role">' + (c0.cargo || '') + '</span>' + masContactos + '</div></td>' +
+        '<td class="origin">' + o.origen + '</td>' +
+        '<td>' + etapaHtml + '</td>' +
+        '<td class="value mono">' + o.valor + '</td>' +
+        '<td class="resp"><span class="av">' + iniciales(o.responsable) + '</span><span>' + apellidoCorto(o.responsable) + '</span></td>' +
+        '<td><span class="activity">' + o.actividad + '</span></td>' +
+        '<td><div class="row-actions">' + acciones + '</div></td>' +
+        '</tr>';
+    }).join('');
+  }
+  renderTabla();
+
+  /* ---------- Detalle de oportunidad ---------- */
+  function openDetalle(i) {
+    var o = OPORTUNIDADES[i];
+    document.getElementById('det-titulo').textContent = o.titulo;
+    document.getElementById('det-empresa').textContent = o.empresa;
+
+    var etapaEl = document.getElementById('det-etapa');
+    etapaEl.textContent = o.etapa;
+    etapaEl.className = 'tag ' + etapaTag(o.etapa);
+
+    document.getElementById('det-activity').textContent = 'Última actividad: ' + o.actividad;
+    document.getElementById('det-origen').textContent = o.origen;
+    document.getElementById('det-valor').textContent = o.valor;
+    document.getElementById('det-responsable').textContent = o.responsable;
+    document.getElementById('det-fecha').textContent = o.fecha;
+    document.getElementById('det-descripcion').textContent = o.descripcion;
+
+    document.getElementById('det-contactos').innerHTML = o.contactos.map(function (c) {
+      var linea = [c.telefono, c.correo].filter(Boolean).join(' · ');
+      return '<div class="contact-row"><span class="av">' + iniciales(c.nombre) + '</span><div class="info"><div class="n">' + c.nombre + '</div><div class="r">' + (c.cargo || '') + '</div>' + (linea ? '<div class="l">' + linea + '</div>' : '') + '</div></div>';
+    }).join('');
+
+    var propBanner = document.getElementById('det-propuesta-banner');
+    if (o.propuesta) {
+      document.getElementById('det-propuesta-texto').innerHTML = 'Esta oportunidad generó la propuesta <strong>' + o.propuesta.codigo + '</strong>, actualmente en estado <strong>' + o.propuesta.estado + '</strong>.';
+      propBanner.style.display = 'flex';
+    } else {
+      propBanner.style.display = 'none';
+    }
+
+    var suspBanner = document.getElementById('det-suspenso-banner');
+    if (o.suspensoNota) {
+      document.getElementById('det-suspenso-texto').textContent = o.suspensoNota;
+      suspBanner.style.display = 'flex';
+    } else {
+      suspBanner.style.display = 'none';
+    }
+
+    var motivoBanner = document.getElementById('det-motivo-banner');
+    if (o.motivoPerdida) {
+      document.getElementById('det-motivo-texto').innerHTML = '<strong>Motivo de pérdida:</strong> ' + o.motivoPerdida;
+      motivoBanner.style.display = 'flex';
+    } else {
+      motivoBanner.style.display = 'none';
+    }
+
+    document.getElementById('det-seguimientos').innerHTML = o.seguimientos.map(function (s) {
+      return '<li><span class="tdot"></span><div class="tbody">' + s.texto + '<div class="tmeta">' + s.autor + ' · ' + s.fecha + '</div></div></li>';
+    }).join('');
+
+    document.getElementById('det-logs').innerHTML = o.logs.map(function (l) {
+      var move = l.de
+        ? '<span class="stage-move">' + l.de + '<span class="arrow">→</span>' + l.a + '</span>'
+        : '<span class="stage-move">Oportunidad creada en ' + l.a + '</span>';
+      var nota = l.nota ? '<div class="tmeta">' + l.nota + '</div>' : '';
+      return '<li><span class="tdot"></span><div class="tbody">' + move + '<div class="tmeta">' + l.autor + ' · ' + l.fecha + '</div>' + nota + '</div></li>';
+    }).join('');
+
+    document.getElementById('det-nuevo-seguimiento').value = '';
+    document.getElementById('det-cambiar-etapa-btn').onclick = function () {
+      closeModal('modal-detalle');
+      openEtapaModal(i);
+    };
+
+    openModal('modal-detalle');
+  }
+
+  function agregarSeguimiento() {
+    var ta = document.getElementById('det-nuevo-seguimiento');
+    var texto = ta.value.trim();
+    if (!texto) return;
+    var li = document.createElement('li');
+    li.innerHTML = '<span class="tdot"></span><div class="tbody">' + texto + '<div class="tmeta">Tú · hoy</div></div>';
+    var list = document.getElementById('det-seguimientos');
+    list.insertBefore(li, list.firstChild);
+    ta.value = '';
+  }
+
+  /* ---------- Cambiar etapa ---------- */
+  function openEtapaModal(i) {
+    var o = OPORTUNIDADES[i];
+    document.getElementById('etapa-titulo').textContent = 'Cambiar etapa · ' + o.empresa;
+    var actualTag = document.getElementById('etapa-actual-tag');
+    actualTag.textContent = o.etapa;
+    actualTag.className = 'tag ' + etapaTag(o.etapa);
+
+    var picker = document.getElementById('etapa-picker');
+    picker.innerHTML = ETAPAS.map(function (e) {
+      if (e.key === o.etapa) return '<button type="button" class="stage-opt current" disabled>' + e.key + '</button>';
+      return '<button type="button" class="stage-opt" onclick="selectStageOption(this,\'' + e.key + '\')">' + e.key + '</button>';
+    }).join('');
+
+    document.getElementById('banner-rfp').style.display = 'none';
+    document.getElementById('banner-suspenso').style.display = 'none';
+    document.getElementById('motivo-field').style.display = 'none';
+    document.getElementById('banner-rfp-texto').innerHTML = 'Al mover esta oportunidad a <strong>Solicitud de RFP</strong>, GPRO creará automáticamente una <strong>Propuesta</strong> en estado Factibilidad para ' + o.empresa + ', con el título y valor estimado precargados.';
+
+    openModal('modal-etapa');
+  }
+
+  function selectStageOption(btn, etapaKey) {
+    document.querySelectorAll('#etapa-picker .stage-opt').forEach(function (b) {
+      if (!b.classList.contains('current')) b.classList.remove('selected');
+    });
+    btn.classList.add('selected');
+    var meta = ETAPAS.filter(function (x) { return x.key === etapaKey; })[0];
+    document.getElementById('banner-rfp').style.display = (meta && meta.hook) ? 'flex' : 'none';
+    document.getElementById('banner-suspenso').style.display = (etapaKey === 'En Suspenso') ? 'flex' : 'none';
+    document.getElementById('motivo-field').style.display = (etapaKey === 'Perdida') ? 'flex' : 'none';
+  }
+
+  /* ---------- Contactos dinámicos en "Nueva Oportunidad" ---------- */
+  function agregarContactoNuevo() {
+    var list = document.getElementById('nueva-contactos');
+    var card = document.createElement('div');
+    card.className = 'contact-form-card';
+    card.innerHTML =
+      '<button type="button" class="remove-contact" aria-label="Quitar contacto" onclick="this.parentElement.remove()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>' +
+      '<div class="field-row"><div class="field"><label>Nombre</label><input type="text" placeholder="Nombre del contacto" /></div><div class="field"><label>Cargo</label><input type="text" placeholder="Ej. Director Financiero" /></div></div>' +
+      '<div class="field-row"><div class="field"><label>Teléfono</label><input type="text" placeholder="09XXXXXXXX" /></div><div class="field"><label>Correo</label><input type="text" placeholder="contacto@empresa.com" /></div></div>';
+    list.appendChild(card);
+  }
+</script>
