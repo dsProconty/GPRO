@@ -207,13 +207,60 @@ Mismo patrón que `propuesta_estado_logs`.
   Propuesta, y suma de `valorEstimado` por etapa (para el gráfico de
   pipeline).
 
-Todos los endpoints protegidos con `getServerSession`, formato de respuesta
+Todos los endpoints protegidos con `getServerSession` + verificación de
+permiso puntual (ver sección 5.1), formato de respuesta
 `{ success, data, message }` / `{ success: false, message, errors }`.
+
+## 5.1 Permisos (RBAC — se integra al sistema existente, no uno nuevo)
+
+GPRO ya tiene un módulo de Perfiles de Acceso (`src/lib/permisos.js` +
+`/perfiles`). Oportunidades se suma ahí con el mismo patrón que usan
+Proyectos y Propuestas — no se crea un mecanismo de permisos aparte.
+
+- **`src/lib/permisos.js`** — nueva entrada en `PERMISOS`:
+  ```js
+  OPORTUNIDADES: {
+    VER:            'oportunidades.ver',
+    CREAR:          'oportunidades.crear',
+    EDITAR:         'oportunidades.editar',
+    ELIMINAR:       'oportunidades.eliminar',
+    CAMBIAR_ETAPA:  'oportunidades.cambiarEtapa',
+  },
+  ```
+  (mismo esquema que `PROPUESTAS`, con `CAMBIAR_ETAPA` jugando el rol que
+  `CAMBIAR_ESTADO` juega en Propuestas).
+- **`/perfiles`** — nueva fila en la matriz `MODULOS` (`page.jsx`) para que
+  un admin pueda otorgar estos permisos por perfil:
+  ```js
+  {
+    key: 'oportunidades',
+    label: 'Oportunidades',
+    acciones: [
+      { key: 'ver', label: 'Ver' },
+      { key: 'crear', label: 'Crear' },
+      { key: 'editar', label: 'Editar' },
+      { key: 'eliminar', label: 'Eliminar' },
+    ],
+    especiales: [{ key: 'cambiarEtapa', label: 'Cambiar Etapa' }],
+  }
+  ```
+- **API**: cada endpoint valida con `tienePermiso(session,
+  PERMISOS.OPORTUNIDADES.X)` antes de ejecutar la acción — `admin` siempre
+  pasa, igual que en el resto del sistema. El `PATCH` de cambio de etapa
+  valida específicamente `CAMBIAR_ETAPA` (no `EDITAR`), igual que
+  Propuestas separa "editar metadata" de "cambiar estado".
+- **Sidebar** (`layout.jsx`): el ítem "Oportunidades" se filtra con
+  `permiso: 'oportunidades.ver'`, mismo mecanismo que ya oculta/muestra
+  Propuestas, Proyectos, etc. según el perfil del usuario.
+- **UI de la página**: botones "Nueva Oportunidad" / "Editar" / "Eliminar" /
+  "Cambiar etapa" condicionados con `usePermisos().puede(...)`, igual patrón
+  que `propuestas/page.jsx` (`puede(PERMISOS.PROPUESTAS.CREAR)`, etc.).
 
 ## 6. UI
 
 - Nuevo ítem **"Oportunidades"** en el sidebar, sección Principal, entre
-  **Dashboard** y **Propuestas**.
+  **Dashboard** y **Propuestas**, visible solo con permiso
+  `oportunidades.ver` (ver sección 5.1).
 - `/oportunidades`: pastillas de KPI en la cabecera (conteo por etapa +
   tasa de conversión a Propuesta, sin badge de alerta — ya no hay concepto
   de estancada) + **gráfica de barras de pipeline por valor** + filtros
@@ -246,7 +293,7 @@ Todos los endpoints protegidos con `getServerSession`, formato de respuesta
   }
   ```
 
-## 7. Historias de usuario (Sprint 9 propuesto — 42 pts)
+## 7. Historias de usuario (Sprint 9 propuesto — 45 pts)
 
 | ID | Título | Story Points | Prioridad |
 |----|--------|--------------|-----------|
@@ -257,6 +304,7 @@ Todos los endpoints protegidos con `getServerSession`, formato de respuesta
 | SP9-05 | Lista de Oportunidades + KPIs + gráfica de pipeline | 8 | Alta |
 | SP9-06 | Detalle de Oportunidad (contactos + trazabilidad + seguimientos) | 6 | Media |
 | SP9-07 | Dialogs (Form con contactos dinámicos + CambiarEtapa + AgregarSeguimiento) | 6 | Alta |
+| SP9-08 | Permisos granulares en RBAC (`PERMISOS.OPORTUNIDADES` + matriz de `/perfiles`) | 3 | Alta |
 
 **SP9-01 Criterios:** 4 tablas nuevas vía `prisma db push` · relación
 `Oportunidad → OportunidadContacto[]` (1 a N) · `User → Oportunidad[]`
@@ -287,6 +335,15 @@ la longitud de la barra, excluyendo `Perdida` del total de pipeline abierto
 seguimientos sin botones editar/eliminar (inmutables) · timeline de cambios
 de etapa con usuario/fecha/nota · card de "Propuesta generada" mostrando el
 **estado actual** de la propuesta (RN-O09), no solo la fecha de creación.
+
+**SP9-08 Criterios:** `PERMISOS.OPORTUNIDADES` agregado a
+`src/lib/permisos.js` (VER/CREAR/EDITAR/ELIMINAR/CAMBIAR_ETAPA) · nueva fila
+en `MODULOS` de `/perfiles` para asignar estos permisos por perfil · ítem de
+sidebar y botones de acción (Nueva/Editar/Eliminar/Cambiar etapa)
+condicionados con `usePermisos().puede(...)` · endpoints validan el permiso
+correspondiente con `tienePermiso()`, `admin` bypasea siempre — todo
+siguiendo el patrón ya existente de Proyectos/Propuestas (sección 5.1), sin
+tabla ni mecanismo de permisos nuevo.
 
 **SP9-07 Criterios:** el formulario permite agregar/quitar contactos
 dinámicamente (mínimo 1 fila siempre visible) · `CambiarEtapaOportunidadDialog`
@@ -326,3 +383,12 @@ reversibilidad cuando el destino es `En Suspenso`.
   "Solicitud de RFP", y simplificación del modelo de empresa (sin matching
   automático en v1). El PM confirma estos cambios directamente tras la
   sesión (2026-09-04).
+- **2026-09-07**: se descubre que el PM ya tiene un flujo de despliegue real
+  vigente (Azure App Service `gpro-app` vía GitHub Actions desde
+  `main-azure`) y que Vercel se usará como entorno de prueba previo. El spec
+  se re-basa sobre el código real de `main-azure` (que incluye RBAC de
+  Sprint 11, no presente en la versión de CLAUDE.md leída originalmente). Se
+  agrega la sección 5.1: Oportunidades debe integrarse al sistema de
+  Perfiles de Acceso existente (`PERMISOS.OPORTUNIDADES` +
+  fila en la matriz de `/perfiles`), no crear un mecanismo de permisos
+  aparte. Nueva historia SP9-08.
