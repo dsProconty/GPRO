@@ -53,6 +53,17 @@ const MODULOS = [
     especiales: [{ key: 'cambiarEstado', label: 'Cambiar Estado' }],
   },
   {
+    key: 'oportunidades',
+    label: 'Oportunidades',
+    acciones: [
+      { key: 'ver', label: 'Ver' },
+      { key: 'crear', label: 'Crear' },
+      { key: 'editar', label: 'Editar' },
+      { key: 'eliminar', label: 'Eliminar' },
+    ],
+    especiales: [{ key: 'cambiarEtapa', label: 'Cambiar Etapa' }],
+  },
+  {
     key: 'clientes',
     label: 'Clientes',
     acciones: [

@@ -29,9 +29,11 @@ model User {
   // Relaciones
   perfilUsuario     PerfilUsuario?      @relation(fields: [perfilUsuarioId], references: [id])
   empleado          Empleado?           @relation(fields: [empleadoId], references: [id])
-  observaciones     Observacion[]
-  estadoLogs        ProyectoEstadoLog[]
-  propuestaLogs     PropuestaEstadoLog[]
+  observaciones       Observacion[]
+  estadoLogs          ProyectoEstadoLog[]
+  propuestaLogs       PropuestaEstadoLog[]
+  oportunidadLogs     OportunidadEstadoLog[]
+  oportunidadSeguimientos OportunidadSeguimiento[]
 
   @@map("users")
 }
@@ -372,6 +374,7 @@ model Propuesta {
   clientes     PropuestaCliente[]
   logs         PropuestaEstadoLog[]
   casoNegocio  CasoNegocioLinea[]
+  oportunidad  Oportunidad?
 
   @@map("propuestas")
 }
@@ -436,6 +439,82 @@ model PropuestaEstadoLog {
   @@map("propuesta_estado_logs")
 }
 
+// ─── OPORTUNIDAD ──────────────────────────────────────────────────────────────
+// Pipeline comercial previo a Propuestas. Sprint 9.
+// Etapas: Prospeccion -> Solicitud_RFI -> Entrega_RFI -> Solicitud_RFP (gancho)
+// En_Suspenso y Perdida son alcanzables desde las 3 primeras y reversibles.
+// Al llegar a Solicitud_RFP se crea automáticamente una Propuesta (Factibilidad).
+model Oportunidad {
+  id             Int       @id @default(autoincrement())
+  titulo         String    @db.VarChar(255)
+  empresaNombre  String    @map("empresa_nombre") @db.VarChar(150) // texto libre, sin catálogo en v1
+  origen         String?   @db.VarChar(50)
+  descripcion    String?   @db.Text
+  valorEstimado  Decimal?  @map("valor_estimado") @db.Decimal(12, 2)
+  etapa          String    @default("Prospeccion") @db.VarChar(30)
+  motivoPerdida  String?   @map("motivo_perdida") @db.Text
+  responsableId  Int       @map("id_empleado_responsable")
+  propuestaId    Int?      @unique @map("id_propuesta")
+  fechaCreacion  DateTime  @map("fecha_creacion") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  responsable  Empleado                @relation(fields: [responsableId], references: [id])
+  propuesta    Propuesta?              @relation(fields: [propuestaId], references: [id])
+  contactos    OportunidadContacto[]
+  seguimientos OportunidadSeguimiento[]
+  logs         OportunidadEstadoLog[]
+
+  @@map("oportunidades")
+}
+
+// ─── OPORTUNIDAD: CONTACTOS (1 a N) ───────────────────────────────────────────
+model OportunidadContacto {
+  id            Int      @id @default(autoincrement())
+  oportunidadId Int      @map("id_oportunidad")
+  nombre        String   @db.VarChar(150)
+  cargo         String?  @db.VarChar(100)
+  telefono      String?  @db.VarChar(20)
+  correo        String?  @db.VarChar(200)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  oportunidad Oportunidad @relation(fields: [oportunidadId], references: [id], onDelete: Cascade)
+
+  @@map("oportunidad_contactos")
+}
+
+// ─── OPORTUNIDAD: SEGUIMIENTOS (INMUTABLE) ────────────────────────────────────
+// REGLA DE NEGOCIO: Solo INSERT. Nunca UPDATE ni DELETE.
+model OportunidadSeguimiento {
+  id            Int      @id @default(autoincrement())
+  oportunidadId Int      @map("id_oportunidad")
+  descripcion   String   @db.Text
+  userId        Int      @map("id_user")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  oportunidad Oportunidad @relation(fields: [oportunidadId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@map("oportunidad_seguimientos")
+}
+
+// ─── OPORTUNIDAD: TRAZABILIDAD DE ETAPA (INMUTABLE) ──────────────────────────
+model OportunidadEstadoLog {
+  id             Int      @id @default(autoincrement())
+  oportunidadId  Int      @map("id_oportunidad")
+  etapaAnterior  String?  @map("etapa_anterior") @db.VarChar(30)
+  etapaNueva     String   @map("etapa_nueva")    @db.VarChar(30)
+  userId         Int      @map("id_user")
+  nota           String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  oportunidad Oportunidad @relation(fields: [oportunidadId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@map("oportunidad_estado_logs")
+}
+
 // ─── EMPLEADO / RECURSO ───────────────────────────────────────────────────────
 // Consultores de Proconty. Pueden o no tener acceso al sistema (users).
 // Cuando un usuario del sistema ES también un consultor, se vinculan via users.empleadoId.
@@ -457,6 +536,7 @@ model Empleado {
   proyectoCasoNegocioLineas ProyectoCasoNegocioLinea[]
   proyectosResponsable      ProyectoResponsable[]
   propuestasResponsable     PropuestaResponsable[]
+  oportunidadesResponsable  Oportunidad[]
   usuario                   User?
 
   @@map("empleados")

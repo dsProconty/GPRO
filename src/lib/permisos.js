@@ -24,6 +24,13 @@ export const PERMISOS = {
     ELIMINAR:      'propuestas.eliminar',
     CAMBIAR_ESTADO:'propuestas.cambiarEstado',
   },
+  OPORTUNIDADES: {
+    VER:           'oportunidades.ver',
+    CREAR:         'oportunidades.crear',
+    EDITAR:        'oportunidades.editar',
+    ELIMINAR:      'oportunidades.eliminar',
+    CAMBIAR_ETAPA: 'oportunidades.cambiarEtapa',
+  },
   CLIENTES: {
     VER:      'clientes.ver',
     CREAR:    'clientes.crear',
