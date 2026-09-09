@@ -6,6 +6,8 @@ import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
 import { Button } from 'primereact/button'
 import { InputText } from '@/components/shared/InputText'
+import { IconField } from 'primereact/iconfield'
+import { InputIcon } from 'primereact/inputicon'
 import { Dropdown } from 'primereact/dropdown'
 import { Tag } from 'primereact/tag'
 import { Toast } from 'primereact/toast'
@@ -80,7 +82,11 @@ export default function OportunidadesPage() {
     let lista = oportunidades
     if (etapaFiltro) lista = lista.filter((o) => o.etapa === etapaFiltro)
     if (responsableFiltro) lista = lista.filter((o) => o.responsableId === responsableFiltro)
-    return lista
+    return lista.map((o) => ({
+      ...o,
+      responsableNombre: o.responsable ? `${o.responsable.nombre} ${o.responsable.apellido}` : '',
+      contactoPrincipal: o.contactos?.[0]?.nombre || '',
+    }))
   }, [oportunidades, etapaFiltro, responsableFiltro])
 
   const openCreate = () => { setSelected(null); setDialogVisible(true) }
@@ -200,10 +206,10 @@ export default function OportunidadesPage() {
       )}
 
       <div className="flex flex-wrap gap-3 mb-3">
-        <span className="p-input-icon-left flex-1" style={{ minWidth: '200px' }}>
-          <i className="pi pi-search" />
+        <IconField iconPosition="left" className="flex-1" style={{ minWidth: '200px' }}>
+          <InputIcon className="pi pi-search" />
           <InputText value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Buscar por empresa, título o contacto..." className="w-full" />
-        </span>
+        </IconField>
         <Dropdown
           value={etapaFiltro}
           options={[{ label: 'Todas las etapas', value: null }, ...ETAPAS.map((e) => ({ label: ETAPA_CONFIG[e].label, value: e }))]}
@@ -223,31 +229,31 @@ export default function OportunidadesPage() {
       <DataTable
         value={oportunidadesFiltradas}
         globalFilter={globalFilter}
-        globalFilterFields={['titulo', 'empresaNombre', 'contactos.nombre']}
+        globalFilterFields={['titulo', 'empresaNombre', 'contactoPrincipal']}
         loading={loading}
         paginator rows={10} rowsPerPageOptions={[10, 25, 50]}
         emptyMessage="No hay oportunidades registradas"
         stripedRows
+        filterDisplay="menu"
       >
-        <Column header="Oportunidad" sortField="titulo" sortable style={{ minWidth: '220px' }} body={(r) => (
-          <div>
-            <Button label={r.titulo} link className="p-0 text-left" style={{ fontWeight: 500 }} onClick={() => verDetalle(r)} />
-            <div className="text-sm text-color-secondary">{r.empresaNombre}</div>
-          </div>
+        <Column field="titulo" header="Oportunidad" sortable filter filterPlaceholder="Buscar título..." style={{ minWidth: '190px' }} body={(r) => (
+          <Button label={r.titulo} link className="p-0 text-left" style={{ fontWeight: 500 }} onClick={() => verDetalle(r)} />
         )} />
-        <Column header="Contacto" body={(r) => {
+        <Column field="empresaNombre" header="Cliente" sortable filter filterPlaceholder="Buscar cliente..." style={{ minWidth: '160px' }} body={(r) => r.empresaNombre} />
+        <Column field="contactoPrincipal" header="Contacto" filter filterPlaceholder="Buscar contacto..." body={(r) => {
           const c0 = r.contactos?.[0]
           if (!c0) return <span className="text-color-secondary">—</span>
+          const cargoTelefono = [c0.cargo, c0.telefono].filter(Boolean).join(' - ')
           return (
             <div>
               <div className="text-sm">{c0.nombre}</div>
-              <div className="text-xs text-color-secondary">{c0.cargo || ''}</div>
+              {cargoTelefono && <div className="text-xs text-color-secondary">{cargoTelefono}</div>}
               {r.contactos.length > 1 && <div className="text-xs" style={{ color: 'var(--primary-color)', fontWeight: 600 }}>+{r.contactos.length - 1} más</div>}
             </div>
           )
         }} />
-        <Column field="origen" header="Origen" body={(r) => r.origen || '—'} style={{ width: '120px' }} />
-        <Column header="Etapa" sortable sortField="etapa" style={{ width: '190px' }} body={(r) => (
+        <Column field="origen" header="Origen" sortable filter filterPlaceholder="Buscar origen..." body={(r) => r.origen || '—'} style={{ width: '120px' }} />
+        <Column field="etapa" header="Etapa" sortable filter filterPlaceholder="Buscar etapa..." style={{ width: '190px' }} body={(r) => (
           <div>
             <EtapaTag etapa={r.etapa} />
             {r.propuesta && (
@@ -260,9 +266,9 @@ export default function OportunidadesPage() {
             )}
           </div>
         )} />
-        <Column header="Valor est." sortable sortField="valorEstimado" dataType="numeric" style={{ textAlign: 'right', width: '130px' }}
+        <Column field="valorEstimado" header="Valor est." sortable dataType="numeric" filter filterPlaceholder="Buscar valor..." style={{ textAlign: 'right', width: '140px' }}
           body={(r) => r.valorEstimado ? formatCurrency(r.valorEstimado) : '—'} />
-        <Column header="Responsable" body={(r) => r.responsable ? `${r.responsable.nombre} ${r.responsable.apellido}` : '—'} style={{ width: '150px' }} />
+        <Column field="responsableNombre" header="Responsable" sortable filter filterPlaceholder="Buscar responsable..." style={{ width: '160px' }} body={(r) => r.responsableNombre || '—'} />
         <Column header="Última actividad" body={(r) => <span className="text-sm text-color-secondary">{ultimaActividadLabel(r)}</span>} style={{ width: '140px' }} />
         <Column header="Acciones" style={{ width: '140px' }} body={(r) => (
           <div className="flex gap-1">
