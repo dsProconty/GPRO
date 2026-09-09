@@ -145,36 +145,75 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
 
         <div className="flex flex-column gap-2">
           <label className="text-sm font-medium">Contactos</label>
-          {contactos.map((c, idx) => (
-            <div key={idx} className="p-3 border-round relative" style={{ border: '1px solid var(--surface-border)' }}>
-              {contactos.length > 1 && (
-                <Button
-                  icon="pi pi-times" rounded text severity="danger" size="small"
-                  style={{ position: 'absolute', top: '6px', right: '6px', width: '22px', height: '22px' }}
-                  onClick={() => quitarContacto(idx)}
-                />
-              )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div className="flex flex-column gap-1">
-                  <label className="text-xs font-medium">Nombre</label>
-                  <InputText value={c.nombre} onChange={(e) => setContacto(idx, 'nombre', e.target.value)} placeholder="Nombre del contacto" />
-                </div>
-                <div className="flex flex-column gap-1">
-                  <label className="text-xs font-medium">Cargo</label>
-                  <InputText value={c.cargo} onChange={(e) => setContacto(idx, 'cargo', e.target.value)} placeholder="Ej. Gerente de Compras" />
-                </div>
-                <div className="flex flex-column gap-1">
-                  <label className="text-xs font-medium">Teléfono</label>
-                  <InputText value={c.telefono} onChange={(e) => setContacto(idx, 'telefono', e.target.value)} placeholder="09XXXXXXXX" />
-                </div>
-                <div className="flex flex-column gap-1">
-                  <label className="text-xs font-medium">Correo</label>
-                  <InputText value={c.correo} onChange={(e) => setContacto(idx, 'correo', e.target.value)} placeholder="contacto@empresa.com" />
-                </div>
-              </div>
+          <div style={{ border: '1px solid var(--surface-border)', borderRadius: '8px', overflow: 'hidden' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '520px' }}>
+                <colgroup>
+                  <col style={{ width: '27%' }} />
+                  <col style={{ width: '25%' }} />
+                  <col style={{ width: '18%' }} />
+                  <col style={{ width: '26%' }} />
+                  <col style={{ width: '4%' }} />
+                </colgroup>
+                <thead>
+                  <tr style={{ background: '#f8f9fa', borderBottom: '1px solid var(--surface-border)' }}>
+                    {['Nombre', 'Cargo', 'Teléfono', 'Correo', ''].map((h, i) => (
+                      <th key={i} style={{ padding: '7px 8px', textAlign: 'left', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {contactos.map((c, idx) => (
+                    <tr key={idx} style={{ borderBottom: idx < contactos.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                      <td style={{ padding: '3px 4px' }}>
+                        <InputText
+                          value={c.nombre} onChange={(e) => setContacto(idx, 'nombre', e.target.value)}
+                          placeholder="Nombre del contacto" className="w-full"
+                          style={{ border: 'none', boxShadow: 'none', background: 'transparent', padding: '6px 6px', fontSize: '13px' }}
+                        />
+                      </td>
+                      <td style={{ padding: '3px 4px' }}>
+                        <InputText
+                          value={c.cargo} onChange={(e) => setContacto(idx, 'cargo', e.target.value)}
+                          placeholder="Ej. Gerente de Compras" className="w-full"
+                          style={{ border: 'none', boxShadow: 'none', background: 'transparent', padding: '6px 6px', fontSize: '13px' }}
+                        />
+                      </td>
+                      <td style={{ padding: '3px 4px' }}>
+                        <InputText
+                          value={c.telefono} onChange={(e) => setContacto(idx, 'telefono', e.target.value)}
+                          placeholder="09XXXXXXXX" className="w-full"
+                          style={{ border: 'none', boxShadow: 'none', background: 'transparent', padding: '6px 6px', fontSize: '13px' }}
+                        />
+                      </td>
+                      <td style={{ padding: '3px 4px' }}>
+                        <InputText
+                          value={c.correo} onChange={(e) => setContacto(idx, 'correo', e.target.value)}
+                          placeholder="contacto@empresa.com" className="w-full"
+                          style={{ border: 'none', boxShadow: 'none', background: 'transparent', padding: '6px 6px', fontSize: '13px' }}
+                        />
+                      </td>
+                      <td style={{ padding: '3px 2px', textAlign: 'center' }}>
+                        {contactos.length > 1 && (
+                          <Button
+                            icon="pi pi-trash" rounded text severity="danger" size="small"
+                            style={{ width: '26px', height: '26px' }}
+                            tooltip="Quitar contacto" tooltipOptions={{ position: 'top' }}
+                            onClick={() => quitarContacto(idx)}
+                          />
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ))}
-          <Button label="Agregar otro contacto" icon="pi pi-plus" size="small" severity="secondary" outlined style={{ alignSelf: 'flex-start' }} onClick={agregarContacto} />
+            <div style={{ padding: '6px 8px', borderTop: '1px solid var(--surface-border)', background: '#fafbfc' }}>
+              <Button label="Agregar otro contacto" icon="pi pi-plus" size="small" text onClick={agregarContacto} />
+            </div>
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
