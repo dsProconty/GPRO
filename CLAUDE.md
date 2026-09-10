@@ -99,6 +99,49 @@ El cron de recordatorios ya no corre vía `vercel.json` — lo dispara `.github/
 
 ---
 
+## 2.2 GOTCHAS DE RBAC Y CARGA DE DATOS (aprendidos en producción, sept 2026)
+
+> ⚠️ Leer antes de tocar una página que combine varios `fetch`/`axios.get` en paralelo,
+> o un endpoint que sirva de catálogo (Empresas, Empleados) para más de un módulo.
+> Todos estos se descubrieron como bugs reales en producción durante el Sprint 9
+> (módulo de Oportunidades, ver sección 7) y ya están corregidos, pero el patrón que los
+> causó puede repetirse en módulos nuevos si no se tiene cuidado.
+
+### Los permisos de un usuario quedan "horneados" en el JWT al iniciar sesión
+- `src/lib/auth.js`: el callback `jwt` solo recalcula `token.permisos` cuando `user` está
+  presente (o sea, en el login). Editar el perfil de un usuario que ya tiene sesión
+  abierta **no le cambia nada hasta que hace logout + login completo** — ya está advertido
+  en el propio diálogo de `/perfiles`, pero es fácil pasarlo por alto al diagnosticar
+  "no le aparece tal permiso".
+
+### Carga de datos en paralelo: usar `Promise.allSettled`, no `Promise.all`
+- Bug real en producción (v1.8.0 → parcheado en v1.8.1): la página de Oportunidades
+  cargaba oportunidades + empleados + empresas + KPIs con `Promise.all`. Un perfil sin el
+  permiso `empresas.ver` (aunque tuviera `oportunidades.ver` completo) hacía fallar **toda
+  la carga** por el fail-fast de `Promise.all`, mostrando la pantalla vacía sin ningún
+  error visible para el usuario.
+- Patrón correcto (ya usado en `propuestas/page.jsx`): `Promise.allSettled`, y solo el
+  fetch verdaderamente crítico de esa pantalla debe lanzar error; los demás (catálogos
+  secundarios) se aplican solo si `status === 'fulfilled'`.
+
+### Empresas y Empleados son catálogos compartidos entre módulos
+- `GET /api/v1/empresas` y `GET /api/v1/empleados` se consumen como dropdown desde
+  Proyectos, Propuestas, Oportunidades y Clientes — no solo desde su propia pantalla de
+  gestión. Ambos endpoints validan el permiso propio **O** el de cualquiera de esos
+  módulos (`tienePermiso(...) || tienePermiso(...)` en cada `route.js`). Si se agrega un
+  módulo nuevo que necesite el dropdown de empresas/empleados, hay que sumarlo a esa
+  lista — de lo contrario un perfil legítimo para ese módulo nuevo verá el dropdown vacío
+  (o, si el fetch no usa `allSettled`, rompe toda la pantalla).
+
+### `middleware.js` no protege rutas nuevas automáticamente
+- El array `matcher` en `middleware.js` es una lista manual de rutas de dashboard. Al
+  agregar un módulo nuevo (ej. `/oportunidades`, que quedó fuera del matcher hasta que se
+  corrigió en v1.8.1) hay que añadir su path ahí explícitamente, o la página queda
+  accesible sin sesión a nivel de ruta (las API routes igual validan permiso por su
+  cuenta, pero la página en sí no redirige a `/login`).
+
+---
+
 ## 3. ESTRUCTURA DE ARCHIVOS
 
 ```
@@ -389,6 +432,25 @@ export const calcTiempoVida = (fechaCreacion, fechaCierre) => {
 | **Sprint 6** | Visibilidad Gerencial | ✅ COMPLETADO | 15-16 |
 | **Sprint 7** | Administración, Reportes y Productividad | ✅ COMPLETADO | 17-18 |
 | **Sprint 8** | Módulo de Propuestas | ✅ COMPLETADO | 19-20 |
+| **Sprint 9** | Módulo de Oportunidades (CRM ligero, pre-Propuestas) | ✅ COMPLETADO | sept 2026 |
+
+### Sprint 9 — Módulo de Oportunidades (v1.8.x)
+- Pipeline comercial previo a Propuestas: `Prospeccion → Solicitud_RFI → Entrega_RFI →
+  Solicitud_RFP`, con `En_Suspenso` y `Perdida` como estados laterales reversibles desde
+  cualquiera de las 3 etapas activas. `Solicitud_RFP` es el gancho: crea automáticamente
+  una Propuesta (Factibilidad) en transacción atómica.
+- Al crear una Oportunidad se puede elegir cualquiera de las 6 etapas como punto de
+  partida (no siempre nace en Prospección) — si se elige directamente el gancho, también
+  se genera la Propuesta en el mismo POST.
+- Al convertir a Propuesta (crear o cambiar etapa), un diálogo pide confirmar a qué
+  Empresa ya registrada asignarla (o crear una nueva) — evita duplicar el catálogo de
+  Empresas, que antes se creaba a ciegas desde el texto libre de la Oportunidad.
+- Permisos propios en el RBAC: `oportunidades.{ver,crear,editar,eliminar,cambiarEtapa}`,
+  con fila en la matriz de `/perfiles`.
+- Diseño validado con la comercial del área (Yleana Paola Filian Tamayo) antes de
+  liberarlo — spec completo en `docs/superpowers/specs/2026-09-03-modulo-oportunidades-design.md`.
+- Ver sección 2.2 para los bugs de RBAC/carga de datos que salieron a la luz con este
+  módulo (y ya están corregidos en v1.8.1).
 
 ### Sprint 0 — Lo que ya existe ✅
 - Next.js 14 configurado con App Router
