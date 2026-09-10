@@ -54,9 +54,13 @@ export default function OportunidadDetallePage({ params }) {
     }
   }
 
-  const handleSave = () => {
+  const handleSave = (res) => {
     setDialogVisible(false)
-    toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Oportunidad actualizada', life: 3000 })
+    if (res?.propuestaCreada) {
+      toast.current.show({ severity: 'success', summary: '¡Propuesta generada!', detail: res.message, life: 6000 })
+    } else {
+      toast.current.show({ severity: 'success', summary: 'Éxito', detail: 'Oportunidad actualizada', life: 3000 })
+    }
     loadAll()
   }
 

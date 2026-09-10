@@ -94,9 +94,13 @@ export default function OportunidadesPage() {
   const openEtapa = (o) => { setSelected(o); setEtapaDialogVisible(true) }
   const verDetalle = (o) => router.push(`/oportunidades/${o.id}`)
 
-  const handleSave = () => {
+  const handleSave = (res) => {
     setDialogVisible(false)
-    toast.current.show({ severity: 'success', summary: 'Éxito', detail: selected ? 'Oportunidad actualizada' : 'Oportunidad creada', life: 3000 })
+    if (res?.propuestaCreada) {
+      toast.current.show({ severity: 'success', summary: '¡Propuesta generada!', detail: res.message, life: 6000 })
+    } else {
+      toast.current.show({ severity: 'success', summary: 'Éxito', detail: selected ? 'Oportunidad actualizada' : 'Oportunidad creada', life: 3000 })
+    }
     loadAll()
   }
 

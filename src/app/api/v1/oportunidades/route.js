@@ -4,7 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { tienePermiso, PERMISOS } from '@/lib/permisos'
 import { logPermisoDenegado } from '@/lib/logger'
-import { ETAPAS_INICIALES } from '@/lib/oportunidades'
+import { ETAPAS, ETAPA_HOOK } from '@/lib/oportunidades'
+import { generarCodigoPropuesta } from '@/lib/codigoHelper'
 
 const OPORTUNIDAD_INCLUDE = {
   responsable: { select: { id: true, nombre: true, apellido: true } },
@@ -57,7 +58,7 @@ export async function POST(request) {
 
   const {
     titulo, empresaNombre, origen, descripcion, valorEstimado,
-    responsableId, fechaCreacion, contactos = [], etapa,
+    responsableId, fechaCreacion, contactos = [], etapa, motivoPerdida,
   } = await request.json()
 
   const errors = {}
@@ -70,30 +71,79 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'Error de validación', errors }, { status: 422 })
   }
 
-  const etapaInicial = ETAPAS_INICIALES.includes(etapa) ? etapa : 'Prospeccion'
+  const etapaInicial = ETAPAS.includes(etapa) ? etapa : 'Prospeccion'
   const userId = parseInt(session.user.id)
 
+  const contactosData = contactos
+    .filter((c) => c.nombre?.trim())
+    .map((c) => ({
+      nombre: c.nombre.trim(),
+      cargo: c.cargo?.trim() || null,
+      telefono: c.telefono?.trim() || null,
+      correo: c.correo?.trim() || null,
+    }))
+
+  const datosBase = {
+    titulo: titulo.trim(),
+    empresaNombre: empresaNombre.trim(),
+    origen: origen?.trim() || null,
+    descripcion: descripcion?.trim() || null,
+    valorEstimado: valorEstimado != null ? parseFloat(valorEstimado) : null,
+    responsableId: parseInt(responsableId),
+    fechaCreacion: new Date(fechaCreacion),
+  }
+
   try {
+    // ── RN-O04: si nace directamente en el gancho, genera la Propuesta ya mismo ──
+    if (etapaInicial === ETAPA_HOOK) {
+      let oportunidadCreada = null
+      let propuestaCreada = null
+
+      await prisma.$transaction(async (tx) => {
+        const empresa = await tx.empresa.create({ data: { nombre: datosBase.empresaNombre } })
+        const codigo = await generarCodigoPropuesta(empresa.id, new Date(), tx)
+
+        propuestaCreada = await tx.propuesta.create({
+          data: {
+            codigo,
+            titulo: datosBase.titulo,
+            descripcion: datosBase.descripcion,
+            empresaId: empresa.id,
+            valorEstimado: datosBase.valorEstimado,
+            fechaCreacion: new Date(),
+            estado: 'Factibilidad',
+            logs: { create: { estadoAnterior: null, estadoNuevo: 'Factibilidad', userId, nota: `Generada automáticamente desde la oportunidad "${datosBase.titulo}"` } },
+          },
+          select: { id: true, codigo: true, titulo: true, estado: true },
+        })
+
+        oportunidadCreada = await tx.oportunidad.create({
+          data: {
+            ...datosBase,
+            etapa: etapaInicial,
+            propuestaId: propuestaCreada.id,
+            contactos: { create: contactosData },
+            logs: { create: { etapaAnterior: null, etapaNueva: etapaInicial, userId, nota: `Oportunidad creada. Se generó automáticamente ${propuestaCreada.codigo} en estado Factibilidad.` } },
+          },
+          include: OPORTUNIDAD_INCLUDE,
+        })
+      })
+
+      return NextResponse.json({
+        success: true,
+        data: serializeOportunidad(oportunidadCreada),
+        propuestaCreada,
+        message: `Oportunidad creada. Propuesta "${propuestaCreada.codigo}" generada automáticamente.`,
+      }, { status: 201 })
+    }
+
+    // ── Creación normal ────────────────────────────────────────────────────────
     const oportunidad = await prisma.oportunidad.create({
       data: {
-        titulo: titulo.trim(),
-        empresaNombre: empresaNombre.trim(),
-        origen: origen?.trim() || null,
-        descripcion: descripcion?.trim() || null,
-        valorEstimado: valorEstimado != null ? parseFloat(valorEstimado) : null,
-        responsableId: parseInt(responsableId),
-        fechaCreacion: new Date(fechaCreacion),
+        ...datosBase,
         etapa: etapaInicial,
-        contactos: {
-          create: contactos
-            .filter((c) => c.nombre?.trim())
-            .map((c) => ({
-              nombre: c.nombre.trim(),
-              cargo: c.cargo?.trim() || null,
-              telefono: c.telefono?.trim() || null,
-              correo: c.correo?.trim() || null,
-            })),
-        },
+        motivoPerdida: etapaInicial === 'Perdida' ? (motivoPerdida?.trim() || null) : null,
+        contactos: { create: contactosData },
         logs: {
           create: {
             etapaAnterior: null,

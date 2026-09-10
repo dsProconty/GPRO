@@ -8,8 +8,14 @@ import { InputNumber } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
 import { Calendar } from 'primereact/calendar'
 import { Button } from 'primereact/button'
+import { Tag } from 'primereact/tag'
 import { oportunidadService } from '@/services/oportunidadService'
-import { ETAPAS_INICIALES, ETAPA_CONFIG } from '@/lib/oportunidades'
+import { ETAPAS, ETAPA_CONFIG, ETAPA_HOOK } from '@/lib/oportunidades'
+
+function EtapaTag({ etapa }) {
+  const cfg = ETAPA_CONFIG[etapa] || { label: etapa, severity: 'secondary' }
+  return <Tag value={cfg.label} severity={cfg.severity} style={cfg.color ? { background: cfg.color, color: '#fff' } : undefined} />
+}
 
 const ORIGEN_OPTIONS = ['Referido', 'LinkedIn', 'Networking', 'Web', 'Llamada fría', 'Otro']
 
@@ -31,12 +37,14 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
 
   const [form, setForm] = useState(EMPTY)
   const [contactos, setContactos] = useState([{ ...CONTACTO_VACIO }])
+  const [motivoPerdidaInicial, setMotivoPerdidaInicial] = useState('')
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!visible) return
     setErrors({})
+    setMotivoPerdidaInicial('')
 
     if (oportunidad) {
       setForm({
@@ -96,12 +104,16 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
         descripcion: form.descripcion?.trim() || null,
         contactos: contactos.filter((c) => c.nombre?.trim()),
       }
-      if (!isEdit) payload.etapa = form.etapa
+      if (!isEdit) {
+        payload.etapa = form.etapa
+        if (form.etapa === 'Perdida') payload.motivoPerdida = motivoPerdidaInicial?.trim() || null
+      }
 
-      if (isEdit) await oportunidadService.update(oportunidad.id, payload)
-      else await oportunidadService.create(payload)
+      const res = isEdit
+        ? await oportunidadService.update(oportunidad.id, payload)
+        : await oportunidadService.create(payload)
 
-      onSave()
+      onSave(res)
     } catch (err) {
       const apiErrors = err.response?.data?.errors || {}
       const mapped = {}
@@ -139,12 +151,43 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
           {errors.titulo && <small className="text-red-500">{errors.titulo}</small>}
         </div>
 
-        <div className="flex flex-column gap-1">
-          <label className="text-sm font-medium">Empresa / prospecto <span className="text-red-500">*</span></label>
-          <InputText value={form.empresaNombre} onChange={set('empresaNombre')} placeholder="Nombre legal tal como aparece en el RUC" className={errors.empresaNombre ? 'p-invalid' : ''} />
-          <small className="text-color-secondary">Escribe el nombre legal (RUC), no abreviaturas ni nombres comerciales — así evitamos duplicados si esto se convierte en cliente.</small>
-          {errors.empresaNombre && <small className="text-red-500">{errors.empresaNombre}</small>}
+        <div style={{ display: 'grid', gridTemplateColumns: isEdit ? '1fr' : '2fr 1fr', gap: '12px' }}>
+          <div className="flex flex-column gap-1">
+            <label className="text-sm font-medium">Empresa / prospecto <span className="text-red-500">*</span></label>
+            <InputText value={form.empresaNombre} onChange={set('empresaNombre')} placeholder="Nombre legal tal como aparece en el RUC" className={errors.empresaNombre ? 'p-invalid' : ''} />
+            <small className="text-color-secondary">Escribe el nombre legal (RUC), no abreviaturas ni nombres comerciales — así evitamos duplicados si esto se convierte en cliente.</small>
+            {errors.empresaNombre && <small className="text-red-500">{errors.empresaNombre}</small>}
+          </div>
+
+          {!isEdit && (
+            <div className="flex flex-column gap-1">
+              <label className="text-sm font-medium">Etapa inicial</label>
+              <Dropdown
+                value={form.etapa}
+                options={ETAPAS.map((e) => ({ label: ETAPA_CONFIG[e].label, value: e }))}
+                onChange={set('etapa')}
+                itemTemplate={(opt) => <EtapaTag etapa={opt.value} />}
+                valueTemplate={(opt) => opt ? <EtapaTag etapa={opt.value} /> : <span className="text-color-secondary">Seleccionar</span>}
+              />
+            </div>
+          )}
         </div>
+
+        {!isEdit && form.etapa === ETAPA_HOOK && (
+          <div className="flex align-items-start gap-2 p-3 border-round" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
+            <i className="pi pi-info-circle text-green-600 mt-1" />
+            <div className="text-sm text-green-800">
+              Al crearla directamente en <strong>Solicitud de RFP</strong>, GPRO generará automáticamente una <strong>Propuesta</strong> en estado Factibilidad.
+            </div>
+          </div>
+        )}
+
+        {!isEdit && form.etapa === 'Perdida' && (
+          <div className="flex flex-column gap-1">
+            <label className="text-sm font-medium">Motivo de pérdida (opcional)</label>
+            <InputTextarea value={motivoPerdidaInicial} onChange={(e) => setMotivoPerdidaInicial(e.target.value)} placeholder="Ej. presupuesto insuficiente, eligió otro proveedor..." rows={2} autoResize />
+          </div>
+        )}
 
         <div className="flex flex-column gap-2">
           <label className="text-sm font-medium">Contactos</label>
@@ -229,18 +272,6 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
             <InputNumber value={form.valorEstimado} onValueChange={(e) => setForm((p) => ({ ...p, valorEstimado: e.value }))} mode="decimal" minFractionDigits={2} maxFractionDigits={2} placeholder="0.00" />
           </div>
         </div>
-
-        {!isEdit && (
-          <div className="flex flex-column gap-1">
-            <label className="text-sm font-medium">Etapa inicial</label>
-            <Dropdown
-              value={form.etapa}
-              options={ETAPAS_INICIALES.map((e) => ({ label: ETAPA_CONFIG[e].label, value: e }))}
-              onChange={set('etapa')}
-            />
-            <small className="text-color-secondary">No siempre nace en Prospección — elige en qué punto del proceso ya se encuentra esta oportunidad.</small>
-          </div>
-        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div className="flex flex-column gap-1">
