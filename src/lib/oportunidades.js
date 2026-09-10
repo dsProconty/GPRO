@@ -25,3 +25,9 @@ export const TRANSICIONES = {
 }
 
 export const ETAPA_HOOK = 'Solicitud_RFP'
+
+// Etapas activas en las que una oportunidad puede nacer (RN-O01 ampliada):
+// no necesariamente arranca en Prospección, puede ingresar ya en curso.
+// Se excluyen el gancho (dispara Propuesta automática) y los estados laterales
+// (Suspenso/Perdida no tienen sentido para algo recién creado).
+export const ETAPAS_INICIALES = ['Prospeccion', 'Solicitud_RFI', 'Entrega_RFI']

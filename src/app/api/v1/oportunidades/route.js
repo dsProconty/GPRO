@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { tienePermiso, PERMISOS } from '@/lib/permisos'
 import { logPermisoDenegado } from '@/lib/logger'
+import { ETAPAS_INICIALES } from '@/lib/oportunidades'
 
 const OPORTUNIDAD_INCLUDE = {
   responsable: { select: { id: true, nombre: true, apellido: true } },
@@ -56,7 +57,7 @@ export async function POST(request) {
 
   const {
     titulo, empresaNombre, origen, descripcion, valorEstimado,
-    responsableId, fechaCreacion, contactos = [],
+    responsableId, fechaCreacion, contactos = [], etapa,
   } = await request.json()
 
   const errors = {}
@@ -69,6 +70,7 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'Error de validación', errors }, { status: 422 })
   }
 
+  const etapaInicial = ETAPAS_INICIALES.includes(etapa) ? etapa : 'Prospeccion'
   const userId = parseInt(session.user.id)
 
   try {
@@ -81,7 +83,7 @@ export async function POST(request) {
         valorEstimado: valorEstimado != null ? parseFloat(valorEstimado) : null,
         responsableId: parseInt(responsableId),
         fechaCreacion: new Date(fechaCreacion),
-        etapa: 'Prospeccion',
+        etapa: etapaInicial,
         contactos: {
           create: contactos
             .filter((c) => c.nombre?.trim())
@@ -95,7 +97,7 @@ export async function POST(request) {
         logs: {
           create: {
             etapaAnterior: null,
-            etapaNueva: 'Prospeccion',
+            etapaNueva: etapaInicial,
             userId,
             nota: 'Oportunidad creada',
           },

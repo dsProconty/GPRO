@@ -9,6 +9,7 @@ import { Dropdown } from 'primereact/dropdown'
 import { Calendar } from 'primereact/calendar'
 import { Button } from 'primereact/button'
 import { oportunidadService } from '@/services/oportunidadService'
+import { ETAPAS_INICIALES, ETAPA_CONFIG } from '@/lib/oportunidades'
 
 const ORIGEN_OPTIONS = ['Referido', 'LinkedIn', 'Networking', 'Web', 'Llamada fría', 'Otro']
 
@@ -22,6 +23,7 @@ const EMPTY = {
   responsableId: null,
   fechaCreacion: new Date(),
   descripcion: '',
+  etapa: 'Prospeccion',
 }
 
 export default function OportunidadFormDialog({ visible, onHide, onSave, oportunidad, empleados = [] }) {
@@ -94,6 +96,7 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
         descripcion: form.descripcion?.trim() || null,
         contactos: contactos.filter((c) => c.nombre?.trim()),
       }
+      if (!isEdit) payload.etapa = form.etapa
 
       if (isEdit) await oportunidadService.update(oportunidad.id, payload)
       else await oportunidadService.create(payload)
@@ -227,6 +230,18 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
           </div>
         </div>
 
+        {!isEdit && (
+          <div className="flex flex-column gap-1">
+            <label className="text-sm font-medium">Etapa inicial</label>
+            <Dropdown
+              value={form.etapa}
+              options={ETAPAS_INICIALES.map((e) => ({ label: ETAPA_CONFIG[e].label, value: e }))}
+              onChange={set('etapa')}
+            />
+            <small className="text-color-secondary">No siempre nace en Prospección — elige en qué punto del proceso ya se encuentra esta oportunidad.</small>
+          </div>
+        )}
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div className="flex flex-column gap-1">
             <label className="text-sm font-medium">Responsable <span className="text-red-500">*</span></label>
@@ -251,7 +266,6 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
           <InputTextarea value={form.descripcion} onChange={set('descripcion')} placeholder="Detalle breve de lo que necesita el prospecto..." rows={3} autoResize />
         </div>
 
-        {!isEdit && <small className="text-color-secondary">La oportunidad se crea en etapa <strong>Prospección</strong>.</small>}
       </div>
     </Dialog>
   )
