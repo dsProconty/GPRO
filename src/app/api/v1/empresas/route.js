@@ -7,7 +7,16 @@ import { tienePermiso, PERMISOS } from '@/lib/permisos'
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
-  if (!tienePermiso(session, PERMISOS.EMPRESAS.VER)) {
+  // Empresas se usa como catálogo/dropdown desde otros módulos (Proyectos, Propuestas,
+  // Oportunidades, Clientes) — no solo desde su propia pantalla de gestión.
+  const puedeVer = (
+    tienePermiso(session, PERMISOS.EMPRESAS.VER) ||
+    tienePermiso(session, PERMISOS.PROYECTOS.VER) ||
+    tienePermiso(session, PERMISOS.PROPUESTAS.VER) ||
+    tienePermiso(session, PERMISOS.OPORTUNIDADES.VER) ||
+    tienePermiso(session, PERMISOS.CLIENTES.VER)
+  )
+  if (!puedeVer) {
     return NextResponse.json({ success: false, message: 'Sin permiso para ver empresas' }, { status: 403 })
   }
 

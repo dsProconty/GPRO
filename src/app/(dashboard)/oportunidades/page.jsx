@@ -65,16 +65,19 @@ export default function OportunidadesPage() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [opRes, empRes, empresaRes, kpiRes] = await Promise.all([
+      const [opRes, empRes, empresaRes, kpiRes] = await Promise.allSettled([
         oportunidadService.getAll(),
         empleadoService.getAll({ activo: true }),
         empresaService.getAll(),
         oportunidadService.getKpis(),
       ])
-      setOportunidades(opRes.data)
-      setEmpleados(empRes.data)
-      setEmpresas(empresaRes.data)
-      setKpis(kpiRes.data)
+
+      if (opRes.status === 'rejected') throw new Error('No se pudieron cargar las oportunidades')
+
+      setOportunidades(opRes.value.data)
+      if (empRes.status === 'fulfilled') setEmpleados(empRes.value.data)
+      if (empresaRes.status === 'fulfilled') setEmpresas(empresaRes.value.data)
+      if (kpiRes.status === 'fulfilled') setKpis(kpiRes.value.data)
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar las oportunidades', life: 4000 })
     } finally {

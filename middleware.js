@@ -14,6 +14,7 @@ export const config = {
     '/clientes/:path*',
     '/facturas/:path*',
     '/propuestas/:path*',
+    '/oportunidades/:path*',
     '/casos-negocio/:path*',
     '/empleados/:path*',
     '/tarifarios/:path*',

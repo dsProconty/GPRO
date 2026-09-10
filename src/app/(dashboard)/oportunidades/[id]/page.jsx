@@ -43,14 +43,17 @@ export default function OportunidadDetallePage({ params }) {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [opRes, empRes, empresaRes] = await Promise.all([
+      const [opRes, empRes, empresaRes] = await Promise.allSettled([
         oportunidadService.getById(id),
         empleadoService.getAll({ activo: true }),
         empresaService.getAll(),
       ])
-      setOportunidad(opRes.data)
-      setEmpleados(empRes.data)
-      setEmpresas(empresaRes.data)
+
+      if (opRes.status === 'rejected') throw new Error('No se pudo cargar la oportunidad')
+
+      setOportunidad(opRes.value.data)
+      if (empRes.status === 'fulfilled') setEmpleados(empRes.value.data)
+      if (empresaRes.status === 'fulfilled') setEmpresas(empresaRes.value.data)
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar la oportunidad', life: 4000 })
     } finally {
