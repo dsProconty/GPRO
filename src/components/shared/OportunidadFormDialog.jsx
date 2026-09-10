@@ -17,6 +17,8 @@ function EtapaTag({ etapa }) {
   return <Tag value={cfg.label} severity={cfg.severity} style={cfg.color ? { background: cfg.color, color: '#fff' } : undefined} />
 }
 
+const NUEVA_EMPRESA = '__NUEVA__'
+
 const ORIGEN_OPTIONS = ['Referido', 'LinkedIn', 'Networking', 'Web', 'Llamada fría', 'Otro']
 
 const CONTACTO_VACIO = { nombre: '', cargo: '', telefono: '', correo: '' }
@@ -32,12 +34,13 @@ const EMPTY = {
   etapa: 'Prospeccion',
 }
 
-export default function OportunidadFormDialog({ visible, onHide, onSave, oportunidad, empleados = [] }) {
+export default function OportunidadFormDialog({ visible, onHide, onSave, oportunidad, empleados = [], empresas = [] }) {
   const isEdit = !!oportunidad
 
   const [form, setForm] = useState(EMPTY)
   const [contactos, setContactos] = useState([{ ...CONTACTO_VACIO }])
   const [motivoPerdidaInicial, setMotivoPerdidaInicial] = useState('')
+  const [empresaHookId, setEmpresaHookId] = useState(NUEVA_EMPRESA)
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
 
@@ -45,6 +48,7 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
     if (!visible) return
     setErrors({})
     setMotivoPerdidaInicial('')
+    setEmpresaHookId(NUEVA_EMPRESA)
 
     if (oportunidad) {
       setForm({
@@ -66,6 +70,13 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
       setContactos([{ ...CONTACTO_VACIO }])
     }
   }, [visible, oportunidad])
+
+  useEffect(() => {
+    if (!isEdit && form.etapa === ETAPA_HOOK) {
+      const match = empresas.find((e) => e.nombre?.trim().toLowerCase() === form.empresaNombre?.trim().toLowerCase())
+      setEmpresaHookId(match ? match.id : NUEVA_EMPRESA)
+    }
+  }, [form.etapa, form.empresaNombre, empresas, isEdit])
 
   const set = (field) => (e) => {
     const val = e.target?.value ?? e.value ?? e
@@ -107,6 +118,7 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
       if (!isEdit) {
         payload.etapa = form.etapa
         if (form.etapa === 'Perdida') payload.motivoPerdida = motivoPerdidaInicial?.trim() || null
+        if (form.etapa === ETAPA_HOOK) payload.empresaId = empresaHookId === NUEVA_EMPRESA ? null : empresaHookId
       }
 
       const res = isEdit
@@ -174,10 +186,25 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
         </div>
 
         {!isEdit && form.etapa === ETAPA_HOOK && (
-          <div className="flex align-items-start gap-2 p-3 border-round" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
-            <i className="pi pi-info-circle text-green-600 mt-1" />
-            <div className="text-sm text-green-800">
-              Al crearla directamente en <strong>Solicitud de RFP</strong>, GPRO generará automáticamente una <strong>Propuesta</strong> en estado Factibilidad.
+          <div className="flex flex-column gap-2 p-3 border-round" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
+            <div className="flex align-items-start gap-2">
+              <i className="pi pi-info-circle text-green-600 mt-1" />
+              <div className="text-sm text-green-800">
+                Al crearla directamente en <strong>Solicitud de RFP</strong>, GPRO generará automáticamente una <strong>Propuesta</strong> en estado Factibilidad.
+              </div>
+            </div>
+            <div className="flex flex-column gap-1">
+              <label className="text-sm font-medium text-green-800">Asignar propuesta al cliente</label>
+              <Dropdown
+                value={empresaHookId}
+                options={[
+                  { label: `➕ Crear nuevo cliente: "${form.empresaNombre || '(sin nombre)'}"`, value: NUEVA_EMPRESA },
+                  ...empresas.map((e) => ({ label: e.nombre, value: e.id })),
+                ]}
+                onChange={(e) => setEmpresaHookId(e.value)}
+                filter
+                className="w-full"
+              />
             </div>
           </div>
         )}

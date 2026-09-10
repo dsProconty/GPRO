@@ -114,7 +114,7 @@ export async function PATCH(request, { params }) {
   const id = parseInt(params.id)
   if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
 
-  const { etapaNueva, nota, motivoPerdida } = await request.json()
+  const { etapaNueva, nota, motivoPerdida, empresaId } = await request.json()
   if (!etapaNueva) return NextResponse.json({ success: false, message: 'etapaNueva es requerida' }, { status: 422 })
 
   const oportunidad = await prisma.oportunidad.findUnique({ where: { id } })
@@ -128,6 +128,11 @@ export async function PATCH(request, { params }) {
     }, { status: 422 })
   }
 
+  if (etapaNueva === ETAPA_HOOK && empresaId) {
+    const empresaExiste = await prisma.empresa.findUnique({ where: { id: parseInt(empresaId) }, select: { id: true } })
+    if (!empresaExiste) return NextResponse.json({ success: false, message: 'El cliente seleccionado no existe' }, { status: 422 })
+  }
+
   const userId = parseInt(session.user.id)
   const etapaAnterior = oportunidad.etapa
 
@@ -137,7 +142,9 @@ export async function PATCH(request, { params }) {
     let oportunidadActualizada = null
 
     await prisma.$transaction(async (tx) => {
-      const empresa = await tx.empresa.create({ data: { nombre: oportunidad.empresaNombre } })
+      const empresa = empresaId
+        ? await tx.empresa.findUnique({ where: { id: parseInt(empresaId) } })
+        : await tx.empresa.create({ data: { nombre: oportunidad.empresaNombre } })
 
       const codigo = await generarCodigoPropuesta(empresa.id, new Date(), tx)
 

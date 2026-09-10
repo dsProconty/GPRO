@@ -58,7 +58,7 @@ export async function POST(request) {
 
   const {
     titulo, empresaNombre, origen, descripcion, valorEstimado,
-    responsableId, fechaCreacion, contactos = [], etapa, motivoPerdida,
+    responsableId, fechaCreacion, contactos = [], etapa, motivoPerdida, empresaId,
   } = await request.json()
 
   const errors = {}
@@ -93,6 +93,11 @@ export async function POST(request) {
     fechaCreacion: new Date(fechaCreacion),
   }
 
+  if (etapaInicial === ETAPA_HOOK && empresaId) {
+    const empresaExiste = await prisma.empresa.findUnique({ where: { id: parseInt(empresaId) }, select: { id: true } })
+    if (!empresaExiste) return NextResponse.json({ success: false, message: 'El cliente seleccionado no existe' }, { status: 422 })
+  }
+
   try {
     // ── RN-O04: si nace directamente en el gancho, genera la Propuesta ya mismo ──
     if (etapaInicial === ETAPA_HOOK) {
@@ -100,7 +105,9 @@ export async function POST(request) {
       let propuestaCreada = null
 
       await prisma.$transaction(async (tx) => {
-        const empresa = await tx.empresa.create({ data: { nombre: datosBase.empresaNombre } })
+        const empresa = empresaId
+          ? await tx.empresa.findUnique({ where: { id: parseInt(empresaId) } })
+          : await tx.empresa.create({ data: { nombre: datosBase.empresaNombre } })
         const codigo = await generarCodigoPropuesta(empresa.id, new Date(), tx)
 
         propuestaCreada = await tx.propuesta.create({

@@ -10,6 +10,7 @@ import { ProgressSpinner } from 'primereact/progressspinner'
 import { InputTextarea } from '@/components/shared/InputTextarea'
 import { oportunidadService } from '@/services/oportunidadService'
 import { empleadoService } from '@/services/empleadoService'
+import { empresaService } from '@/services/empresaService'
 import { formatCurrency, formatDate } from '@/utils/format'
 import OportunidadFormDialog from '@/components/shared/OportunidadFormDialog'
 import CambiarEtapaOportunidadDialog from '@/components/shared/CambiarEtapaOportunidadDialog'
@@ -29,6 +30,7 @@ export default function OportunidadDetallePage({ params }) {
 
   const [oportunidad, setOportunidad] = useState(null)
   const [empleados, setEmpleados] = useState([])
+  const [empresas, setEmpresas] = useState([])
   const [loading, setLoading] = useState(true)
   const [dialogVisible, setDialogVisible] = useState(false)
   const [etapaDialogVisible, setEtapaDialogVisible] = useState(false)
@@ -41,12 +43,14 @@ export default function OportunidadDetallePage({ params }) {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [opRes, empRes] = await Promise.all([
+      const [opRes, empRes, empresaRes] = await Promise.all([
         oportunidadService.getById(id),
         empleadoService.getAll({ activo: true }),
+        empresaService.getAll(),
       ])
       setOportunidad(opRes.data)
       setEmpleados(empRes.data)
+      setEmpresas(empresaRes.data)
     } catch {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar la oportunidad', life: 4000 })
     } finally {
@@ -64,10 +68,10 @@ export default function OportunidadDetallePage({ params }) {
     loadAll()
   }
 
-  const handleCambiarEtapa = async ({ etapaNueva, nota, motivoPerdida }) => {
+  const handleCambiarEtapa = async ({ etapaNueva, nota, motivoPerdida, empresaId }) => {
     setSavingEtapa(true)
     try {
-      const res = await oportunidadService.cambiarEtapa(id, { etapaNueva, nota, motivoPerdida })
+      const res = await oportunidadService.cambiarEtapa(id, { etapaNueva, nota, motivoPerdida, empresaId })
       setEtapaDialogVisible(false)
       toast.current.show({ severity: 'success', summary: res.propuestaCreada ? '¡Propuesta generada!' : 'Éxito', detail: res.message, life: res.propuestaCreada ? 6000 : 3000 })
       loadAll()
@@ -232,6 +236,7 @@ export default function OportunidadDetallePage({ params }) {
         onSave={handleSave}
         oportunidad={oportunidad}
         empleados={empleados}
+        empresas={empresas}
       />
 
       <CambiarEtapaOportunidadDialog
@@ -240,6 +245,7 @@ export default function OportunidadDetallePage({ params }) {
         onConfirm={handleCambiarEtapa}
         oportunidad={oportunidad}
         saving={savingEtapa}
+        empresas={empresas}
       />
     </div>
   )

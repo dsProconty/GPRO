@@ -3,23 +3,34 @@
 import { useEffect, useState } from 'react'
 import { Dialog } from 'primereact/dialog'
 import { InputTextarea } from '@/components/shared/InputTextarea'
+import { Dropdown } from 'primereact/dropdown'
 import { Button } from 'primereact/button'
 import { Tag } from 'primereact/tag'
 import { ETAPA_CONFIG, TRANSICIONES, ETAPA_HOOK } from '@/lib/oportunidades'
+
+const NUEVA_EMPRESA = '__NUEVA__'
 
 function EtapaTag({ etapa }) {
   const cfg = ETAPA_CONFIG[etapa] || { label: etapa, severity: 'secondary' }
   return <Tag value={cfg.label} severity={cfg.severity} style={cfg.color ? { background: cfg.color, color: '#fff' } : undefined} />
 }
 
-export default function CambiarEtapaOportunidadDialog({ visible, onHide, onConfirm, oportunidad, saving }) {
+export default function CambiarEtapaOportunidadDialog({ visible, onHide, onConfirm, oportunidad, saving, empresas = [] }) {
   const [destino, setDestino] = useState(null)
   const [nota, setNota] = useState('')
   const [motivoPerdida, setMotivoPerdida] = useState('')
+  const [empresaId, setEmpresaId] = useState(NUEVA_EMPRESA)
 
   useEffect(() => {
-    if (visible) { setDestino(null); setNota(''); setMotivoPerdida('') }
+    if (visible) { setDestino(null); setNota(''); setMotivoPerdida(''); setEmpresaId(NUEVA_EMPRESA) }
   }, [visible])
+
+  useEffect(() => {
+    if (destino === ETAPA_HOOK && oportunidad) {
+      const match = empresas.find((e) => e.nombre?.trim().toLowerCase() === oportunidad.empresaNombre?.trim().toLowerCase())
+      setEmpresaId(match ? match.id : NUEVA_EMPRESA)
+    }
+  }, [destino, oportunidad, empresas])
 
   if (!oportunidad) return null
 
@@ -36,9 +47,9 @@ export default function CambiarEtapaOportunidadDialog({ visible, onHide, onConfi
         label={esHook ? 'Confirmar y generar Propuesta' : 'Confirmar cambio'}
         icon="pi pi-check"
         severity={esHook ? 'success' : esPerdida ? 'danger' : 'primary'}
-        onClick={() => onConfirm({ etapaNueva: destino, nota, motivoPerdida })}
+        onClick={() => onConfirm({ etapaNueva: destino, nota, motivoPerdida, empresaId: esHook ? (empresaId === NUEVA_EMPRESA ? null : empresaId) : undefined })}
         loading={saving}
-        disabled={!destino}
+        disabled={!destino || (esHook && !empresaId)}
       />
     </div>
   )
@@ -74,10 +85,25 @@ export default function CambiarEtapaOportunidadDialog({ visible, onHide, onConfi
         </div>
 
         {esHook && (
-          <div className="flex align-items-start gap-2 p-3 border-round" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
-            <i className="pi pi-info-circle text-green-600 mt-1" />
-            <div className="text-sm text-green-800">
-              Al mover esta oportunidad a <strong>Solicitud de RFP</strong>, GPRO creará automáticamente una <strong>Propuesta</strong> en estado Factibilidad para <strong>{oportunidad.empresaNombre}</strong>, con el título y valor estimado precargados.
+          <div className="flex flex-column gap-2 p-3 border-round" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
+            <div className="flex align-items-start gap-2">
+              <i className="pi pi-info-circle text-green-600 mt-1" />
+              <div className="text-sm text-green-800">
+                Al mover esta oportunidad a <strong>Solicitud de RFP</strong>, GPRO creará automáticamente una <strong>Propuesta</strong> en estado Factibilidad, con el título y valor estimado precargados.
+              </div>
+            </div>
+            <div className="flex flex-column gap-1">
+              <label className="text-sm font-medium text-green-800">Asignar propuesta al cliente</label>
+              <Dropdown
+                value={empresaId}
+                options={[
+                  { label: `➕ Crear nuevo cliente: "${oportunidad.empresaNombre}"`, value: NUEVA_EMPRESA },
+                  ...empresas.map((e) => ({ label: e.nombre, value: e.id })),
+                ]}
+                onChange={(e) => setEmpresaId(e.value)}
+                filter
+                className="w-full"
+              />
             </div>
           </div>
         )}
