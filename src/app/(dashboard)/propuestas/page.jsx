@@ -334,9 +334,9 @@ export default function PropuestasPage() {
           const cfg = propuestaConfig[r.estado] || { severity: 'secondary', label: r.estado }
           return <Tag value={cfg.label} severity={cfg.severity} />
         }} />
-        <Column header="Responsables" body={(r) => (
+        <Column header="Punto de contacto" body={(r) => (
           <span className="text-sm text-color-secondary">
-            {r.responsables?.map((res) => res.empleado ? `${res.empleado.nombre} ${res.empleado.apellido}` : '').join(', ') || '—'}
+            {r.clientes?.map((c) => c.cliente ? `${c.cliente.nombre} ${c.cliente.apellido}` : '').join(', ') || '—'}
           </span>
         )} />
         <Column header="Creada" sortable sortField="fechaCreacion" style={{ width: '110px' }} body={(r) => formatDate(r.fechaCreacion)} />
