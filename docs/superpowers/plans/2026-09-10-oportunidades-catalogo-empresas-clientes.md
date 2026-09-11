@@ -1407,7 +1407,7 @@ git commit -m "feat: OportunidadFormDialog usa Empresa/Cliente reales desde el p
 **Files:**
 - Modify: `src/components/shared/CambiarEtapaOportunidadDialog.jsx` (reemplazo completo del archivo)
 
-- [ ] **Step 1: Reemplazar el archivo completo**
+- [x] **Step 1: Reemplazar el archivo completo**
 
 Reemplaza **todo el contenido** de `src/components/shared/CambiarEtapaOportunidadDialog.jsx` por:
 
@@ -1522,7 +1522,7 @@ export default function CambiarEtapaOportunidadDialog({ visible, onHide, onConfi
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/components/shared/CambiarEtapaOportunidadDialog.jsx
