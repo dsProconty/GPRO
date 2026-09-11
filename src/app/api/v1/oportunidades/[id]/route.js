@@ -8,8 +8,9 @@ import { TRANSICIONES, ETAPA_HOOK } from '@/lib/oportunidades'
 import { logger, logPermisoDenegado } from '@/lib/logger'
 
 const OPORTUNIDAD_INCLUDE = {
+  empresa: { select: { id: true, nombre: true } },
   responsable: { select: { id: true, nombre: true, apellido: true } },
-  contactos: true,
+  clientes: { include: { cliente: { select: { id: true, nombre: true, apellido: true, cargo: true, telefono: true, mail: true } } } },
   propuesta: { select: { id: true, codigo: true, estado: true } },
   logs: {
     include: { user: { select: { id: true, name: true } } },
@@ -61,11 +62,11 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, message: 'No se puede editar: esta oportunidad ya generó una propuesta' }, { status: 422 })
   }
 
-  const { titulo, empresaNombre, origen, descripcion, valorEstimado, responsableId, fechaCreacion, contactos = [] } = await request.json()
+  const { titulo, empresaId, origen, descripcion, valorEstimado, responsableId, fechaCreacion, clienteIds = [] } = await request.json()
 
   const errors = {}
   if (!titulo?.trim()) errors.titulo = ['El título es requerido']
-  if (!empresaNombre?.trim()) errors.empresaNombre = ['La empresa es requerida']
+  if (!empresaId) errors.empresaId = ['La empresa es requerida']
   if (!responsableId) errors.responsableId = ['El responsable es requerido']
   if (!fechaCreacion) errors.fechaCreacion = ['La fecha de creación es requerida']
 
@@ -73,28 +74,24 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, message: 'Error de validación', errors }, { status: 422 })
   }
 
-  await prisma.oportunidadContacto.deleteMany({ where: { oportunidadId: id } })
+  const empresaExiste = await prisma.empresa.findUnique({ where: { id: parseInt(empresaId) }, select: { id: true } })
+  if (!empresaExiste) {
+    return NextResponse.json({ success: false, message: 'La empresa seleccionada no existe' }, { status: 422 })
+  }
+
+  await prisma.oportunidadCliente.deleteMany({ where: { oportunidadId: id } })
 
   const oportunidad = await prisma.oportunidad.update({
     where: { id },
     data: {
       titulo: titulo.trim(),
-      empresaNombre: empresaNombre.trim(),
+      empresaId: parseInt(empresaId),
       origen: origen?.trim() || null,
       descripcion: descripcion?.trim() || null,
       valorEstimado: valorEstimado != null ? parseFloat(valorEstimado) : null,
       responsableId: parseInt(responsableId),
       fechaCreacion: new Date(fechaCreacion),
-      contactos: {
-        create: contactos
-          .filter((c) => c.nombre?.trim())
-          .map((c) => ({
-            nombre: c.nombre.trim(),
-            cargo: c.cargo?.trim() || null,
-            telefono: c.telefono?.trim() || null,
-            correo: c.correo?.trim() || null,
-          })),
-      },
+      clientes: { create: clienteIds.map((cid) => ({ clienteId: parseInt(cid) })) },
     },
     include: OPORTUNIDAD_INCLUDE,
   })
@@ -114,7 +111,7 @@ export async function PATCH(request, { params }) {
   const id = parseInt(params.id)
   if (isNaN(id)) return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
 
-  const { etapaNueva, nota, motivoPerdida, empresaId } = await request.json()
+  const { etapaNueva, nota, motivoPerdida } = await request.json()
   if (!etapaNueva) return NextResponse.json({ success: false, message: 'etapaNueva es requerida' }, { status: 422 })
 
   const oportunidad = await prisma.oportunidad.findUnique({ where: { id } })
@@ -128,11 +125,6 @@ export async function PATCH(request, { params }) {
     }, { status: 422 })
   }
 
-  if (etapaNueva === ETAPA_HOOK && empresaId) {
-    const empresaExiste = await prisma.empresa.findUnique({ where: { id: parseInt(empresaId) }, select: { id: true } })
-    if (!empresaExiste) return NextResponse.json({ success: false, message: 'El cliente seleccionado no existe' }, { status: 422 })
-  }
-
   const userId = parseInt(session.user.id)
   const etapaAnterior = oportunidad.etapa
 
@@ -142,21 +134,19 @@ export async function PATCH(request, { params }) {
     let oportunidadActualizada = null
 
     await prisma.$transaction(async (tx) => {
-      const empresa = empresaId
-        ? await tx.empresa.findUnique({ where: { id: parseInt(empresaId) } })
-        : await tx.empresa.create({ data: { nombre: oportunidad.empresaNombre } })
-
-      const codigo = await generarCodigoPropuesta(empresa.id, new Date(), tx)
+      const clientesOportunidad = await tx.oportunidadCliente.findMany({ where: { oportunidadId: id }, select: { clienteId: true } })
+      const codigo = await generarCodigoPropuesta(oportunidad.empresaId, new Date(), tx)
 
       propuestaCreada = await tx.propuesta.create({
         data: {
           codigo,
           titulo: oportunidad.titulo,
           descripcion: oportunidad.descripcion,
-          empresaId: empresa.id,
+          empresaId: oportunidad.empresaId,
           valorEstimado: oportunidad.valorEstimado,
           fechaCreacion: new Date(),
           estado: 'Factibilidad',
+          clientes: { create: clientesOportunidad.map((c) => ({ clienteId: c.clienteId })) },
           logs: { create: { estadoAnterior: null, estadoNuevo: 'Factibilidad', userId, nota: `Generada automáticamente desde la oportunidad "${oportunidad.titulo}"` } },
         },
         select: { id: true, codigo: true, titulo: true, estado: true },
