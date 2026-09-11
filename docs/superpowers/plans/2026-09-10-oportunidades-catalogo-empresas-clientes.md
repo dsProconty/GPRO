@@ -1536,7 +1536,7 @@ git commit -m "refactor: CambiarEtapaOportunidadDialog ya no pide empresa al lle
 **Files:**
 - Modify: `src/app/(dashboard)/oportunidades/page.jsx:88-97,114-126,240-317`
 
-- [ ] **Step 1: Actualizar el cálculo de columnas derivadas**
+- [x] **Step 1: Actualizar el cálculo de columnas derivadas**
 
 Reemplaza:
 
@@ -1568,7 +1568,7 @@ por:
   }, [oportunidades, etapaFiltro, responsableFiltro])
 ```
 
-- [ ] **Step 2: Quitar `empresaId` del handler de cambio de etapa**
+- [x] **Step 2: Quitar `empresaId` del handler de cambio de etapa**
 
 Reemplaza:
 
@@ -1588,7 +1588,7 @@ por:
       const res = await oportunidadService.cambiarEtapa(selected.id, { etapaNueva, nota, motivoPerdida })
 ```
 
-- [ ] **Step 3: Actualizar las columnas "Cliente" y "Contacto" del `DataTable`, y el `globalFilterFields`**
+- [x] **Step 3: Actualizar las columnas "Cliente" y "Contacto" del `DataTable`, y el `globalFilterFields`**
 
 Reemplaza:
 
@@ -1638,7 +1638,7 @@ por:
         }} />
 ```
 
-- [ ] **Step 4: Quitar el prop `empresas` ya no usado por `CambiarEtapaOportunidadDialog`**
+- [x] **Step 4: Quitar el prop `empresas` ya no usado por `CambiarEtapaOportunidadDialog`**
 
 Reemplaza:
 
@@ -1665,7 +1665,7 @@ por:
       />
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "src/app/(dashboard)/oportunidades/page.jsx"
