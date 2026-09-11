@@ -124,7 +124,9 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
       setForm((prev) => ({ ...prev, clienteIds: [...prev.clienteIds, nuevoCliente.id] }))
       setContactoForm(null)
     } catch (err) {
-      setErrors((prev) => ({ ...prev, _global: err.response?.data?.message || 'Error al crear el contacto' }))
+      const apiErrors = err.response?.data?.errors
+      const detalle = apiErrors ? Object.values(apiErrors).flat().join(' ') : null
+      setErrors((prev) => ({ ...prev, _global: detalle || err.response?.data?.message || 'Error al crear el contacto' }))
     }
   }
 
