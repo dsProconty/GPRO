@@ -1802,12 +1802,22 @@ git commit -m "feat: detalle de Oportunidad muestra empresa/contactos reales del
 **Files:**
 - Modify: `package.json` (versión)
 
-- [ ] **Step 1: Correr toda la suite de Jest**
+> **Nota de ejecución:** `npx prisma db push` quedó bloqueado por el clasificador de permisos
+> del entorno de desarrollo (no acepta comandos que mutan la base compartida). Con acuerdo
+> del usuario, el schema nuevo NO se aplicó a la base de dev local — se aplicará solo, de
+> forma automática, en el build de Azure (`prisma db push --accept-data-loss && prisma
+> generate && next build`) la primera vez que este branch se mergee y suba a `main-azure`.
+> Por lo tanto el Step 2 (probar el flujo a mano con `npm run dev`) no se pudo ejecutar
+> localmente — se reemplazó por una revisión final de código completa (spec + regresión +
+> consistencia de payloads, ver commit de esta tarea) y se recomienda una pasada manual real
+> apenas el deploy a producción termine.
+
+- [x] **Step 1: Correr toda la suite de Jest**
 
 Run: `npm test`
 Expected: todas las suites en verde, incluyendo la nueva `__tests__/rbac-catalogos-compartidos.test.js`.
 
-- [ ] **Step 2: Levantar el servidor de desarrollo y probar el flujo completo a mano**
+- [ ] **Step 2 (diferido — ver nota arriba): Levantar el servidor de desarrollo y probar el flujo completo a mano, en producción tras el deploy**
 
 Run: `npm run dev`
 
@@ -1818,7 +1828,7 @@ Con sesión de admin (o un perfil con `oportunidades.crear`), en `/oportunidades
 4. Cambiar la etapa de una de las oportunidades a "Solicitud de RFP" — confirmar que el diálogo ya NO pide elegir empresa, y que la Propuesta generada en `/propuestas` trae la columna "Punto de contacto" ya poblada con los mismos contactos de la oportunidad.
 5. Editar una oportunidad existente (sin propuesta aún) y confirmar que se puede cambiar a otra empresa ya existente del catálogo.
 
-- [ ] **Step 3: Actualizar la versión (RN-07 / CLAUDE.md §2.1 — obligatorio antes de cada push a `main-azure`)**
+- [x] **Step 3: Actualizar la versión (RN-07 / CLAUDE.md §2.1 — obligatorio antes de cada push a `main-azure`)**
 
 En `package.json`, cambia:
 
@@ -1832,7 +1842,7 @@ por (feature nueva → sube el MINOR):
   "version": "1.9.0",
 ```
 
-- [ ] **Step 4: Commit final de versión**
+- [x] **Step 4: Commit final de versión**
 
 ```bash
 git add package.json
