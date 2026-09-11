@@ -363,7 +363,7 @@ git commit -m "fix: clientes.ver/crear ahora acepta permiso de Proyectos, Propue
 - Modify: `src/components/shared/ClienteFormDialog.jsx`
 - Modify: `src/app/(dashboard)/clientes/[id]/page.jsx:216-225`
 
-- [ ] **Step 1: Persistir `cargo` en `POST /api/v1/clientes`**
+- [x] **Step 1: Persistir `cargo` en `POST /api/v1/clientes`**
 
 En `src/app/api/v1/clientes/route.js`, reemplaza:
 
@@ -402,7 +402,7 @@ por:
         empresaId: parseInt(empresaId),
 ```
 
-- [ ] **Step 2: Persistir `cargo` en `PUT /api/v1/clientes/:id`**
+- [x] **Step 2: Persistir `cargo` en `PUT /api/v1/clientes/:id`**
 
 En `src/app/api/v1/clientes/[id]/route.js`, reemplaza:
 
@@ -449,7 +449,7 @@ por:
     })
 ```
 
-- [ ] **Step 3: Agregar el campo al formulario `ClienteFormDialog.jsx`**
+- [x] **Step 3: Agregar el campo al formulario `ClienteFormDialog.jsx`**
 
 En `src/components/shared/ClienteFormDialog.jsx`, reemplaza el estado inicial:
 
@@ -511,7 +511,7 @@ Agrega el campo visual justo después del bloque de "Apellido" (después de su `
           </div>
 ```
 
-- [ ] **Step 4: Mostrar "Cargo" en la tabla de contactos de `/clientes/[id]`**
+- [x] **Step 4: Mostrar "Cargo" en la tabla de contactos de `/clientes/[id]`**
 
 En `src/app/(dashboard)/clientes/[id]/page.jsx`, reemplaza:
 
@@ -530,12 +530,12 @@ por:
           <Column header="Email" body={(row) => row.mail || '—'} />
 ```
 
-- [ ] **Step 5: Build para confirmar que no hay errores de sintaxis/tipos**
+- [x] **Step 5: Build para confirmar que no hay errores de sintaxis/tipos**
 
 Run: `npm run build`
 Expected: build exitoso (sin errores en las rutas ni componentes tocados). Puedes interrumpir con Ctrl+C una vez que veas que compiló `/clientes` y `/api/v1/clientes` sin errores si el build completo tarda demasiado en tu máquina.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/app/api/v1/clientes/route.js src/app/api/v1/clientes/[id]/route.js src/components/shared/ClienteFormDialog.jsx "src/app/(dashboard)/clientes/[id]/page.jsx"
