@@ -17,7 +17,7 @@
 **Files:**
 - Modify: `prisma/schema.prisma`
 
-- [ ] **Step 1: Agregar la relación inversa en `Empresa`**
+- [x] **Step 1: Agregar la relación inversa en `Empresa`**
 
 Busca el modelo `Empresa` (línea ~59) y reemplaza:
 
@@ -40,7 +40,7 @@ por:
   tarifario     Tarifario? @relation(fields: [tarifarioId], references: [id])
 ```
 
-- [ ] **Step 2: Agregar `cargo` y la relación inversa en `Cliente`**
+- [x] **Step 2: Agregar `cargo` y la relación inversa en `Cliente`**
 
 Reemplaza el modelo `Cliente` completo (línea ~78):
 
@@ -84,7 +84,7 @@ model Cliente {
 }
 ```
 
-- [ ] **Step 3: Reemplazar `Oportunidad` (quitar `empresaNombre`, agregar `empresaId` y la relación `clientes`)**
+- [x] **Step 3: Reemplazar `Oportunidad` (quitar `empresaNombre`, agregar `empresaId` y la relación `clientes`)**
 
 Reemplaza el modelo `Oportunidad` completo (línea ~447):
 
@@ -155,7 +155,7 @@ model OportunidadCliente {
 }
 ```
 
-- [ ] **Step 4: Eliminar el modelo `OportunidadContacto`**
+- [x] **Step 4: Eliminar el modelo `OportunidadContacto`**
 
 Borra por completo este bloque (línea ~472, justo debajo del modelo `Oportunidad`/`OportunidadCliente` que acabas de dejar):
 
@@ -177,12 +177,12 @@ model OportunidadContacto {
 }
 ```
 
-- [ ] **Step 5: Validar el schema**
+- [x] **Step 5: Validar el schema**
 
 Run: `npx prisma validate`
 Expected: `The schema at prisma/schema.prisma is valid 🚀`
 
-- [ ] **Step 6: Aplicar el schema a la base de datos local y regenerar el cliente**
+- [x] **Step 6: Aplicar el schema a la base de datos local y regenerar el cliente**
 
 Run: `npx prisma db push`
 Expected: confirma que se crea `oportunidad_cliente`, se elimina `oportunidad_contactos`, y se agregan las columnas `id_empresa` (en `oportunidades`) y `cargo` (en `clientes`). Como ambas tablas de Oportunidades están vacías en este entorno, no debería pedir `--accept-data-loss` para los datos existentes de Oportunidades; si lo pide igual (por el drop de la tabla `oportunidad_contactos`), confírmalo — está vacía.
@@ -190,7 +190,7 @@ Expected: confirma que se crea `oportunidad_cliente`, se elimina `oportunidad_co
 Run: `npx prisma generate`
 Expected: `✔ Generated Prisma Client`
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add prisma/schema.prisma
