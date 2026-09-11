@@ -44,3 +44,6 @@ scripts/data/
 
 # application logs (trazabilidad — no subir al repo)
 /logs/
+
+# git worktrees usados por Claude Code para desarrollo aislado
+/.worktrees/
