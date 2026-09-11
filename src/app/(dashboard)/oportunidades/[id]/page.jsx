@@ -71,10 +71,10 @@ export default function OportunidadDetallePage({ params }) {
     loadAll()
   }
 
-  const handleCambiarEtapa = async ({ etapaNueva, nota, motivoPerdida, empresaId }) => {
+  const handleCambiarEtapa = async ({ etapaNueva, nota, motivoPerdida }) => {
     setSavingEtapa(true)
     try {
-      const res = await oportunidadService.cambiarEtapa(id, { etapaNueva, nota, motivoPerdida, empresaId })
+      const res = await oportunidadService.cambiarEtapa(id, { etapaNueva, nota, motivoPerdida })
       setEtapaDialogVisible(false)
       toast.current.show({ severity: 'success', summary: res.propuestaCreada ? '¡Propuesta generada!' : 'Éxito', detail: res.message, life: res.propuestaCreada ? 6000 : 3000 })
       loadAll()
@@ -120,7 +120,7 @@ export default function OportunidadDetallePage({ params }) {
       <div className="flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
         <div>
           <h1 className="text-2xl font-bold m-0">{oportunidad.titulo}</h1>
-          <p className="text-color-secondary text-sm mt-1 mb-0">{oportunidad.empresaNombre}</p>
+          <p className="text-color-secondary text-sm mt-1 mb-0">{oportunidad.empresa?.nombre}</p>
         </div>
         <div className="flex align-items-center gap-2">
           <EtapaTag etapa={oportunidad.etapa} />
@@ -176,17 +176,17 @@ export default function OportunidadDetallePage({ params }) {
           )}
 
           <Card title="Contactos">
-            {oportunidad.contactos?.length > 0 ? (
+            {oportunidad.clientes?.length > 0 ? (
               <div className="flex flex-column gap-2">
-                {oportunidad.contactos.map((c) => (
+                {oportunidad.clientes.map(({ cliente: c }) => (
                   <div key={c.id} className="flex align-items-center gap-3 p-2 border-round surface-100">
                     <div className="flex align-items-center justify-content-center border-round-full flex-shrink-0 font-bold text-sm" style={{ width: '32px', height: '32px', background: 'var(--surface-200)' }}>
                       {c.nombre?.[0]?.toUpperCase()}
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-sm">{c.nombre}</div>
-                      <div className="text-xs text-color-secondary">{c.cargo}</div>
-                      <div className="text-xs text-color-secondary">{[c.telefono, c.correo].filter(Boolean).join(' · ')}</div>
+                      <div className="font-medium text-sm">{c.nombre} {c.apellido}</div>
+                      {c.cargo && <div className="text-xs text-color-secondary">{c.cargo}</div>}
+                      <div className="text-xs text-color-secondary">{[c.telefono, c.mail].filter(Boolean).join(' · ')}</div>
                     </div>
                   </div>
                 ))}
@@ -248,7 +248,6 @@ export default function OportunidadDetallePage({ params }) {
         onConfirm={handleCambiarEtapa}
         oportunidad={oportunidad}
         saving={savingEtapa}
-        empresas={empresas}
       />
     </div>
   )
