@@ -549,7 +549,7 @@ git commit -m "feat: agregar campo Cargo a Cliente (backend + formulario + tabla
 **Files:**
 - Modify: `src/app/api/v1/oportunidades/route.js` (reemplazo completo del archivo)
 
-- [ ] **Step 1: Reemplazar el archivo completo**
+- [x] **Step 1: Reemplazar el archivo completo**
 
 Reemplaza **todo el contenido** de `src/app/api/v1/oportunidades/route.js` por:
 
@@ -751,7 +751,7 @@ export async function POST(request) {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/app/api/v1/oportunidades/route.js
