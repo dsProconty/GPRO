@@ -765,7 +765,7 @@ git commit -m "feat: POST/GET oportunidades usan empresaId real y clienteIds en 
 **Files:**
 - Modify: `src/app/api/v1/oportunidades/[id]/route.js` (reemplazo completo del archivo)
 
-- [ ] **Step 1: Reemplazar el archivo completo**
+- [x] **Step 1: Reemplazar el archivo completo**
 
 Reemplaza **todo el contenido** de `src/app/api/v1/oportunidades/[id]/route.js` por:
 
@@ -1000,12 +1000,12 @@ export async function DELETE(request, { params }) {
 }
 ```
 
-- [ ] **Step 2: Build para confirmar que ambos archivos de ruta compilan sin errores**
+- [x] **Step 2: Build para confirmar que ambos archivos de ruta compilan sin errores**
 
 Run: `npm run build`
 Expected: build exitoso, sin errores en `/api/v1/oportunidades` ni `/api/v1/oportunidades/[id]`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add "src/app/api/v1/oportunidades/[id]/route.js"
