@@ -205,7 +205,7 @@ git commit -m "feat: Oportunidad usa empresaId real + pivote oportunidad_cliente
 - Modify: `src/app/api/v1/clientes/route.js:9-26`
 - Test: `__tests__/rbac-catalogos-compartidos.test.js`
 
-- [ ] **Step 1: Escribir el test (falla porque el helper todavía no existe en el archivo de test)**
+- [x] **Step 1: Escribir el test (falla porque el helper todavía no existe en el archivo de test)**
 
 Crea `__tests__/rbac-catalogos-compartidos.test.js`:
 
@@ -277,12 +277,12 @@ describe('RBAC: Clientes es catálogo compartido entre módulos (CLAUDE.md §2.2
 })
 ```
 
-- [ ] **Step 2: Correr el test para confirmar que pasa contra la lógica esperada**
+- [x] **Step 2: Correr el test para confirmar que pasa contra la lógica esperada**
 
 Run: `npx jest __tests__/rbac-catalogos-compartidos.test.js -v`
 Expected: PASS (los 5 tests) — este archivo es una especificación ejecutable de la regla; el siguiente paso es hacer que la ruta real siga exactamente esta misma lógica.
 
-- [ ] **Step 3: Aplicar el mismo patrón OR a la ruta real**
+- [x] **Step 3: Aplicar el mismo patrón OR a la ruta real**
 
 En `src/app/api/v1/clientes/route.js`, reemplaza el `GET` (líneas 9-14):
 
@@ -346,7 +346,7 @@ export async function POST(request) {
   }
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add __tests__/rbac-catalogos-compartidos.test.js src/app/api/v1/clientes/route.js
