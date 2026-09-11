@@ -66,10 +66,11 @@ model Empresa {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   // Relaciones
-  clientes   Cliente[]
-  proyectos  Proyecto[]
-  propuestas Propuesta[]
-  tarifario  Tarifario? @relation(fields: [tarifarioId], references: [id])
+  clientes      Cliente[]
+  proyectos     Proyecto[]
+  propuestas    Propuesta[]
+  oportunidades Oportunidad[]
+  tarifario     Tarifario? @relation(fields: [tarifarioId], references: [id])
 
   @@map("empresas")
 }
@@ -81,12 +82,14 @@ model Cliente {
   apellido  String  @db.VarChar(100)
   telefono  String? @db.VarChar(20)
   mail      String? @db.VarChar(200)
+  cargo     String? @db.VarChar(100)
   empresaId Int     @map("id_empresa")
 
   // Relaciones
-  empresa   Empresa           @relation(fields: [empresaId], references: [id])
-  proyectos ProyectoCliente[]
-  propuestas PropuestaCliente[]
+  empresa       Empresa              @relation(fields: [empresaId], references: [id])
+  proyectos     ProyectoCliente[]
+  propuestas    PropuestaCliente[]
+  oportunidades OportunidadCliente[]
 
   @@map("clientes")
 }
@@ -447,7 +450,7 @@ model PropuestaEstadoLog {
 model Oportunidad {
   id             Int       @id @default(autoincrement())
   titulo         String    @db.VarChar(255)
-  empresaNombre  String    @map("empresa_nombre") @db.VarChar(150) // texto libre, sin catálogo en v1
+  empresaId      Int       @map("id_empresa")
   origen         String?   @db.VarChar(50)
   descripcion    String?   @db.Text
   valorEstimado  Decimal?  @map("valor_estimado") @db.Decimal(12, 2)
@@ -459,29 +462,26 @@ model Oportunidad {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
+  empresa      Empresa                 @relation(fields: [empresaId], references: [id])
   responsable  Empleado                @relation(fields: [responsableId], references: [id])
   propuesta    Propuesta?              @relation(fields: [propuestaId], references: [id])
-  contactos    OportunidadContacto[]
+  clientes     OportunidadCliente[]
   seguimientos OportunidadSeguimiento[]
   logs         OportunidadEstadoLog[]
 
   @@map("oportunidades")
 }
 
-// ─── OPORTUNIDAD: CONTACTOS (1 a N) ───────────────────────────────────────────
-model OportunidadContacto {
-  id            Int      @id @default(autoincrement())
-  oportunidadId Int      @map("id_oportunidad")
-  nombre        String   @db.VarChar(150)
-  cargo         String?  @db.VarChar(100)
-  telefono      String?  @db.VarChar(20)
-  correo        String?  @db.VarChar(200)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+// ─── PIVOT: OPORTUNIDAD ↔ CLIENTE (contactos reales del catálogo) ────────────
+model OportunidadCliente {
+  oportunidadId Int @map("id_oportunidad")
+  clienteId     Int @map("id_cliente")
 
   oportunidad Oportunidad @relation(fields: [oportunidadId], references: [id], onDelete: Cascade)
+  cliente     Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
-  @@map("oportunidad_contactos")
+  @@id([oportunidadId, clienteId])
+  @@map("oportunidad_cliente")
 }
 
 // ─── OPORTUNIDAD: SEGUIMIENTOS (INMUTABLE) ────────────────────────────────────
