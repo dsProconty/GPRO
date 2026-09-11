@@ -12,7 +12,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function ClienteFormDialog({ visible, onHide, onSave, cliente, empresas, empresaFija }) {
   const toast = useRef(null)
-  const [form, setForm] = useState({ nombre: '', apellido: '', telefono: '', mail: '', empresaId: null })
+  const [form, setForm] = useState({ nombre: '', apellido: '', telefono: '', mail: '', cargo: '', empresaId: null })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
 
@@ -24,10 +24,11 @@ export default function ClienteFormDialog({ visible, onHide, onSave, cliente, em
           apellido: cliente.apellido || '',
           telefono: cliente.telefono || '',
           mail: cliente.mail || '',
+          cargo: cliente.cargo || '',
           empresaId: cliente.empresaId || empresaFija || null,
         })
       } else {
-        setForm({ nombre: '', apellido: '', telefono: '', mail: '', empresaId: empresaFija || null })
+        setForm({ nombre: '', apellido: '', telefono: '', mail: '', cargo: '', empresaId: empresaFija || null })
       }
       setErrors({})
     }
@@ -107,6 +108,17 @@ export default function ClienteFormDialog({ visible, onHide, onSave, cliente, em
               placeholder="Apellido"
             />
             {errors.apellido && <small className="p-error">{errors.apellido}</small>}
+          </div>
+
+          <div className="field mb-0">
+            <label htmlFor="cargo" className="font-semibold block mb-1">Cargo</label>
+            <InputText
+              id="cargo"
+              value={form.cargo}
+              onChange={(e) => setForm({ ...form, cargo: e.target.value })}
+              className="w-full"
+              placeholder="Ej. Gerente de Compras (opcional)"
+            />
           </div>
 
           {!empresaFija && (

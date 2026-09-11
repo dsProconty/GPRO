@@ -219,6 +219,7 @@ export default function ClienteDetallePage({ params }) {
           stripedRows
         >
           <Column header="Nombre" body={(row) => `${row.nombre} ${row.apellido}`} sortable sortField="apellido" />
+          <Column header="Cargo" body={(row) => row.cargo || '—'} />
           <Column header="Teléfono" body={(row) => row.telefono || '—'} />
           <Column header="Email" body={(row) => row.mail || '—'} />
           <Column header="Acciones" body={accionesContacto} style={{ width: '100px' }} />
