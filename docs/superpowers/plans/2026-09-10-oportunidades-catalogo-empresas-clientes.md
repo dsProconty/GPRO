@@ -1019,7 +1019,7 @@ git commit -m "feat: PUT/PATCH/GET oportunidades/:id usan empresaId real y pivot
 **Files:**
 - Modify: `src/components/shared/OportunidadFormDialog.jsx` (reemplazo completo del archivo)
 
-- [ ] **Step 1: Reemplazar el archivo completo**
+- [x] **Step 1: Reemplazar el archivo completo**
 
 Reemplaza **todo el contenido** de `src/components/shared/OportunidadFormDialog.jsx` por:
 
@@ -1393,7 +1393,7 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/components/shared/OportunidadFormDialog.jsx
