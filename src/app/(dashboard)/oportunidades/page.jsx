@@ -92,7 +92,7 @@ export default function OportunidadesPage() {
     return lista.map((o) => ({
       ...o,
       responsableNombre: o.responsable ? `${o.responsable.nombre} ${o.responsable.apellido}` : '',
-      contactoPrincipal: o.contactos?.[0]?.nombre || '',
+      contactoPrincipal: o.clientes?.[0]?.cliente ? `${o.clientes[0].cliente.nombre} ${o.clientes[0].cliente.apellido}` : '',
     }))
   }, [oportunidades, etapaFiltro, responsableFiltro])
 
@@ -111,10 +111,10 @@ export default function OportunidadesPage() {
     loadAll()
   }
 
-  const handleCambiarEtapa = async ({ etapaNueva, nota, motivoPerdida, empresaId }) => {
+  const handleCambiarEtapa = async ({ etapaNueva, nota, motivoPerdida }) => {
     setSavingEtapa(true)
     try {
-      const res = await oportunidadService.cambiarEtapa(selected.id, { etapaNueva, nota, motivoPerdida, empresaId })
+      const res = await oportunidadService.cambiarEtapa(selected.id, { etapaNueva, nota, motivoPerdida })
       setEtapaDialogVisible(false)
       toast.current.show({ severity: 'success', summary: res.propuestaCreada ? '¡Propuesta generada!' : 'Éxito', detail: res.message, life: res.propuestaCreada ? 6000 : 3000 })
       loadAll()
@@ -240,7 +240,7 @@ export default function OportunidadesPage() {
       <DataTable
         value={oportunidadesFiltradas}
         globalFilter={globalFilter}
-        globalFilterFields={['titulo', 'empresaNombre', 'contactoPrincipal']}
+        globalFilterFields={['titulo', 'empresa.nombre', 'contactoPrincipal']}
         loading={loading}
         paginator rows={10} rowsPerPageOptions={[10, 25, 50]}
         emptyMessage="No hay oportunidades registradas"
@@ -250,16 +250,16 @@ export default function OportunidadesPage() {
         <Column field="titulo" header="Oportunidad" sortable filter filterPlaceholder="Buscar título..." style={{ minWidth: '190px' }} body={(r) => (
           <Button label={r.titulo} link className="p-0 text-left" style={{ fontWeight: 500 }} onClick={() => verDetalle(r)} />
         )} />
-        <Column field="empresaNombre" header="Cliente" sortable filter filterPlaceholder="Buscar cliente..." style={{ minWidth: '160px' }} body={(r) => r.empresaNombre} />
+        <Column field="empresa.nombre" header="Cliente" sortable filter filterPlaceholder="Buscar cliente..." style={{ minWidth: '160px' }} body={(r) => r.empresa?.nombre} />
         <Column field="contactoPrincipal" header="Contacto" filter filterPlaceholder="Buscar contacto..." body={(r) => {
-          const c0 = r.contactos?.[0]
+          const c0 = r.clientes?.[0]?.cliente
           if (!c0) return <span className="text-color-secondary">—</span>
           const cargoTelefono = [c0.cargo, c0.telefono].filter(Boolean).join(' - ')
           return (
             <div>
-              <div className="text-sm">{c0.nombre}</div>
+              <div className="text-sm">{c0.nombre} {c0.apellido}</div>
               {cargoTelefono && <div className="text-xs text-color-secondary">{cargoTelefono}</div>}
-              {r.contactos.length > 1 && <div className="text-xs" style={{ color: 'var(--primary-color)', fontWeight: 600 }}>+{r.contactos.length - 1} más</div>}
+              {r.clientes.length > 1 && <div className="text-xs" style={{ color: 'var(--primary-color)', fontWeight: 600 }}>+{r.clientes.length - 1} más</div>}
             </div>
           )
         }} />
@@ -312,7 +312,6 @@ export default function OportunidadesPage() {
         onConfirm={handleCambiarEtapa}
         oportunidad={selected}
         saving={savingEtapa}
-        empresas={empresas}
       />
     </div>
   )

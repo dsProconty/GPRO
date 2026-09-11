@@ -9,7 +9,16 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 export async function GET(request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
-  if (!tienePermiso(session, PERMISOS.CLIENTES.VER)) {
+  // Clientes se usa como catálogo/dropdown desde otros módulos (Proyectos, Propuestas,
+  // Oportunidades) — no solo desde su propia pantalla de gestión. Mismo patrón que /api/v1/empresas.
+  const puedeVer = (
+    tienePermiso(session, PERMISOS.CLIENTES.VER) ||
+    tienePermiso(session, PERMISOS.EMPRESAS.VER) ||
+    tienePermiso(session, PERMISOS.PROYECTOS.VER) ||
+    tienePermiso(session, PERMISOS.PROPUESTAS.VER) ||
+    tienePermiso(session, PERMISOS.OPORTUNIDADES.VER)
+  )
+  if (!puedeVer) {
     return NextResponse.json({ success: false, message: 'Sin permiso para ver clientes' }, { status: 403 })
   }
 
@@ -30,11 +39,18 @@ export async function POST(request) {
   if (!session) {
     return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 })
   }
-  if (!tienePermiso(session, PERMISOS.CLIENTES.CREAR)) {
+  const puedeCrear = (
+    tienePermiso(session, PERMISOS.CLIENTES.CREAR) ||
+    tienePermiso(session, PERMISOS.EMPRESAS.CREAR) ||
+    tienePermiso(session, PERMISOS.PROYECTOS.CREAR) ||
+    tienePermiso(session, PERMISOS.PROPUESTAS.CREAR) ||
+    tienePermiso(session, PERMISOS.OPORTUNIDADES.CREAR)
+  )
+  if (!puedeCrear) {
     return NextResponse.json({ success: false, message: 'No tiene permiso para crear clientes' }, { status: 403 })
   }
 
-  const { nombre, apellido, telefono, mail, empresaId } = await request.json()
+  const { nombre, apellido, telefono, mail, cargo, empresaId } = await request.json()
   const errors = {}
 
   if (!nombre || nombre.trim() === '') errors.nombre = ['El nombre es requerido']
@@ -64,6 +80,7 @@ export async function POST(request) {
         apellido: apellido.trim(),
         telefono: telefono?.trim() || null,
         mail: mail?.trim() || null,
+        cargo: cargo?.trim() || null,
         empresaId: parseInt(empresaId),
       },
       include: { empresa: { select: { id: true, nombre: true } } },

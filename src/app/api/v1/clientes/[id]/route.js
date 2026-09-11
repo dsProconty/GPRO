@@ -20,7 +20,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, message: 'ID inválido' }, { status: 400 })
   }
 
-  const { nombre, apellido, telefono, mail, empresaId } = await request.json()
+  const { nombre, apellido, telefono, mail, cargo, empresaId } = await request.json()
   const errors = {}
 
   if (!nombre || nombre.trim() === '') errors.nombre = ['El nombre es requerido']
@@ -51,6 +51,7 @@ export async function PUT(request, { params }) {
         apellido: apellido.trim(),
         telefono: telefono?.trim() || null,
         mail: mail?.trim() || null,
+        cargo: cargo?.trim() || null,
         empresaId: parseInt(empresaId),
       },
       include: { empresa: { select: { id: true, nombre: true } } },

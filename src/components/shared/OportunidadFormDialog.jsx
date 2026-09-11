@@ -6,10 +6,12 @@ import { InputText } from '@/components/shared/InputText'
 import { InputTextarea } from '@/components/shared/InputTextarea'
 import { InputNumber } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
+import { MultiSelect } from 'primereact/multiselect'
 import { Calendar } from 'primereact/calendar'
 import { Button } from 'primereact/button'
 import { Tag } from 'primereact/tag'
 import { oportunidadService } from '@/services/oportunidadService'
+import { clienteService } from '@/services/clienteService'
 import { ETAPAS, ETAPA_CONFIG, ETAPA_HOOK } from '@/lib/oportunidades'
 
 function EtapaTag({ etapa }) {
@@ -21,62 +23,66 @@ const NUEVA_EMPRESA = '__NUEVA__'
 
 const ORIGEN_OPTIONS = ['Referido', 'LinkedIn', 'Networking', 'Web', 'Llamada fría', 'Otro']
 
-const CONTACTO_VACIO = { nombre: '', cargo: '', telefono: '', correo: '' }
+const CONTACTO_NUEVO_VACIO = { nombre: '', apellido: '', cargo: '', telefono: '', mail: '' }
 
 const EMPTY = {
   titulo: '',
-  empresaNombre: '',
+  empresaId: null,
   origen: null,
   valorEstimado: null,
   responsableId: null,
   fechaCreacion: new Date(),
   descripcion: '',
   etapa: 'Prospeccion',
+  clienteIds: [],
 }
 
 export default function OportunidadFormDialog({ visible, onHide, onSave, oportunidad, empleados = [], empresas = [] }) {
   const isEdit = !!oportunidad
 
   const [form, setForm] = useState(EMPTY)
-  const [contactos, setContactos] = useState([{ ...CONTACTO_VACIO }])
+  const [nuevaEmpresaNombre, setNuevaEmpresaNombre] = useState('')
+  const [clientesEmpresa, setClientesEmpresa] = useState([])
+  const [contactosNuevos, setContactosNuevos] = useState([])
+  const [contactoForm, setContactoForm] = useState(null) // null = panel cerrado
   const [motivoPerdidaInicial, setMotivoPerdidaInicial] = useState('')
-  const [empresaHookId, setEmpresaHookId] = useState(NUEVA_EMPRESA)
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
+
+  const empresaEsNueva = form.empresaId === NUEVA_EMPRESA
 
   useEffect(() => {
     if (!visible) return
     setErrors({})
     setMotivoPerdidaInicial('')
-    setEmpresaHookId(NUEVA_EMPRESA)
+    setContactosNuevos([])
+    setContactoForm(null)
+    setNuevaEmpresaNombre('')
 
     if (oportunidad) {
       setForm({
         titulo: oportunidad.titulo || '',
-        empresaNombre: oportunidad.empresaNombre || '',
+        empresaId: oportunidad.empresaId || null,
         origen: oportunidad.origen || null,
         valorEstimado: oportunidad.valorEstimado ?? null,
         responsableId: oportunidad.responsableId || null,
         fechaCreacion: oportunidad.fechaCreacion ? new Date(oportunidad.fechaCreacion) : new Date(),
         descripcion: oportunidad.descripcion || '',
+        etapa: oportunidad.etapa || 'Prospeccion',
+        clienteIds: oportunidad.clientes?.map((c) => c.clienteId) || [],
       })
-      setContactos(
-        oportunidad.contactos?.length > 0
-          ? oportunidad.contactos.map((c) => ({ nombre: c.nombre || '', cargo: c.cargo || '', telefono: c.telefono || '', correo: c.correo || '' }))
-          : [{ ...CONTACTO_VACIO }]
-      )
     } else {
       setForm(EMPTY)
-      setContactos([{ ...CONTACTO_VACIO }])
     }
   }, [visible, oportunidad])
 
+  // Cargar los contactos existentes de la empresa elegida (solo si es una empresa real)
   useEffect(() => {
-    if (!isEdit && form.etapa === ETAPA_HOOK) {
-      const match = empresas.find((e) => e.nombre?.trim().toLowerCase() === form.empresaNombre?.trim().toLowerCase())
-      setEmpresaHookId(match ? match.id : NUEVA_EMPRESA)
-    }
-  }, [form.etapa, form.empresaNombre, empresas, isEdit])
+    if (!form.empresaId || form.empresaId === NUEVA_EMPRESA) { setClientesEmpresa([]); return }
+    clienteService.getAll({ empresa_id: form.empresaId })
+      .then((res) => setClientesEmpresa(res.data || []))
+      .catch(() => setClientesEmpresa([]))
+  }, [form.empresaId])
 
   const set = (field) => (e) => {
     const val = e.target?.value ?? e.value ?? e
@@ -84,21 +90,52 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
     setErrors((prev) => ({ ...prev, [field]: null }))
   }
 
-  const setContacto = (idx, field, value) => {
-    setContactos((prev) => prev.map((c, i) => (i === idx ? { ...c, [field]: value } : c)))
+  const handleEmpresaChange = (e) => {
+    setForm((prev) => ({ ...prev, empresaId: e.value, clienteIds: [] }))
+    setErrors((prev) => ({ ...prev, empresaId: null }))
+    setContactosNuevos([])
+    setContactoForm(null)
   }
-
-  const agregarContacto = () => setContactos((prev) => [...prev, { ...CONTACTO_VACIO }])
-  const quitarContacto = (idx) => setContactos((prev) => prev.filter((_, i) => i !== idx))
 
   const validate = () => {
     const errs = {}
     if (!form.titulo?.trim()) errs.titulo = 'El título es requerido'
-    if (!form.empresaNombre?.trim()) errs.empresaNombre = 'La empresa es requerida'
+    if (!form.empresaId) errs.empresaId = 'La empresa es requerida'
+    if (form.empresaId === NUEVA_EMPRESA && !nuevaEmpresaNombre.trim()) errs.empresaId = 'Escribe el nombre de la nueva empresa'
     if (!form.responsableId) errs.responsableId = 'El responsable es requerido'
     if (!form.fechaCreacion) errs.fechaCreacion = 'La fecha de creación es requerida'
     return errs
   }
+
+  // ── Contacto nuevo cuando la empresa YA existe → se crea de una vez como Cliente real ──
+  const guardarContactoExistente = async () => {
+    if (!contactoForm?.nombre?.trim() || !contactoForm?.apellido?.trim()) return
+    try {
+      const res = await clienteService.create({
+        nombre: contactoForm.nombre.trim(),
+        apellido: contactoForm.apellido.trim(),
+        cargo: contactoForm.cargo?.trim() || null,
+        telefono: contactoForm.telefono?.trim() || null,
+        mail: contactoForm.mail?.trim() || null,
+        empresaId: form.empresaId,
+      })
+      const nuevoCliente = res.data
+      setClientesEmpresa((prev) => [...prev, nuevoCliente])
+      setForm((prev) => ({ ...prev, clienteIds: [...prev.clienteIds, nuevoCliente.id] }))
+      setContactoForm(null)
+    } catch (err) {
+      setErrors((prev) => ({ ...prev, _global: err.response?.data?.message || 'Error al crear el contacto' }))
+    }
+  }
+
+  // ── Contacto nuevo cuando la empresa TODAVÍA no existe → se guarda localmente y se crea junto con la oportunidad ──
+  const agregarContactoLocal = () => {
+    if (!contactoForm?.nombre?.trim() || !contactoForm?.apellido?.trim()) return
+    setContactosNuevos((prev) => [...prev, { ...contactoForm }])
+    setContactoForm(null)
+  }
+
+  const quitarContactoNuevo = (idx) => setContactosNuevos((prev) => prev.filter((_, i) => i !== idx))
 
   const handleSubmit = async () => {
     const errs = validate()
@@ -107,18 +144,23 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
     try {
       const payload = {
         titulo: form.titulo.trim(),
-        empresaNombre: form.empresaNombre.trim(),
         origen: form.origen || null,
         valorEstimado: form.valorEstimado ?? null,
         responsableId: form.responsableId,
         fechaCreacion: form.fechaCreacion instanceof Date ? form.fechaCreacion.toISOString().slice(0, 10) : form.fechaCreacion,
         descripcion: form.descripcion?.trim() || null,
-        contactos: contactos.filter((c) => c.nombre?.trim()),
+        clienteIds: form.clienteIds,
+      }
+      if (empresaEsNueva) {
+        payload.empresaId = null
+        payload.empresaNombreNueva = nuevaEmpresaNombre.trim()
+        payload.contactosNuevos = contactosNuevos
+      } else {
+        payload.empresaId = form.empresaId
       }
       if (!isEdit) {
         payload.etapa = form.etapa
         if (form.etapa === 'Perdida') payload.motivoPerdida = motivoPerdidaInicial?.trim() || null
-        if (form.etapa === ETAPA_HOOK) payload.empresaId = empresaHookId === NUEVA_EMPRESA ? null : empresaHookId
       }
 
       const res = isEdit
@@ -144,6 +186,10 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
     </div>
   )
 
+  const empresaOptions = isEdit
+    ? empresas.map((e) => ({ label: e.nombre, value: e.id }))
+    : [{ label: '➕ Crear nueva empresa', value: NUEVA_EMPRESA }, ...empresas.map((e) => ({ label: e.nombre, value: e.id }))]
+
   return (
     <Dialog
       visible={visible}
@@ -165,10 +211,24 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
 
         <div style={{ display: 'grid', gridTemplateColumns: isEdit ? '1fr' : '2fr 1fr', gap: '12px' }}>
           <div className="flex flex-column gap-1">
-            <label className="text-sm font-medium">Empresa / prospecto <span className="text-red-500">*</span></label>
-            <InputText value={form.empresaNombre} onChange={set('empresaNombre')} placeholder="Nombre legal tal como aparece en el RUC" className={errors.empresaNombre ? 'p-invalid' : ''} />
-            <small className="text-color-secondary">Escribe el nombre legal (RUC), no abreviaturas ni nombres comerciales — así evitamos duplicados si esto se convierte en cliente.</small>
-            {errors.empresaNombre && <small className="text-red-500">{errors.empresaNombre}</small>}
+            <label className="text-sm font-medium">Empresa <span className="text-red-500">*</span></label>
+            <Dropdown
+              value={form.empresaId}
+              options={empresaOptions}
+              onChange={handleEmpresaChange}
+              placeholder="Buscar o crear empresa"
+              filter
+              className={errors.empresaId ? 'p-invalid' : ''}
+            />
+            {empresaEsNueva && (
+              <InputText
+                value={nuevaEmpresaNombre}
+                onChange={(e) => { setNuevaEmpresaNombre(e.target.value); setErrors((p) => ({ ...p, empresaId: null })) }}
+                placeholder="Nombre legal de la nueva empresa (RUC)"
+                className={`mt-1 ${errors.empresaId ? 'p-invalid' : ''}`}
+              />
+            )}
+            {errors.empresaId && <small className="text-red-500">{errors.empresaId}</small>}
           </div>
 
           {!isEdit && (
@@ -186,25 +246,10 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
         </div>
 
         {!isEdit && form.etapa === ETAPA_HOOK && (
-          <div className="flex flex-column gap-2 p-3 border-round" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
-            <div className="flex align-items-start gap-2">
-              <i className="pi pi-info-circle text-green-600 mt-1" />
-              <div className="text-sm text-green-800">
-                Al crearla directamente en <strong>Solicitud de RFP</strong>, GPRO generará automáticamente una <strong>Propuesta</strong> en estado Factibilidad.
-              </div>
-            </div>
-            <div className="flex flex-column gap-1">
-              <label className="text-sm font-medium text-green-800">Asignar propuesta al cliente</label>
-              <Dropdown
-                value={empresaHookId}
-                options={[
-                  { label: `➕ Crear nuevo cliente: "${form.empresaNombre || '(sin nombre)'}"`, value: NUEVA_EMPRESA },
-                  ...empresas.map((e) => ({ label: e.nombre, value: e.id })),
-                ]}
-                onChange={(e) => setEmpresaHookId(e.value)}
-                filter
-                className="w-full"
-              />
+          <div className="flex align-items-start gap-2 p-3 border-round" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
+            <i className="pi pi-info-circle text-green-600 mt-1" />
+            <div className="text-sm text-green-800">
+              Al crearla directamente en <strong>Solicitud de RFP</strong>, GPRO generará automáticamente una <strong>Propuesta</strong> en estado Factibilidad, con esta empresa y estos contactos ya asignados.
             </div>
           </div>
         )}
@@ -216,77 +261,69 @@ export default function OportunidadFormDialog({ visible, onHide, onSave, oportun
           </div>
         )}
 
+        {/* ── Contactos ── */}
         <div className="flex flex-column gap-2">
-          <label className="text-sm font-medium">Contactos</label>
-          <div style={{ border: '1px solid var(--surface-border)', borderRadius: '8px', overflow: 'hidden' }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '520px' }}>
-                <colgroup>
-                  <col style={{ width: '27%' }} />
-                  <col style={{ width: '25%' }} />
-                  <col style={{ width: '18%' }} />
-                  <col style={{ width: '26%' }} />
-                  <col style={{ width: '4%' }} />
-                </colgroup>
-                <thead>
-                  <tr style={{ background: '#f8f9fa', borderBottom: '1px solid var(--surface-border)' }}>
-                    {['Nombre', 'Cargo', 'Teléfono', 'Correo', ''].map((h, i) => (
-                      <th key={i} style={{ padding: '7px 8px', textAlign: 'left', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {contactos.map((c, idx) => (
-                    <tr key={idx} style={{ borderBottom: idx < contactos.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                      <td style={{ padding: '3px 4px' }}>
-                        <InputText
-                          value={c.nombre} onChange={(e) => setContacto(idx, 'nombre', e.target.value)}
-                          placeholder="Nombre del contacto" className="w-full"
-                          style={{ border: 'none', boxShadow: 'none', background: 'transparent', padding: '6px 6px', fontSize: '13px' }}
-                        />
-                      </td>
-                      <td style={{ padding: '3px 4px' }}>
-                        <InputText
-                          value={c.cargo} onChange={(e) => setContacto(idx, 'cargo', e.target.value)}
-                          placeholder="Ej. Gerente de Compras" className="w-full"
-                          style={{ border: 'none', boxShadow: 'none', background: 'transparent', padding: '6px 6px', fontSize: '13px' }}
-                        />
-                      </td>
-                      <td style={{ padding: '3px 4px' }}>
-                        <InputText
-                          value={c.telefono} onChange={(e) => setContacto(idx, 'telefono', e.target.value)}
-                          placeholder="09XXXXXXXX" className="w-full"
-                          style={{ border: 'none', boxShadow: 'none', background: 'transparent', padding: '6px 6px', fontSize: '13px' }}
-                        />
-                      </td>
-                      <td style={{ padding: '3px 4px' }}>
-                        <InputText
-                          value={c.correo} onChange={(e) => setContacto(idx, 'correo', e.target.value)}
-                          placeholder="contacto@empresa.com" className="w-full"
-                          style={{ border: 'none', boxShadow: 'none', background: 'transparent', padding: '6px 6px', fontSize: '13px' }}
-                        />
-                      </td>
-                      <td style={{ padding: '3px 2px', textAlign: 'center' }}>
-                        {contactos.length > 1 && (
-                          <Button
-                            icon="pi pi-trash" rounded text severity="danger" size="small"
-                            style={{ width: '26px', height: '26px' }}
-                            tooltip="Quitar contacto" tooltipOptions={{ position: 'top' }}
-                            onClick={() => quitarContacto(idx)}
-                          />
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <label className="text-sm font-medium">Puntos de contacto</label>
+
+          {!empresaEsNueva && (
+            <MultiSelect
+              value={form.clienteIds}
+              options={clientesEmpresa.map((c) => ({ label: `${c.nombre} ${c.apellido}${c.cargo ? ' · ' + c.cargo : ''}`, value: c.id }))}
+              onChange={(e) => setForm((p) => ({ ...p, clienteIds: e.value }))}
+              placeholder={form.empresaId ? 'Seleccionar contacto(s)' : 'Primero elige una empresa'}
+              disabled={!form.empresaId}
+              display="chip"
+              filter
+              filterPlaceholder="Buscar contacto..."
+              emptyMessage="Sin contactos para esta empresa"
+            />
+          )}
+
+          {empresaEsNueva && contactosNuevos.length > 0 && (
+            <div className="flex flex-column gap-1">
+              {contactosNuevos.map((c, idx) => (
+                <div key={idx} className="flex align-items-center justify-content-between p-2 border-round surface-100">
+                  <span className="text-sm">
+                    {c.nombre} {c.apellido}{c.cargo ? ` · ${c.cargo}` : ''}{c.telefono ? ` · ${c.telefono}` : ''}{c.mail ? ` · ${c.mail}` : ''}
+                  </span>
+                  <Button icon="pi pi-trash" rounded text severity="danger" size="small" onClick={() => quitarContactoNuevo(idx)} />
+                </div>
+              ))}
             </div>
-            <div style={{ padding: '6px 8px', borderTop: '1px solid var(--surface-border)', background: '#fafbfc' }}>
-              <Button label="Agregar otro contacto" icon="pi pi-plus" size="small" text onClick={agregarContacto} />
+          )}
+
+          {!contactoForm && (
+            <Button
+              label="Agregar contacto"
+              icon="pi pi-user-plus"
+              size="small"
+              text
+              disabled={!form.empresaId || (empresaEsNueva && !nuevaEmpresaNombre.trim())}
+              onClick={() => setContactoForm({ ...CONTACTO_NUEVO_VACIO })}
+            />
+          )}
+
+          {contactoForm && (
+            <div className="flex flex-column gap-2 p-3 border-round" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <InputText value={contactoForm.nombre} onChange={(e) => setContactoForm((p) => ({ ...p, nombre: e.target.value }))} placeholder="Nombre *" />
+                <InputText value={contactoForm.apellido} onChange={(e) => setContactoForm((p) => ({ ...p, apellido: e.target.value }))} placeholder="Apellido *" />
+                <InputText value={contactoForm.cargo} onChange={(e) => setContactoForm((p) => ({ ...p, cargo: e.target.value }))} placeholder="Cargo (ej. Gerente de Compras)" />
+                <InputText value={contactoForm.telefono} onChange={(e) => setContactoForm((p) => ({ ...p, telefono: e.target.value }))} placeholder="Teléfono" />
+                <InputText value={contactoForm.mail} onChange={(e) => setContactoForm((p) => ({ ...p, mail: e.target.value }))} placeholder="Correo" style={{ gridColumn: '1 / -1' }} />
+              </div>
+              <div className="flex gap-2 justify-content-end">
+                <Button label="Cancelar" size="small" severity="secondary" outlined onClick={() => setContactoForm(null)} />
+                <Button
+                  label="Guardar contacto"
+                  icon="pi pi-check"
+                  size="small"
+                  disabled={!contactoForm.nombre?.trim() || !contactoForm.apellido?.trim()}
+                  onClick={empresaEsNueva ? agregarContactoLocal : guardarContactoExistente}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
