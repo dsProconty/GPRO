@@ -11,6 +11,7 @@ function tienePermiso(session, permiso) {
 
 const PERMISOS = {
   CLIENTES:      { VER: 'clientes.ver', CREAR: 'clientes.crear' },
+  EMPRESAS:      { VER: 'empresas.ver', CREAR: 'empresas.crear' },
   PROYECTOS:     { VER: 'proyectos.ver', CREAR: 'proyectos.crear' },
   PROPUESTAS:    { VER: 'propuestas.ver', CREAR: 'propuestas.crear' },
   OPORTUNIDADES: { VER: 'oportunidades.ver', CREAR: 'oportunidades.crear' },
@@ -20,6 +21,7 @@ const PERMISOS = {
 function puedeVerClientes(session) {
   return (
     tienePermiso(session, PERMISOS.CLIENTES.VER) ||
+    tienePermiso(session, PERMISOS.EMPRESAS.VER) ||
     tienePermiso(session, PERMISOS.PROYECTOS.VER) ||
     tienePermiso(session, PERMISOS.PROPUESTAS.VER) ||
     tienePermiso(session, PERMISOS.OPORTUNIDADES.VER)
@@ -29,6 +31,7 @@ function puedeVerClientes(session) {
 function puedeCrearClientes(session) {
   return (
     tienePermiso(session, PERMISOS.CLIENTES.CREAR) ||
+    tienePermiso(session, PERMISOS.EMPRESAS.CREAR) ||
     tienePermiso(session, PERMISOS.PROYECTOS.CREAR) ||
     tienePermiso(session, PERMISOS.PROPUESTAS.CREAR) ||
     tienePermiso(session, PERMISOS.OPORTUNIDADES.CREAR)
@@ -60,6 +63,16 @@ describe('RBAC: Clientes es catálogo compartido entre módulos (CLAUDE.md §2.2
   test('admin siempre puede, sin importar el array de permisos', () => {
     const session = { user: { role: 'admin', permisos: [] } }
     expect(puedeVerClientes(session)).toBe(true)
+    expect(puedeCrearClientes(session)).toBe(true)
+  })
+
+  test('un perfil con permiso de Empresas puede ver el dropdown de Clientes (relación inversa de EmpresaFormDialog)', () => {
+    const session = { user: { role: 'user', permisos: [PERMISOS.EMPRESAS.VER] } }
+    expect(puedeVerClientes(session)).toBe(true)
+  })
+
+  test('un perfil con permiso de Empresas puede crear contactos inline (EmpresaFormDialog crea empresas + contactos)', () => {
+    const session = { user: { role: 'user', permisos: [PERMISOS.EMPRESAS.CREAR] } }
     expect(puedeCrearClientes(session)).toBe(true)
   })
 })

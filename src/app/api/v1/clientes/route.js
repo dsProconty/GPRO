@@ -13,6 +13,7 @@ export async function GET(request) {
   // Oportunidades) — no solo desde su propia pantalla de gestión. Mismo patrón que /api/v1/empresas.
   const puedeVer = (
     tienePermiso(session, PERMISOS.CLIENTES.VER) ||
+    tienePermiso(session, PERMISOS.EMPRESAS.VER) ||
     tienePermiso(session, PERMISOS.PROYECTOS.VER) ||
     tienePermiso(session, PERMISOS.PROPUESTAS.VER) ||
     tienePermiso(session, PERMISOS.OPORTUNIDADES.VER)
@@ -40,6 +41,7 @@ export async function POST(request) {
   }
   const puedeCrear = (
     tienePermiso(session, PERMISOS.CLIENTES.CREAR) ||
+    tienePermiso(session, PERMISOS.EMPRESAS.CREAR) ||
     tienePermiso(session, PERMISOS.PROYECTOS.CREAR) ||
     tienePermiso(session, PERMISOS.PROPUESTAS.CREAR) ||
     tienePermiso(session, PERMISOS.OPORTUNIDADES.CREAR)
