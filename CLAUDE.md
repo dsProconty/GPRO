@@ -489,11 +489,15 @@ export const calcTiempoVida = (fechaCreacion, fechaCierre) => {
   liberarlo — spec completo en `docs/superpowers/specs/2026-09-03-modulo-oportunidades-design.md`.
 - Ver sección 2.2 para los bugs de RBAC/carga de datos que salieron a la luz con este
   módulo (y ya están corregidos en v1.8.1).
-- **Última versión desplegada documentada: v1.9.1 (11-sep-2026).**
-- **v1.10.0 (preparada, pendiente de deploy a `main-azure`)**: estados de proyecto nuevos
-  (ej. *Stand By*) creables desde Personalización; paleta de 13 colores y fix del color
-  "Gris"; fix de la secuencia SERIAL al crear estados. Ver "Estados de proyecto" en 2.2.
-  Pendiente conocido: el PDF del proyecto da 500 (usa `responsables.user`, que ya no existe).
+- **v1.10.0 (desplegada 14-oct-2026)**: estados de proyecto nuevos (ej. *Stand By*) creables
+  desde Personalización; paleta de 13 colores y fix del color "Gris"; fix de la secuencia SERIAL
+  al crear estados. Ver "Estados de proyecto" en 2.2.
+- **v1.10.1 (preparada, pendiente de deploy a `main-azure`)**: fix del PDF del proyecto, que daba
+  500 desde que los responsables migraron de Users a Empleados (la ruta pedía `responsables.user`).
+  Ahora pide `empleado` y usa `src/utils/responsables.js`. También corrige el texto encimado en
+  la tabla de Caso de Negocio y el marco negro de los encabezados. Test de regresión:
+  `__tests__/pdf-responsables.test.js` (falla si alguna ruta incluye en `responsables` una relación
+  que no existe en el esquema).
 
 ### Sprint 0 — Lo que ya existe ✅
 - Next.js 14 configurado con App Router

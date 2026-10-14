@@ -25,7 +25,7 @@ export async function GET(request, { params }) {
           empresa: { select: { id: true, nombre: true } },
           estado: { select: { id: true, nombre: true, color: true } },
           clientes: { include: { cliente: { select: { nombre: true, apellido: true } } } },
-          responsables: { include: { user: { select: { name: true } } } },
+          responsables: { include: { empleado: { select: { nombre: true, apellido: true } } } },
         },
       }),
       prisma.configuracionEmpresa.findUnique({ where: { id: 1 } }),

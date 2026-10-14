@@ -2,6 +2,7 @@ import {
   Document, Page, Text, View, StyleSheet, Font,
 } from '@react-pdf/renderer'
 import { severityHex } from '@/utils/estadoColors'
+import { listaResponsables } from '@/utils/responsables'
 
 // ── Estilos ───────────────────────────────────────────────────────────────────
 const C = {
@@ -58,7 +59,7 @@ const styles = StyleSheet.create({
 
   // Tables
   table: { marginTop: 4 },
-  tableHeader: { flexDirection: 'row', backgroundColor: C.primary, padding: '5 6', borderRadius: '3 3 0 0' },
+  tableHeader: { flexDirection: 'row', backgroundColor: C.primary, padding: '5 6', borderTopLeftRadius: 3, borderTopRightRadius: 3 },
   tableHeaderCell: { color: C.white, fontSize: 7, fontFamily: 'Helvetica-Bold', flex: 1 },
   tableRow: { flexDirection: 'row', padding: '4 6', borderBottom: `1px solid ${C.border}` },
   tableRowAlt: { flexDirection: 'row', padding: '4 6', borderBottom: `1px solid ${C.border}`, backgroundColor: C.lightGray },
@@ -105,7 +106,7 @@ export function ProyectoPDF({ proyecto, facturas, observaciones, empresa = {}, c
   const inicio   = new Date(proyecto.fechaCreacion)
   const diasVida = Math.max(0, Math.floor((fin - inicio) / (1000 * 60 * 60 * 24)))
 
-  const responsables = proyecto.responsables?.map((r) => r.user?.name).join(', ') || '—'
+  const responsables = listaResponsables(proyecto.responsables)
   const contactos    = proyecto.clientes?.map((c) => `${c.cliente?.nombre} ${c.cliente?.apellido}`).join(', ') || '—'
 
   return (
@@ -228,7 +229,7 @@ export function ProyectoPDF({ proyecto, facturas, observaciones, empresa = {}, c
               {casoNegocio.lineas.map((l, i) => (
                 <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                   <View style={{ flex: 2 }}>
-                    <Text style={styles.tableCell}>{l.perfil?.nombre} {l.perfil?.nivel}</Text>
+                    <Text style={[styles.tableCell, { flexGrow: 0, flexShrink: 0, flexBasis: 'auto' }]}>{l.perfil?.nombre} {l.perfil?.nivel}</Text>
                     {l.empleado && (
                       <Text style={{ fontSize: 7, color: C.gray }}>{l.empleado.nombre} {l.empleado.apellido}</Text>
                     )}
