@@ -490,6 +490,10 @@ export const calcTiempoVida = (fechaCreacion, fechaCierre) => {
 - Ver sección 2.2 para los bugs de RBAC/carga de datos que salieron a la luz con este
   módulo (y ya están corregidos en v1.8.1).
 - **Última versión desplegada documentada: v1.9.1 (11-sep-2026).**
+- **v1.10.0 (preparada, pendiente de deploy a `main-azure`)**: estados de proyecto nuevos
+  (ej. *Stand By*) creables desde Personalización; paleta de 13 colores y fix del color
+  "Gris"; fix de la secuencia SERIAL al crear estados. Ver "Estados de proyecto" en 2.2.
+  Pendiente conocido: el PDF del proyecto da 500 (usa `responsables.user`, que ya no existe).
 
 ### Sprint 0 — Lo que ya existe ✅
 - Next.js 14 configurado con App Router
