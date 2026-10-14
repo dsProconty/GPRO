@@ -54,13 +54,24 @@ export async function POST(request) {
     return NextResponse.json({ success: false, message: 'El nombre es requerido', errors: { nombre: ['Requerido'] } }, { status: 422 })
   }
 
-  const estado = await prisma.estado.create({
-    data: {
-      nombre:      nombre.trim(),
-      descripcion: descripcion?.trim() || null,
-      color:       color || 'secondary',
-    },
-  })
+  const data = {
+    nombre:      nombre.trim(),
+    descripcion: descripcion?.trim() || null,
+    color:       color || 'secondary',
+  }
+
+  let estado
+  try {
+    estado = await prisma.estado.create({ data })
+  } catch (e) {
+    // Los estados se seedean/migran con id explícito (1..N), lo que deja la secuencia
+    // SERIAL atrasada y el siguiente INSERT choca con un id existente (P2002 en id_estado).
+    // Se resincroniza la secuencia al máximo actual y se reintenta una sola vez.
+    const choqueDeId = e?.code === 'P2002' && String(e?.meta?.target ?? '').includes('id_estado')
+    if (!choqueDeId) throw e
+    await prisma.$executeRaw`SELECT setval(pg_get_serial_sequence('estados', 'id_estado'), (SELECT COALESCE(MAX(id_estado), 1) FROM estados))`
+    estado = await prisma.estado.create({ data })
+  }
 
   return NextResponse.json({ success: true, data: estado, message: 'Estado creado exitosamente' }, { status: 201 })
 }

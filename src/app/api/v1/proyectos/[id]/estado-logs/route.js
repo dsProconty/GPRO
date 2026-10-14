@@ -19,7 +19,7 @@ export async function GET(request, { params }) {
     where: { proyectoId: id },
     include: {
       estadoAnterior: { select: { nombre: true } },
-      estadoNuevo: { select: { nombre: true } },
+      estadoNuevo: { select: { nombre: true, color: true } },
       user: { select: { name: true } },
     },
     orderBy: { createdAt: 'desc' },

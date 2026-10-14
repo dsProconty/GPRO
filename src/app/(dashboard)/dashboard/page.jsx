@@ -8,6 +8,7 @@ import { Dropdown } from 'primereact/dropdown'
 import { ProgressSpinner } from 'primereact/progressspinner'
 import axios from 'axios'
 import { formatCurrency, formatDate } from '@/utils/format'
+import { severityHex } from '@/utils/estadoColors'
 
 // ── Colores de estado ──────────────────────────────────────────────────────────
 const ESTADO_COLORS = {
@@ -248,7 +249,7 @@ export default function DashboardPage() {
     }),
     datasets: [{
       data: kpis.porEstado.map((e) => e.total),
-      backgroundColor: kpis.porEstado.map((e) => ESTADO_COLORS[e.nombre] || '#6b7280'),
+      backgroundColor: kpis.porEstado.map((e) => ESTADO_COLORS[e.nombre] || severityHex(e.color)),
       borderWidth: 4,
       borderColor: '#fff',
       hoverBorderWidth: 4,
@@ -556,7 +557,7 @@ export default function DashboardPage() {
                   <tbody>
                     {kpis.porEstado.map((e) => {
                       const pct = kpis.totalProyectos > 0 ? Math.round((e.total / kpis.totalProyectos) * 100) : 0
-                      const color = ESTADO_COLORS[e.nombre] || '#6b7280'
+                      const color = ESTADO_COLORS[e.nombre] || severityHex(e.color)
                       return (
                         <tr key={e.nombre} style={{ borderBottom: '1px solid #f8fafc' }}>
                           <td style={{ padding: '8px 6px' }}>

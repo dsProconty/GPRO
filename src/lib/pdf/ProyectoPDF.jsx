@@ -1,6 +1,7 @@
 import {
   Document, Page, Text, View, StyleSheet, Font,
 } from '@react-pdf/renderer'
+import { severityHex } from '@/utils/estadoColors'
 
 // ── Estilos ───────────────────────────────────────────────────────────────────
 const C = {
@@ -91,7 +92,7 @@ export function ProyectoPDF({ proyecto, facturas, observaciones, empresa = {}, c
   const fmt           = makeFmt(moneda)
   const estadoNombre  = proyecto.estado?.nombre || 'Desconocido'
   const estadoLabel   = estadoNombre.replace('_', ' ')
-  const estadoColor   = ESTADO_COLORS[estadoNombre] || C.gray
+  const estadoColor   = ESTADO_COLORS[estadoNombre] || severityHex(proyecto.estado?.color, C.gray)
 
   const facturado = facturas.reduce((s, f) => s + Number(f.valor), 0)
   const pagado    = facturas.reduce((s, f) => s + Number(f.totalPagos ?? 0), 0)

@@ -26,7 +26,7 @@ export async function GET() {
       prisma.pago.findMany({
         select: { valor: true, fecha: true, facturaId: true, factura: { select: { proyectoId: true } } },
       }),
-      prisma.estado.findMany({ select: { id: true, nombre: true } }),
+      prisma.estado.findMany({ select: { id: true, nombre: true, color: true } }),
       prisma.recordatorioFactura.count({
         where: {
           activo: true,
@@ -50,6 +50,7 @@ export async function GET() {
     // ── Por Estado ───────────────────────────────────────────────
     const porEstado = estados.map((e) => ({
       nombre: e.nombre,
+      color: e.color,
       total: proyectos.filter((p) => p.estadoId === e.id).length,
     })).filter((e) => e.total > 0)
 

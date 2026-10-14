@@ -24,6 +24,7 @@ import { empleadoService } from '@/services/empleadoService'
 import { configuracionService } from '@/services/configuracionService'
 import axios from 'axios'
 import { formatCurrency, formatDate, calcTiempoVida } from '@/utils/format'
+import { severityDot } from '@/utils/estadoColors'
 import * as XLSX from 'xlsx'
 import { usePermisos, PERMISOS } from '@/hooks/usePermisos'
 
@@ -400,7 +401,7 @@ export default function ProyectosPage() {
 
           {/* Por estado */}
           {kpiEstados.map(({ nombre, count, cfg }) => {
-            const s = SEVERITY_STYLE[cfg.severity] || SEVERITY_STYLE.secondary
+            const s = SEVERITY_STYLE[cfg.severity] || severityDot(cfg.severity)
             return (
               <span key={nombre} style={{
                 display: 'inline-flex', alignItems: 'center', gap: '5px',

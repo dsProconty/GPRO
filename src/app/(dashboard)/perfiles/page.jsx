@@ -2,6 +2,7 @@
 // src/app/(dashboard)/perfiles/page.jsx
 // Sprint 11 — Gestión de Perfiles de Acceso (RBAC)
 import { useEffect, useState, useRef, useCallback } from 'react'
+import axios from 'axios'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { DataTable } from 'primereact/datatable'
@@ -160,7 +161,8 @@ const MODULOS = [
   },
 ]
 
-const ESTADOS_PROYECTO = [
+// Respaldo si el catálogo no carga; la lista real viene de /api/v1/estados
+const ESTADOS_PROYECTO_FALLBACK = [
   { id: 1, label: 'En Ejecución' },
   { id: 2, label: 'Por Facturar' },
   { id: 3, label: 'Adjudicado' },
@@ -181,6 +183,7 @@ export default function PerfilesPage() {
   const toast = useRef(null)
 
   const [perfiles, setPerfiles] = useState([])
+  const [estadosProyecto, setEstadosProyecto] = useState(ESTADOS_PROYECTO_FALLBACK)
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -209,6 +212,17 @@ export default function PerfilesPage() {
 
   useEffect(() => { loadPerfiles() }, [loadPerfiles])
 
+  // Estados de proyecto desde el catálogo, para que uno nuevo creado en Configuración
+  // aparezca aquí sin tocar código. Si falla, se queda el respaldo.
+  useEffect(() => {
+    axios.get('/api/v1/estados')
+      .then((res) => {
+        const lista = res.data?.data
+        if (Array.isArray(lista) && lista.length) setEstadosProyecto(lista.map((e) => ({ id: e.id, label: e.nombre })))
+      })
+      .catch(() => {})
+  }, [])
+
   // ── Helpers para la matrix ────────────────────────────────────────────────
   const hasPermiso = (permiso) => form.permisos.includes(permiso)
 
@@ -231,7 +245,7 @@ export default function PerfilesPage() {
 
   const toggleEstadoEditable = (estadoId) => {
     setForm((prev) => {
-      const actual = prev.estadosProyectoEditables ?? ESTADOS_PROYECTO.map((e) => e.id)
+      const actual = prev.estadosProyectoEditables ?? estadosProyecto.map((e) => e.id)
       const set = new Set(actual)
       if (set.has(estadoId)) {
         set.delete(estadoId)
@@ -240,7 +254,7 @@ export default function PerfilesPage() {
       }
       const arr = Array.from(set)
       // Si todos están marcados → null (sin restricción)
-      const isAll = ESTADOS_PROYECTO.every((e) => arr.includes(e.id))
+      const isAll = estadosProyecto.every((e) => arr.includes(e.id))
       return { ...prev, estadosProyectoEditables: isAll ? null : arr }
     })
   }
@@ -461,7 +475,7 @@ export default function PerfilesPage() {
                           <div className="mt-2">
                             <div className="text-xs text-500 font-medium mb-1">Editar en estados:</div>
                             <div className="flex flex-column gap-1">
-                              {ESTADOS_PROYECTO.map((est) => (
+                              {estadosProyecto.map((est) => (
                                 <div key={est.id} className="flex align-items-center gap-2">
                                   <Checkbox
                                     checked={hasEstadoEditable(est.id)}

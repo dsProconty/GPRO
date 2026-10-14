@@ -18,6 +18,7 @@ import { pagoService } from '@/services/pagoService'
 import { observacionService } from '@/services/observacionService'
 import { empleadoService } from '@/services/empleadoService'
 import { formatCurrency, formatDate, calcTiempoVida } from '@/utils/format'
+import { severityDot } from '@/utils/estadoColors'
 import * as XLSX from 'xlsx'
 import FacturaFormDialog from '@/components/shared/FacturaFormDialog'
 import PagoFormDialog from '@/components/shared/PagoFormDialog'
@@ -513,7 +514,7 @@ export default function ProyectoDetallePage({ params }) {
     </div>
   )
 
-  const estadoCfg = ESTADO_CONFIG[proyecto.estado?.nombre] || { severity: 'secondary', label: proyecto.estado?.nombre }
+  const estadoCfg = ESTADO_CONFIG[proyecto.estado?.nombre] || { severity: proyecto.estado?.color || 'secondary', label: proyecto.estado?.nombre }
   const pipelineIdx = PIPELINE_STEPS.findIndex((s) => s.id === proyecto.estadoId)
 
   // Cronograma
@@ -619,7 +620,25 @@ export default function ProyectoDetallePage({ params }) {
         </div>
 
         <div className="flex justify-content-center align-items-center gap-3 mt-3 pt-3" style={{ borderTop: '1px solid var(--surface-border)' }}>
-          {pipelineIdx < PIPELINE_STEPS.length - 1 ? (
+          {pipelineIdx === -1 ? (
+            // Estado fuera del flujo lineal (p. ej. Stand By): no hay "siguiente paso" lógico,
+            // así que se ofrece retomar explícitamente en cualquier etapa activa.
+            <div className="flex align-items-center gap-2 flex-wrap justify-content-center">
+              <span className="text-sm text-color-secondary font-semibold">
+                <i className="pi pi-pause-circle mr-1" />Proyecto en {proyecto.estado?.nombre}
+              </span>
+              {puede(PERMISOS.PROYECTOS.CAMBIAR_ESTADO) && PIPELINE_STEPS.slice(0, -1).map((step) => (
+                <Button
+                  key={step.id}
+                  label={`Retomar en ${step.nombre}`}
+                  outlined
+                  size="small"
+                  loading={savingEstado}
+                  onClick={() => handleEstadoChange(step.id)}
+                />
+              ))}
+            </div>
+          ) : pipelineIdx < PIPELINE_STEPS.length - 1 ? (
             <Button
               label={`→ Mover a: ${PIPELINE_STEPS[pipelineIdx + 1]?.nombre}`}
               outlined
@@ -1103,7 +1122,7 @@ export default function ProyectoDetallePage({ params }) {
             {estadoLogs.map((log, idx) => {
               const anteriorNombre = log.estadoAnterior?.nombre || 'Inicio'
               const nuevoNombre = log.estadoNuevo?.nombre || '—'
-              const nuevoSeverity = (ESTADO_CONFIG[nuevoNombre] || { severity: 'secondary' }).severity
+              const nuevoSeverity = ESTADO_CONFIG[nuevoNombre]?.severity || log.estadoNuevo?.color || 'secondary'
               const DOT_COLORS = {
                 'Adjudicado':   { bg: '#DCFCE7', color: '#15803D', border: '#BBF7D0' },
                 'En Ejecución': { bg: '#EFF6FF', color: '#4F8EF7', border: '#BFDBFE' },
@@ -1111,7 +1130,7 @@ export default function ProyectoDetallePage({ params }) {
                 'Facturado':    { bg: '#F1F5F9', color: '#64748B', border: '#CBD5E1' },
                 'Cerrado':      { bg: '#F1F5F9', color: '#64748B', border: '#CBD5E1' },
               }
-              const dc = DOT_COLORS[nuevoNombre] || { bg: '#F1F5F9', color: '#64748B', border: '#CBD5E1' }
+              const dc = DOT_COLORS[nuevoNombre] || severityDot(log.estadoNuevo?.color)
               return (
                 <div key={log.id} className="flex gap-3">
                   <div className="flex flex-column align-items-center">

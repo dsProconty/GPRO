@@ -140,6 +140,31 @@ El cron de recordatorios ya no corre vía `vercel.json` — lo dispara `.github/
   accesible sin sesión a nivel de ruta (las API routes igual validan permiso por su
   cuenta, pero la página en sí no redirige a `/login`).
 
+### Estados de proyecto: catálogo en BD, pero con partes fijas en el código
+- Los estados viven en la tabla `estados` y se administran en **Personalización**
+  (`/configuracion`, CRUD). Los reales hoy son: En Ejecución(1), Por Facturar(2),
+  Adjudicado(3), Facturado(4), Cerrado(5) (la tabla de 4.4 es histórica). Crear uno nuevo ahí
+  (ej. *Stand By*) basta para usarlo; no requiere deploy.
+- **El tema `lara-light-blue` no define `p-tag-secondary` y otros colores**: caía al azul
+  primario. Se resuelve en `src/app/tag-colors.css`; las 13 opciones del selector de color
+  están en `SEVERITY_OPTIONS` (`configuracion/page.jsx`). Un color nuevo debe agregarse en
+  **tres** sitios: `SEVERITY_OPTIONS`, `tag-colors.css` y `SEVERITY_HEX` (`src/utils/estadoColors.js`);
+  `__tests__/estados-proyecto.test.js` falla si se desalinean.
+- Donde no hay `<Tag>` (donut del dashboard, PDF, puntos de la línea de tiempo, contadores
+  de `/proyectos`) el color sale de `severityHex()`/`severityDot()` a partir de `estado.color`.
+  Los endpoints que alimentan esas vistas deben **incluir `color`** en el `select` del estado.
+- **Secuencia SERIAL desfasada**: el seed y la migración insertan estados con id explícito, y
+  el siguiente `INSERT` chocaba con `Unique constraint failed on id_estado` ("Error al
+  guardar" al crear un estado). `POST /api/v1/configuracion` ahora resincroniza la secuencia
+  y reintenta una vez. Otras tablas sembradas con id explícito pueden tener el mismo problema.
+- La barra de pasos del detalle (`PIPELINE_STEPS`) es el flujo lineal Adjudicado → En Ejecución
+  → Por Facturar → Facturado → Cerrado. Un estado fuera de ese flujo (ej. Stand By) muestra
+  "Retomar en…" en vez de "Mover a". Se considera **activo** en el dashboard
+  (`ESTADOS_INACTIVOS` solo tiene Cerrado y Rechazado).
+- `/perfiles` lee la lista de estados editables desde `/api/v1/estados`. Un estado nuevo
+  aparece **desmarcado** en los perfiles con restricción (`estadosProyectoEditables` con
+  lista); los perfiles con `null` (todos) lo pueden editar de inmediato.
+
 ---
 
 ## 3. ESTRUCTURA DE ARCHIVOS
