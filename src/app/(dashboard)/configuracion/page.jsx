@@ -43,12 +43,23 @@ const MONEDA_OPTIONS = [
 ]
 
 const SEVERITY_OPTIONS = [
-  { label: 'Azul (info)',      value: 'info'      },
-  { label: 'Verde (success)',  value: 'success'   },
-  { label: 'Amarillo (warn)',  value: 'warning'   },
-  { label: 'Rojo (danger)',    value: 'danger'    },
-  { label: 'Gris (neutral)',   value: 'secondary' },
+  { label: 'Azul',             value: 'info'      },
+  { label: 'Verde',            value: 'success'   },
+  { label: 'Naranja',          value: 'warning'   },
+  { label: 'Rojo',             value: 'danger'    },
+  { label: 'Gris',             value: 'secondary' },
+  { label: 'Negro azulado',    value: 'contrast'  },
+  { label: 'Violeta',          value: 'help'      },
+  { label: 'Índigo',           value: 'indigo'    },
+  { label: 'Turquesa',         value: 'teal'      },
+  { label: 'Cian',             value: 'cyan'      },
+  { label: 'Rosa',             value: 'pink'      },
+  { label: 'Amarillo',         value: 'yellow'    },
+  { label: 'Café',             value: 'brown'     },
 ]
+
+// Muestra cada opción con su color real, para no depender de adivinar por el nombre
+const severityItem = (o) => <Tag value={o.label} severity={o.value} style={{ fontSize: '0.8rem' }} />
 
 const ICON_OPTIONS = [
   { label: 'Bombilla',      value: 'pi-lightbulb'    },
@@ -117,7 +128,7 @@ function EstadoProyectoDialog({ visible, onHide, onSave, estado }) {
         </div>
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Color / Severidad</label>
-          <Dropdown value={form.color} options={SEVERITY_OPTIONS} optionLabel="label" optionValue="value" onChange={(e) => setForm((p) => ({ ...p, color: e.value }))} />
+          <Dropdown value={form.color} options={SEVERITY_OPTIONS} optionLabel="label" optionValue="value" itemTemplate={severityItem} valueTemplate={(o) => (o ? severityItem(o) : null)} onChange={(e) => setForm((p) => ({ ...p, color: e.value }))} />
           <div className="mt-1">
             <Tag value={form.nombre || 'Vista previa'} severity={form.color} />
           </div>
@@ -174,7 +185,7 @@ function EstadoPropuestaDialog({ visible, onHide, onSave, estadoLabel }) {
         </div>
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Color / Severidad</label>
-          <Dropdown value={form.severity} options={SEVERITY_OPTIONS} optionLabel="label" optionValue="value" onChange={(e) => setForm((p) => ({ ...p, severity: e.value }))} />
+          <Dropdown value={form.severity} options={SEVERITY_OPTIONS} optionLabel="label" optionValue="value" itemTemplate={severityItem} valueTemplate={(o) => (o ? severityItem(o) : null)} onChange={(e) => setForm((p) => ({ ...p, severity: e.value }))} />
         </div>
         <div className="flex flex-column gap-1">
           <label className="text-sm font-medium">Ícono</label>

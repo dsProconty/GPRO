@@ -6,6 +6,7 @@ import 'primereact/resources/themes/lara-light-blue/theme.css'
 import 'primereact/resources/primereact.min.css'
 import 'primeicons/primeicons.css'
 import 'primeflex/primeflex.css'
+import './tag-colors.css'
 
 export const metadata = {
   title: 'GPRO - Gestor de Proyectos',

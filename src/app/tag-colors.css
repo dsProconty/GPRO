@@ -1,0 +1,13 @@
+/* Colores de Tag que el tema lara-light-blue no define.
+   PrimeReact genera la clase `p-tag-<severity>`; sin esta hoja, `secondary`
+   cae al azul primario por defecto. Los valores coinciden con SEVERITY_OPTIONS
+   en configuracion/page.jsx. */
+.p-tag.p-tag-secondary { background: #64748b; color: #ffffff; }
+.p-tag.p-tag-contrast  { background: #1e293b; color: #ffffff; }
+.p-tag.p-tag-help      { background: #a855f7; color: #ffffff; }
+.p-tag.p-tag-indigo    { background: #6366f1; color: #ffffff; }
+.p-tag.p-tag-teal      { background: #14b8a6; color: #ffffff; }
+.p-tag.p-tag-cyan      { background: #06b6d4; color: #ffffff; }
+.p-tag.p-tag-pink      { background: #ec4899; color: #ffffff; }
+.p-tag.p-tag-yellow    { background: #eab308; color: #1e293b; }
+.p-tag.p-tag-brown     { background: #92400e; color: #ffffff; }
