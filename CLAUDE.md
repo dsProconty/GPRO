@@ -175,6 +175,7 @@ GPRO/
     │   │   ├── propuestas/            ← Sprint 8
     │   │   │   ├── page.jsx
     │   │   │   └── [id]/page.jsx
+    │   │   ├── oportunidades/         ← Sprint 9
     │   │   └── (facturas y pagos dentro de proyectos/[id]) ← Sprint 3
     │   └── api/
     │       ├── auth/[...nextauth]/route.js
@@ -434,7 +435,7 @@ export const calcTiempoVida = (fechaCreacion, fechaCierre) => {
 | **Sprint 8** | Módulo de Propuestas | ✅ COMPLETADO | 19-20 |
 | **Sprint 9** | Módulo de Oportunidades (CRM ligero, pre-Propuestas) | ✅ COMPLETADO | sept 2026 |
 
-### Sprint 9 — Módulo de Oportunidades (v1.8.x)
+### Sprint 9 — Módulo de Oportunidades (v1.8.x → v1.9.x)
 - Pipeline comercial previo a Propuestas: `Prospeccion → Solicitud_RFI → Entrega_RFI →
   Solicitud_RFP`, con `En_Suspenso` y `Perdida` como estados laterales reversibles desde
   cualquiera de las 3 etapas activas. `Solicitud_RFP` es el gancho: crea automáticamente
@@ -442,15 +443,28 @@ export const calcTiempoVida = (fechaCreacion, fechaCierre) => {
 - Al crear una Oportunidad se puede elegir cualquiera de las 6 etapas como punto de
   partida (no siempre nace en Prospección) — si se elige directamente el gancho, también
   se genera la Propuesta en el mismo POST.
-- Al convertir a Propuesta (crear o cambiar etapa), un diálogo pide confirmar a qué
-  Empresa ya registrada asignarla (o crear una nueva) — evita duplicar el catálogo de
-  Empresas, que antes se creaba a ciegas desde el texto libre de la Oportunidad.
+- **(v1.8.x, reemplazado en v1.9.0)** Al convertir a Propuesta, un diálogo pedía confirmar
+  la Empresa. Ya no existe: desde v1.9.0 la Empresa es fija desde la creación (ver abajo).
+- **v1.9.0 — Empresa y contactos contra el catálogo maestro**: `Oportunidad.empresaNombre`
+  (texto libre) se eliminó; ahora `Oportunidad.empresaId` es FK obligatoria a `Empresa` y
+  los contactos son `Cliente` reales vía el pivote `oportunidad_cliente` (la tabla
+  `oportunidad_contactos` se eliminó). Es obligatorio desde la etapa Prospección.
+  `Cliente` ganó el campo opcional `cargo` (visible también en el módulo Clientes). Se pueden
+  crear Empresas/Contactos inline desde el formulario de Oportunidad. Spec:
+  `docs/superpowers/specs/2026-09-10-oportunidades-catalogo-empresas-clientes-design.md`
+  (plan en `docs/superpowers/plans/`).
+- **v1.8.2**: la tabla de Propuestas muestra "Punto de contacto" en vez de "Responsables".
+- **v1.9.1**: el alta inline de contacto muestra el detalle real del error del backend.
+- Gotcha RBAC (v1.9.0): `GET/POST /api/v1/clientes` ahora acepta el permiso de Clientes **o**
+  de Empresas, Proyectos, Propuestas u Oportunidades (mismo patrón OR que Empresas/Empleados,
+  ver 2.2). Test de regresión: `__tests__/rbac-catalogos-compartidos.test.js`.
 - Permisos propios en el RBAC: `oportunidades.{ver,crear,editar,eliminar,cambiarEtapa}`,
   con fila en la matriz de `/perfiles`.
 - Diseño validado con la comercial del área (Yleana Paola Filian Tamayo) antes de
   liberarlo — spec completo en `docs/superpowers/specs/2026-09-03-modulo-oportunidades-design.md`.
 - Ver sección 2.2 para los bugs de RBAC/carga de datos que salieron a la luz con este
   módulo (y ya están corregidos en v1.8.1).
+- **Última versión desplegada documentada: v1.9.1 (11-sep-2026).**
 
 ### Sprint 0 — Lo que ya existe ✅
 - Next.js 14 configurado con App Router
